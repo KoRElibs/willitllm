@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Will It LLM?</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>// will-it-llm</h1>
+    <p>Will the LLM fit in your GPU? Enter your GPU's VRAM and pick a model to see the maximum safecontext window it can run.</p>
+  </header>
+
+  <div class="controls">
+    <div class="field">
+      <label>Model</label>
+      <div class="select-wrap">
+        <select id="modelSelect"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>GPU VRAM</label>
+      <div class="select-wrap">
+        <select id="vramInput">
+          <option value="4">4 GB — GTX 1650 · RTX 3050</option>
+          <option value="6">6 GB — RTX 3060 laptop · RTX 4060 (some)</option>
+          <option value="8">8 GB — RTX 4060 · RTX 4060 Ti · RTX 3070</option>
+          <option value="10">10 GB — RTX 3080</option>
+          <option value="12">12 GB — RTX 4070 · RTX 3060 · RTX 3080 12G</option>
+          <option value="16">16 GB — RTX 4080 · RX 7900 GRE</option>
+          <option value="24" selected>24 GB — RTX 4090 · RTX 3090</option>
+          <option value="32">32 GB — RTX 5090</option>
+          <option value="40">40 GB — A100 40G</option>
+          <option value="48">48 GB — RTX A6000 · L40S</option>
+          <option value="80">80 GB — A100 80G · H100</option>
+          <option value="96">96 GB — H100 NVL</option>
+          <option value="192">192 GB — 2× H100</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div id="noModel" class="no-model">Select a model and enter VRAM to calculate.</div>
+
+  <div id="results" hidden>
+
+    <div class="bar-section">
+      <div class="bar-label-row">
+        <span>VRAM allocation</span>
+        <span class="total" id="barTotal"></span>
+      </div>
+      <div class="membar">
+        <div class="membar-seg seg-model" id="segModel"></div>
+        <div class="membar-seg seg-context" id="segContext"></div>
+        <div class="membar-seg seg-free" id="segFree"></div>
+      </div>
+      <div class="bar-legend">
+        <div class="legend-item"><div class="legend-dot dot-model"></div><span id="legendModel"></span></div>
+        <div class="legend-item"><div class="legend-dot dot-context"></div><span id="legendContext"></span></div>
+        <div class="legend-item"><div class="legend-dot dot-free"></div><span id="legendFree"></span></div>
+      </div>
+    </div>
+
+    <div class="result-headline" id="resultHeadline">
+      <div class="verdict" id="verdict"></div>
+      <div class="result-ctx-row" id="resultCtxRow" hidden>
+        <span class="result-value" id="resultValue"></span>
+        <span class="result-label">recommended max context</span>
+        <span class="ctx-pct" id="ctxPct"></span>
+      </div>
+      <p class="ctx-hint" id="ctxHint" hidden></p>
+      <span class="result-label" id="resultLabelOom" hidden></span>
+      <pre class="ollama-cmd" id="ollamaCmd" hidden></pre>
+      <p class="ollama-hint" id="ollamaHint" hidden>Run the first line in your terminal. Once inside the session, type the second line.</p>
+    </div>
+
+    <div class="provenance-alert" id="provenanceAlert" hidden></div>
+
+    <div class="details">
+      <div class="details-header">Model info</div>
+      <div class="detail-row">
+        <div class="detail-key">organization</div>
+        <div class="detail-val" id="detailOrganization"></div>
+        <div class="detail-src" id="detailOrgSrc">models.js</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-key">origin</div>
+        <div class="detail-val" id="detailOrigin"></div>
+        <div class="detail-src">models.js</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-key">specialty</div>
+        <div class="detail-val" id="detailSpecialty"></div>
+        <div class="detail-src">models.js</div>
+      </div>
+      <div class="detail-row" id="detailMoeRow" hidden>
+        <div class="detail-key">architecture</div>
+        <div class="detail-val" style="color:var(--purple)">Mixture of Experts (MoE)</div>
+        <div class="detail-src">models.js</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-key">max_position_embeddings</div>
+        <div class="detail-val" id="detailMaxCtx"></div>
+        <div class="detail-src src-config-json" id="srcMaxCtx"></div>
+      </div>
+      <div class="details-header">Architecture</div>
+      <div class="detail-row">
+        <div class="detail-key">num_hidden_layers</div>
+        <div class="detail-val" id="detailLayers"></div>
+        <div class="detail-src src-config-json"></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-key">num_attention_heads</div>
+        <div class="detail-val" id="detailAttnHeads"></div>
+        <div class="detail-src src-config-json" id="srcAttnHeads"></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-key">num_key_value_heads</div>
+        <div class="detail-val"><span id="detailKvHeads"></span> <span class="gqa-note">← used (GQA)</span></div>
+        <div class="detail-src src-config-json"></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-key">head_dim</div>
+        <div class="detail-val"><span id="detailHeadDim"></span> <span class="derived-note">(<span id="detailHiddenSize"></span> ÷ <span id="detailAttnHeadsDiv"></span>)</span></div>
+        <div class="detail-src src-config-json" id="srcHeadDim"></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-key">bytes_per_element</div>
+        <div class="detail-val"><span id="detailBpe"></span> <span class="derived-note">(fp16)</span></div>
+        <div class="detail-src">ollama default</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-key">model weights</div>
+        <div class="detail-val"><span id="detailWeights"></span> <span class="derived-note">(<span id="detailQuantization"></span>)</span></div>
+        <div class="detail-src" id="detailSource"></div>
+      </div>
+    </div>
+
+    <div class="formula-box" id="formulaBox" hidden>
+      <div class="formula-header">Calculation</div>
+      <div>bytes_per_token = layers × kv_heads × head_dim × 2(K+V) × 2(fp16)</div>
+      <div class="formula-line">
+        &nbsp;&nbsp;= <span class="hl" id="fLayers"></span>
+        × <span class="hl" id="fKvHeads"></span>
+        × <span class="hl" id="fHeadDim"></span>
+        × 2 × 2
+        = <span class="hl-a" id="fPerToken"></span> / token
+        <span class="formula-muted" id="fPerTokenKB"></span>
+      </div>
+      <div class="formula-spacer" id="fAvailLabel"></div>
+      <div class="formula-line">
+        &nbsp;&nbsp;= <span class="hl-a" id="fAvailGB"></span>
+        = <span class="hl-a" id="fAvailBytes"></span>
+      </div>
+      <div class="formula-spacer">raw_max_tokens = available_vram ÷ bytes_per_token</div>
+      <div class="formula-line">&nbsp;&nbsp;= <span class="hl-a" id="fRawTokens"></span> tokens</div>
+      <div class="formula-spacer">→ largest power-of-2 that fits:</div>
+      <div class="formula-line">&nbsp;&nbsp;<span class="hl-g" id="fMaxCtx"></span></div>
+      <div id="archLimitNote" hidden>
+        <div class="formula-spacer" style="color:var(--amber)">⚠ capped at model's architectural limit (max_position_embeddings = <span id="fArchLimit"></span> tokens)</div>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      <strong>These are estimates.</strong>
+      Actual VRAM usage varies with ollama version, quantization, batch size, and OS/driver overhead —
+      the <span id="overheadPct"></span>% overhead reserve is a heuristic, not a guarantee.
+      <br><br>
+      <strong>Color coding</strong> reflects how much of the model's architectural context limit fits in your VRAM:
+      <span style="color:var(--green)">green ≥ 66%</span>,
+      <span style="color:var(--amber)">amber ≥ 33%</span>,
+      <span style="color:var(--orange)">orange &lt; 33%</span>.
+      Orange means the model still runs — you just have a shorter context window than the model was designed for.
+      <br><br>
+      <strong>This site's data was compiled by AI</strong> (Claude), not manually verified by a human.
+      Model metadata (organization, origin, specialty) and HuggingFace config URLs were generated from AI training knowledge
+      and may contain errors. Architecture parameters are cross-checked against HuggingFace <code>config.json</code>
+      via an automated script, but the underlying URLs were AI-generated and not all have been confirmed live.
+      <br><br>
+      <strong>Weight sizes</strong> are sourced from the ollama registry manifest (exact layer bytes, no model downloads).
+      Quantization varies by tag — run <code>ollama show &lt;model&gt;</code> for exact values.
+      <strong>Architecture parameters</strong> (layers, heads, head_dim, max_position_embeddings) are sourced from
+      HuggingFace <code>config.json</code> — verify for fine-tuned variants.
+      <strong>KV cache</strong> assumes fp16 (ollama default); some builds use fp32, which doubles the cache size.
+      Always monitor <code>nvidia-smi</code> when pushing context limits.
+    </div>
+
+  </div>
+
+</div>
+<script src="models.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
