@@ -1,7 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
-const BYTES_PER_ELEMENT = 2;       // fp16 KV cache (ollama default)
+const KV_CACHE_LABELS = { '2': 'f16', '1': 'q8_0', '0.5': 'q4_0' };
+function getBytesPerElement() {
+  return parseFloat(document.getElementById('kvCacheType').value);
+}
 const OVERHEAD_FACTOR   = 0.92;    // reserve ~8% for CUDA context, activations, OS
 const POWERS_OF_2       = [131072, 65536, 32768, 16384, 8192, 4096, 2048, 1024];
 
@@ -38,11 +41,11 @@ function modelLabel(m) {
 // ─────────────────────────────────────────────────────────────────────────────
 // CORE CALC
 // ─────────────────────────────────────────────────────────────────────────────
-function calcMaxContext(model, vramGB) {
+function calcMaxContext(model, vramGB, bytesPerElement) {
   const availableBytes = (vramGB - model.weights_gb) * OVERHEAD_FACTOR * 1024 ** 3;
   if (availableBytes <= 0) return { maxCtx: 0, kvCacheGB: 0, freeGB: 0, availableBytes };
 
-  const perToken = model.layers * model.num_key_value_heads * model.head_dim * 2 * BYTES_PER_ELEMENT;
+  const perToken = model.layers * model.num_key_value_heads * model.head_dim * 2 * bytesPerElement;
   const rawTokens = availableBytes / perToken;
   const archLimit = model.max_context || Infinity;
   const archMaxRaw = Math.min(rawTokens, archLimit);
@@ -78,12 +81,20 @@ function fmtCtx(n) {
 // ─────────────────────────────────────────────────────────────────────────────
 // MARK OOM OPTIONS IN DROPDOWN
 // ─────────────────────────────────────────────────────────────────────────────
-function markModelOptions(vramGB) {
+function markModelOptions(vramGB, bytesPerElement) {
   const sel = document.getElementById('modelSelect');
   Array.from(sel.options).forEach((opt, i) => {
-    const fits = MODELS[i].weights_gb < vramGB * OVERHEAD_FACTOR;
-    opt.textContent = fits ? modelLabel(MODELS[i]) : `✗  ${modelLabel(MODELS[i])}`;
-    opt.style.color = fits ? '' : '#f06464';
+    const m = MODELS[i];
+    const fits = m.weights_gb < vramGB * OVERHEAD_FACTOR;
+    if (!fits) {
+      opt.textContent  = `✗  ${modelLabel(m)}`;
+      opt.style.color  = '#f06464';
+      return;
+    }
+    const r   = calcMaxContext(m, vramGB, bytesPerElement);
+    const pct = m.max_context ? Math.round((r.maxCtx / m.max_context) * 100) : 100;
+    opt.textContent = modelLabel(m);
+    opt.style.color = pct >= 66 ? '#56d88a' : pct >= 33 ? '#f5a623' : '#f07418';
   });
 }
 
@@ -91,9 +102,11 @@ function markModelOptions(vramGB) {
 // RENDER
 // ─────────────────────────────────────────────────────────────────────────────
 function render() {
-  const modelIdx = parseInt(document.getElementById('modelSelect').value);
-  const vramGB   = parseFloat(document.getElementById('vramInput').value);
-  const model    = MODELS[modelIdx];
+  const modelIdx       = parseInt(document.getElementById('modelSelect').value);
+  const vramGB         = parseFloat(document.getElementById('vramInput').value);
+  const bytesPerElement = getBytesPerElement();
+  const kvLabel        = KV_CACHE_LABELS[String(bytesPerElement)] || 'fp16';
+  const model          = MODELS[modelIdx];
 
   const noModel = document.getElementById('noModel');
   const results = document.getElementById('results');
@@ -107,9 +120,9 @@ function render() {
   noModel.hidden = true;
   results.hidden = false;
 
-  markModelOptions(vramGB);
+  markModelOptions(vramGB, bytesPerElement);
 
-  const r      = calcMaxContext(model, vramGB);
+  const r      = calcMaxContext(model, vramGB, bytesPerElement);
   const noFit  = model.weights_gb >= vramGB * OVERHEAD_FACTOR;
 
   // ── memory bar
@@ -195,14 +208,26 @@ function render() {
 
     const ctxHint = document.getElementById('ctxHint');
     if (pctClass === 'pct-mid' || pctClass === 'pct-low') {
-      ctxHint.textContent = `Runs fine at ${fmtCtx(r.maxCtx)} — ${fmtTokensHuman(r.maxCtx)}. Keep num_ctx at or below this limit (the command below sets it).`;
+      ctxHint.textContent = `Runs fine at ${fmtCtx(r.maxCtx)} — ${fmtTokensHuman(r.maxCtx)} of typical English text. Keep num_ctx at or below this limit (the command below sets it).`;
       ctxHint.hidden = false;
     } else {
       ctxHint.hidden = true;
     }
 
     if (model.ollama_tag) {
-      ollamaCmd.textContent = `$ ollama run ${model.ollama_tag}\n>>> /set parameter num_ctx ${r.maxCtx}`;
+      const flashSel  = document.getElementById('vramInput').selectedOptions[0];
+      const flashSupport = flashSel ? flashSel.dataset.flash : 'yes';
+      const flashWarn = document.getElementById('flashWarn');
+      if (bytesPerElement < 2 && flashSupport !== 'yes') {
+        flashWarn.textContent = flashSupport === 'mixed'
+          ? `⚠ ${kvLabel} requires Flash Attention — AMD support varies by ollama build and driver. Verify your setup before setting OLLAMA_KV_CACHE_TYPE.`
+          : `⚠ ${kvLabel} requires Flash Attention — not supported on Turing (RTX 20xx) or older NVIDIA GPUs. This setting will have no effect or may cause errors.`;
+        flashWarn.hidden = false;
+      } else {
+        flashWarn.hidden = true;
+      }
+      const kvEnv = bytesPerElement !== 2 ? `$ OLLAMA_KV_CACHE_TYPE=${kvLabel} ollama serve  # restart ollama first\n` : '';
+      ollamaCmd.textContent = `${kvEnv}$ ollama run ${model.ollama_tag}\n>>> /set parameter num_ctx ${r.maxCtx}`;
       document.getElementById('ollamaHint').hidden = false;
     } else {
       ollamaCmd.textContent = `not available in the ollama library\nsee source link in details below`;
@@ -218,7 +243,8 @@ function render() {
   document.getElementById('detailHeadDim').textContent   = model.head_dim;
   document.getElementById('detailHiddenSize').textContent   = model.hidden_size;
   document.getElementById('detailAttnHeadsDiv').textContent = model.num_attention_heads;
-  document.getElementById('detailBpe').textContent       = BYTES_PER_ELEMENT;
+  document.getElementById('detailBpe').textContent      = bytesPerElement;
+  document.getElementById('detailBpeLabel').textContent = kvLabel;
   document.getElementById('detailWeights').textContent      = fmtGB(model.weights_gb);
   document.getElementById('detailQuantization').textContent = model.quantization || '—';
 
@@ -279,6 +305,7 @@ function render() {
   if (!noFit) {
     document.getElementById('fLayers').textContent    = model.layers;
     document.getElementById('fKvHeads').textContent   = model.num_key_value_heads;
+    document.getElementById('fBpeLabel').textContent  = `${bytesPerElement}(${kvLabel})`;
     document.getElementById('fHeadDim').textContent   = model.head_dim;
     document.getElementById('fPerToken').textContent  = `${r.perToken.toLocaleString()} bytes`;
     document.getElementById('fPerTokenKB').textContent = `(${(r.perToken / 1024).toFixed(1)} KB)`;
@@ -300,8 +327,25 @@ function render() {
 // ─────────────────────────────────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────────────────────────────────
+function gpuLabel(gpu) {
+  const suffix = gpu.vendor ? ` (${gpu.vendor})` : '';
+  return `${gpu.vram} GB — ${gpu.names.join(' · ')}${suffix}`;
+}
+
 function init() {
   document.getElementById('overheadPct').textContent = Math.round((1 - OVERHEAD_FACTOR) * 100);
+
+  // Build GPU dropdown from gpus.js data
+  const vramSel = document.getElementById('vramInput');
+  GPUS.forEach((gpu, i) => {
+    const opt = document.createElement('option');
+    opt.value = gpu.vram;
+    opt.dataset.flash = gpu.flash;
+    opt.dataset.gpuIndex = i;
+    opt.textContent = gpuLabel(gpu);
+    if (gpu.default) opt.selected = true;
+    vramSel.appendChild(opt);
+  });
 
   MODELS.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -319,6 +363,7 @@ function init() {
   });
   sel.addEventListener('change', render);
   document.getElementById('vramInput').addEventListener('change', render);
+  document.getElementById('kvCacheType').addEventListener('change', render);
   render();
 }
 

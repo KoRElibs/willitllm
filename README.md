@@ -31,6 +31,7 @@ Pure static HTML/CSS/JS — no build step, no dependencies, no server.
 | `app.js` | Calculation logic and rendering |
 | `styles.css` | Dark theme styling |
 | `models.js` | Model database (architecture params, metadata) |
+| `gpus.js` | GPU database (VRAM tiers, Flash Attention support) |
 | `scripts/update_models.py` | Maintenance script — verifies and updates `models.js` |
 
 ## Running locally

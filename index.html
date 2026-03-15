@@ -16,28 +16,24 @@
 
   <div class="controls">
     <div class="field">
+      <label>GPU VRAM</label>
+      <div class="select-wrap">
+        <select id="vramInput"></select>
+      </div>
+    </div>
+    <div class="field">
       <label>Model</label>
       <div class="select-wrap">
         <select id="modelSelect"></select>
       </div>
     </div>
     <div class="field">
-      <label>GPU VRAM</label>
+      <label>KV Cache</label>
       <div class="select-wrap">
-        <select id="vramInput">
-          <option value="4">4 GB — GTX 1650 · RTX 3050</option>
-          <option value="6">6 GB — RTX 3060 laptop · RTX 4060 (some)</option>
-          <option value="8">8 GB — RTX 4060 · RTX 4060 Ti · RTX 3070</option>
-          <option value="10">10 GB — RTX 3080</option>
-          <option value="12">12 GB — RTX 4070 · RTX 3060 · RTX 3080 12G</option>
-          <option value="16">16 GB — RTX 4080 · RX 7900 GRE</option>
-          <option value="24" selected>24 GB — RTX 4090 · RTX 3090</option>
-          <option value="32">32 GB — RTX 5090</option>
-          <option value="40">40 GB — A100 40G</option>
-          <option value="48">48 GB — RTX A6000 · L40S</option>
-          <option value="80">80 GB — A100 80G · H100</option>
-          <option value="96">96 GB — H100 NVL</option>
-          <option value="192">192 GB — 2× H100</option>
+        <select id="kvCacheType">
+          <option value="2" selected>f16 — default</option>
+          <option value="1">q8_0 — ½ memory, needs Flash Attention</option>
+          <option value="0.5">q4_0 — ¼ memory, needs Flash Attention</option>
         </select>
       </div>
     </div>
@@ -73,6 +69,7 @@
       </div>
       <p class="ctx-hint" id="ctxHint" hidden></p>
       <span class="result-label" id="resultLabelOom" hidden></span>
+      <p class="flash-warn" id="flashWarn" hidden></p>
       <pre class="ollama-cmd" id="ollamaCmd" hidden></pre>
       <p class="ollama-hint" id="ollamaHint" hidden>Run the first line in your terminal. Once inside the session, type the second line.</p>
     </div>
@@ -129,7 +126,7 @@
       </div>
       <div class="detail-row">
         <div class="detail-key">bytes_per_element</div>
-        <div class="detail-val"><span id="detailBpe"></span> <span class="derived-note">(fp16)</span></div>
+        <div class="detail-val"><span id="detailBpe"></span> <span class="derived-note">(<span id="detailBpeLabel"></span>)</span></div>
         <div class="detail-src">ollama default</div>
       </div>
       <div class="detail-row">
@@ -141,7 +138,7 @@
 
     <div class="formula-box" id="formulaBox" hidden>
       <div class="formula-header">Calculation</div>
-      <div>bytes_per_token = layers × kv_heads × head_dim × 2(K+V) × 2(fp16)</div>
+      <div>bytes_per_token = layers × kv_heads × head_dim × 2(K+V) × <span id="fBpeLabel"></span></div>
       <div class="formula-line">
         &nbsp;&nbsp;= <span class="hl" id="fLayers"></span>
         × <span class="hl" id="fKvHeads"></span>
@@ -184,13 +181,15 @@
       Quantization varies by tag — run <code>ollama show &lt;model&gt;</code> for exact values.
       <strong>Architecture parameters</strong> (layers, heads, head_dim, max_position_embeddings) are sourced from
       HuggingFace <code>config.json</code> — verify for fine-tuned variants.
-      <strong>KV cache</strong> assumes fp16 (ollama default); some builds use fp32, which doubles the cache size.
+      <strong>KV cache</strong> defaults to f16. Set <code>OLLAMA_KV_CACHE_TYPE=q8_0</code> or <code>q4_0</code>
+      to halve or quarter the cache size — requires Flash Attention to be enabled.
       Always monitor <code>nvidia-smi</code> when pushing context limits.
     </div>
 
   </div>
 
 </div>
+<script src="gpus.js"></script>
 <script src="models.js"></script>
 <script src="app.js"></script>
 </body>
