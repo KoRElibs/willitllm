@@ -32,13 +32,19 @@ body {
 header { margin-bottom: 36px; }
 header h1 {
   font-family: var(--mono);
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 32px;
+  font-weight: 700;
   color: var(--accent);
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  text-shadow: 0 0 32px rgba(79, 195, 247, 0.35);
 }
-header p { color: var(--muted); font-size: 13px; }
+header p {
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.6;
+}
 
 /* ── Controls ── */
 .controls {
