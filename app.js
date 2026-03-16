@@ -2,6 +2,11 @@
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 const KV_CACHE_LABELS = { '2': 'f16', '1': 'q8_0', '0.5': 'q4_0' };
+const KV_CACHE_INFO = {
+  'f16':  { summary: 'Full precision — works on every GPU, no setup needed.' },
+  'q8_0': { summary: 'Half the memory per token — slight precision loss, fits more context in VRAM.' },
+  'q4_0': { summary: 'Quarter the memory per token — more precision loss, maximum context for the VRAM.' },
+};
 
 
 function getBytesPerElement() {
@@ -10,23 +15,21 @@ function getBytesPerElement() {
 const OVERHEAD_FACTOR   = 0.92;    // reserve ~8% for CUDA context, activations, OS
 const POWERS_OF_2       = [131072, 65536, 32768, 16384, 8192, 4096, 2048, 1024];
 
-const ORIGIN_FLAGS = {
-  'USA':           '🇺🇸',
-  'France':        '🇫🇷',
-  'EU':            '🇪🇺',
-  'Canada':        '🇨🇦',
-  'UK':            '🇬🇧',
-  'UAE':           '🇦🇪',
-  'Switzerland':   '🇨🇭',
-  'South Korea':   '🇰🇷',
-  'Singapore':     '🇸🇬',
-  'Portugal':      '🇵🇹',
-  'International': '🌍',
+const FLAGS = {
+  'USA': '🇺🇸', 'France': '🇫🇷', 'EU': '🇪🇺', 'Canada': '🇨🇦',
+  'UK': '🇬🇧', 'UAE': '🇦🇪', 'Switzerland': '🇨🇭', 'South Korea': '🇰🇷',
+  'Singapore': '🇸🇬', 'Portugal': '🇵🇹', 'International': '🌍',
 };
+const LIB_META = Object.fromEntries(LIBRARIES.map(l => [l.library, l]));
+
+function libMeta(m) {
+  return LIB_META[m.ollama_tag.split(':')[0]] || {};
+}
 
 function modelLabel(m) {
   const [library, tag] = m.ollama_tag.split(':');
-  const flag = m.origin ? (ORIGIN_FLAGS[m.origin] || '🌍') : '👥';
+  const meta = LIB_META[library];
+  const flag = meta?.origin ? (FLAGS[meta.origin] || '🌍') : '👥';
   return `${library} ${tag}  ${flag}`;
 }
 
@@ -73,19 +76,17 @@ function fmtCtx(n) {
 // ─────────────────────────────────────────────────────────────────────────────
 // VARIANT DROPDOWN
 // ─────────────────────────────────────────────────────────────────────────────
-const QUALITY_COLORS = {
-  'lossless':        'var(--accent)',
-  'near-lossless':   'var(--green)',
-  'minimal loss':    'var(--green)',
-  'low loss':        '#8de0a0',
-  'moderate loss':   'var(--amber)',
-  'noticeable loss': 'var(--orange)',
-  'heavy loss':      'var(--red)',
-  'severe loss':     'var(--red)',
-};
+function rating(val, filled, empty, max = 5) {
+  const n = Math.round((val / 10) * max);
+  return filled.repeat(n) + empty.repeat(max - n);
+}
 
-function qualityColor(quality) {
-  return quality ? (QUALITY_COLORS[quality.toLowerCase()] || '') : '';
+function updateVariantInfo(model) {
+  const el = document.getElementById('variantInfo');
+  if (!el) return;
+  const v = getSelectedVariant(model);
+  const qi = v && QUANT_INFO[v.quantization];
+  el.textContent = qi ? qi.summary : '';
 }
 
 function populateVariants(model) {
@@ -95,17 +96,19 @@ function populateVariants(model) {
     const opt = document.createElement('option');
     opt.textContent = 'no variants';
     sel.appendChild(opt);
+    updateVariantInfo(model);
     return;
   }
   model.variants.forEach((v, i) => {
     const opt = document.createElement('option');
     opt.value = i;
     const qi = QUANT_INFO[v.quantization];
-    const hint = qi ? ` · ${qi.quality}` : '';
-    opt.textContent = `${v.quantization} — ${v.weights_gb.toFixed(1)} GB${hint}`;
-    if (qi) opt.style.color = qualityColor(qi.quality);
+    const spd = qi ? rating(qi.speed,   '⚡︎', '·') : '·····';
+    const qlt = qi ? rating(qi.quality, '★', '☆') : '☆☆☆☆☆';
+    opt.textContent = `${spd} ${qlt}  ${v.tag} — ${v.weights_gb.toFixed(1)} GB`;
     sel.appendChild(opt);
   });
+  updateVariantInfo(model);
 }
 
 function getSelectedVariantIdx(model) {
@@ -154,7 +157,9 @@ function render() {
   const modelIdx        = parseInt(document.getElementById('modelSelect').value);
   const vramGB          = parseFloat(document.getElementById('vramInput').value);
   const bytesPerElement = getBytesPerElement();
-  const kvLabel         = KV_CACHE_LABELS[String(bytesPerElement)] || 'fp16';
+  const kvLabel         = KV_CACHE_LABELS[String(bytesPerElement)] || 'f16';
+  const kvInfo          = KV_CACHE_INFO[kvLabel];
+  if (kvInfo) { document.getElementById('kvCacheInfoText').textContent = `${kvLabel} — ${kvInfo.summary}`; }
   const model           = MODELS[modelIdx];
 
   const noModel = document.getElementById('noModel');
@@ -176,10 +181,9 @@ function render() {
   const qi = variant ? QUANT_INFO[variant.quantization] : null;
   const infoEl = document.getElementById('variantInfo');
   if (qi) {
-    infoEl.textContent = `${qi.speed} · ${qi.quality} — ${qi.summary}`;
-    infoEl.style.color = qualityColor(qi.quality);
+    infoEl.textContent  = `${variant.quantization} — ${qi.summary}`;
   } else {
-    infoEl.textContent = '';
+    infoEl.textContent  = '';
   }
 
   markModelOptions(vramGB, bytesPerElement);
@@ -217,31 +221,60 @@ function render() {
   const headline  = document.getElementById('resultHeadline');
   const labelOom  = document.getElementById('resultLabelOom');
   const verdictEl = document.getElementById('verdict');
-  const ctxRow    = document.getElementById('resultCtxRow');
+  const scorecard = document.getElementById('scorecard');
   const ollamaCmd = document.getElementById('ollamaCmd');
 
-  // Color grade: how much of the architectural max context fits?
-  let pctClass = 'pct-high';
-  let pct = null;
-  if (!noFit && model.max_context) {
-    pct = Math.round((r.maxCtx / model.max_context) * 100);
-    pctClass = pct >= 66 ? 'pct-high' : pct >= 33 ? 'pct-mid' : 'pct-low';
-  }
-  headline.className = 'result-headline' + (noFit ? ' error' : ` ${pctClass}`);
+  // ── Scorecard ─────────────────────────────────────────────────────────────
+  function stars(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
 
-  // Restart animation on every render (restart trick: remove class, force reflow, re-add)
+  const sSpeed     = qi ? Math.max(1, Math.round((qi.speed   / 10) * 5)) : 0;
+  const sQuality   = qi ? Math.max(1, Math.round((qi.quality / 10) * 5)) : 0;
+  const pct        = (!noFit && model.max_context) ? Math.round((r.maxCtx / model.max_context) * 100) : null;
+  const sContext   = pct === null ? 0 : pct >= 90 ? 5 : pct >= 66 ? 4 : pct >= 40 ? 3 : pct >= 15 ? 2 : 1;
+  const sPrecision = bytesPerElement === 2 ? 5 : bytesPerElement === 1 ? 3 : 2;
+  const avg        = (sSpeed + sQuality + sContext + sPrecision) / 4;
+  const scoreClass = noFit ? 'error' : avg >= 4 ? 'score-high' : avg >= 3 ? 'score-mid' : avg >= 2 ? 'score-low' : 'score-poor';
+
+  function scoreColor(n) {
+    return n >= 4 ? 'var(--green)' : n === 3 ? 'var(--amber)' : n === 2 ? 'var(--orange)' : 'var(--red)';
+  }
+
+  headline.className = `result-headline ${scoreClass}`;
+
+  if (!noFit) {
+    const rows = [
+      ['scoreSpeed',     sSpeed],
+      ['scoreQuality',   sQuality],
+      ['scoreContext',   sContext],
+      ['scorePrecision', sPrecision],
+    ];
+    rows.forEach(([id, s]) => {
+      const el = document.getElementById(id);
+      el.textContent = stars(s);
+      el.style.color = scoreColor(s);
+    });
+    document.getElementById('scoreContextSub').textContent = pct !== null
+      ? `${fmtCtx(r.maxCtx)} tokens · ${pct}% of ${fmtCtx(model.max_context)} max`
+      : `${fmtCtx(r.maxCtx)} tokens`;
+    scorecard.hidden = false;
+  } else {
+    scorecard.hidden = true;
+  }
+
+  // Restart animation on every render
   verdictEl.classList.remove('verdict-anim');
   void verdictEl.offsetWidth;
   verdictEl.textContent = noFit ? "IT WON'T LLM!" : "IT WILL LLM!";
   verdictEl.classList.add('verdict-anim');
 
   // ── model info
+  const meta = libMeta(model);
   const orgEl = document.getElementById('detailOrganization');
-  orgEl.textContent = model.organization || '—';
+  orgEl.textContent = meta.organization || '—';
 
   const originEl = document.getElementById('detailOrigin');
-  if (model.origin) {
-    originEl.textContent = `${ORIGIN_FLAGS[model.origin] || ''} ${model.origin}`.trim();
+  if (meta.origin) {
+    originEl.textContent = `${FLAGS[meta.origin] || ''} ${meta.origin}`.trim();
     originEl.className = 'detail-val';
   } else {
     originEl.textContent = 'community project';
@@ -253,41 +286,32 @@ function render() {
   if (noFit) {
     labelOom.textContent = `Model weights (${fmtGB(weightsGB)}) exceed available VRAM (${fmtGB(vramGB * OVERHEAD_FACTOR)} usable). This model will not load.`;
     labelOom.hidden = false;
-    ctxRow.hidden   = true;
     ollamaCmd.hidden = true;
     document.getElementById('ollamaHint').hidden = true;
   } else {
-    document.getElementById('resultValue').textContent = `${fmtCtx(r.maxCtx)} tokens`;
-
-    const ctxPctEl = document.getElementById('ctxPct');
-    ctxPctEl.textContent = pct !== null
-      ? `· ${pct}% of ${fmtCtx(model.max_context)} architectural max`
-      : '';
-
     labelOom.hidden = true;
-    ctxRow.hidden   = false;
 
     const ctxHint = document.getElementById('ctxHint');
-    if (pctClass === 'pct-mid' || pctClass === 'pct-low') {
+    if (sContext <= 3) {
       ctxHint.textContent = `Runs fine at ${fmtCtx(r.maxCtx)} — ${fmtTokensHuman(r.maxCtx)} of typical English text. Keep num_ctx at or below this limit (the command below sets it).`;
       ctxHint.hidden = false;
     } else {
       ctxHint.hidden = true;
     }
 
-    const flashSel  = document.getElementById('vramInput').selectedOptions[0];
+    const flashSel     = document.getElementById('vramInput').selectedOptions[0];
     const flashSupport = flashSel ? flashSel.dataset.flash : 'yes';
-    const flashWarn = document.getElementById('flashWarn');
-    if (bytesPerElement < 2 && flashSupport !== 'yes') {
-      flashWarn.textContent = flashSupport === 'mixed'
-        ? `⚠ ${kvLabel} requires Flash Attention — AMD support varies by ollama build and driver. Verify your setup before setting OLLAMA_KV_CACHE_TYPE.`
-        : `⚠ ${kvLabel} requires Flash Attention — not supported on Turing (RTX 20xx) or older NVIDIA GPUs. This setting will have no effect or may cause errors.`;
-      flashWarn.hidden = false;
-    } else if (bytesPerElement < 2) {
-      flashWarn.textContent = `ℹ ${kvLabel} requires Flash Attention. Gains are modest below 8k context — most effective at the longer context windows this VRAM allows.`;
-      flashWarn.hidden = false;
+    const flashTip     = document.getElementById('kvFlashTip');
+    if (bytesPerElement < 2) {
+      const tip = flashSupport === 'mixed'
+        ? `AMD support varies by ollama build and driver. Verify your setup before setting OLLAMA_KV_CACHE_TYPE.`
+        : flashSupport !== 'yes'
+        ? `Not supported on Turing (RTX 20xx) or older NVIDIA GPUs. This setting will have no effect or may cause errors.`
+        : `Gains are modest below 8k context — most effective at the longer context windows this VRAM allows.`;
+      flashTip.dataset.tip = tip;
+      flashTip.hidden = false;
     } else {
-      flashWarn.hidden = true;
+      flashTip.hidden = true;
     }
 
     const hintEl    = document.getElementById('ollamaHint');
@@ -362,13 +386,13 @@ function render() {
   // Provenance alert
   const provenanceAlert = document.getElementById('provenanceAlert');
   const ollamaPageLink  = `<a href="${ollamaPageUrl}" target="_blank" rel="noopener noreferrer">${isCommunity ? ollamaPageUrl.replace('https://', '') : `ollama.com/library/${modelName}`} ↗</a>`;
-  const orgName = model.organization || 'the originating organization';
+  const orgName = meta.organization || 'the originating organization';
   if (isCommunity) {
     provenanceAlert.className = 'provenance-alert provenance-alert--community';
     provenanceAlert.innerHTML = `<strong>⚠ Unverified upload.</strong> This model was uploaded by a community member — not by Ollama or ${orgName}. There is no guarantee these are the genuine ${orgName} weights. Check the source yourself: ${ollamaPageLink}`;
   } else {
     provenanceAlert.className = 'provenance-alert';
-    provenanceAlert.innerHTML = `<strong>Provenance:</strong> Listed in Ollama's official library. Not independently verified by will-it-llm — check it yourself: ${ollamaPageLink}`;
+    provenanceAlert.innerHTML = `<strong>Provenance:</strong> Listed in Ollama's official library. Not independently verified — check it yourself: ${ollamaPageLink}`;
   }
   provenanceAlert.hidden = false;
 

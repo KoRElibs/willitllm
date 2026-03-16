@@ -133,8 +133,6 @@ const MODELS = [
 
   {
     "ollama_tag": "llama3.1:8b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 8.03,
     "layers": 32,
@@ -174,8 +172,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3.1:70b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 70.6,
     "layers": 80,
@@ -214,8 +210,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3.1:405b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 406.0,
     "layers": 126,
@@ -255,8 +249,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3.2:1b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 1.24,
     "layers": 16,
@@ -272,8 +264,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3.2:3b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 3.21,
     "layers": 28,
@@ -313,8 +303,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma3:270m",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "layers": 18,
     "num_attention_heads": 4,
@@ -329,8 +317,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma3:1b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "layers": 26,
     "num_attention_heads": 4,
@@ -343,8 +329,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma3:4b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 4.3,
     "layers": 34,
@@ -359,8 +343,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma3:12b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 12.2,
     "layers": 48,
@@ -375,8 +357,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma3:27b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 27.4,
     "layers": 62,
@@ -391,8 +371,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "mistral:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "params_b": 7.25,
     "layers": 32,
@@ -471,8 +449,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "phi4:14b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 16384,
     "params_b": 14.7,
     "layers": 40,
@@ -487,8 +463,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3:8b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 8192,
     "params_b": 8.03,
     "layers": 32,
@@ -528,8 +502,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3:70b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 8192,
     "params_b": 70.6,
     "layers": 80,
@@ -569,8 +541,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "codellama:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 16384,
     "params_b": 6.74,
     "layers": 32,
@@ -623,8 +593,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "codellama:13b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 16384,
     "params_b": 13.0,
     "layers": 40,
@@ -677,8 +645,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "codellama:34b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 16384,
     "params_b": 33.7,
     "layers": 48,
@@ -731,8 +697,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "codellama:70b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 2048,
     "params_b": 69.0,
     "layers": 80,
@@ -785,8 +749,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "mixtral:8x7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "params_b": 46.7,
     "layers": 32,
@@ -826,8 +788,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "mixtral:8x22b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 65536,
     "params_b": 141.0,
     "layers": 56,
@@ -867,8 +827,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "phi3:medium",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 14.0,
     "layers": 40,
@@ -882,8 +840,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "phi3:mini",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 3.82,
     "layers": 32,
@@ -897,8 +853,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "phi3:3.8b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 3.82,
     "layers": 32,
@@ -938,8 +892,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "phi3:14b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 14.0,
     "layers": 40,
@@ -979,8 +931,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llava:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "params_b": 7.24,
     "layers": 32,
@@ -1033,8 +983,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llava:13b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 13.0,
     "layers": 40,
@@ -1074,8 +1022,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llava:34b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 34.4,
     "layers": 60,
@@ -1102,8 +1048,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama2:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 6.74,
     "layers": 32,
@@ -1143,8 +1087,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama2:13b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 13.0,
     "layers": 40,
@@ -1184,8 +1126,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama2:70b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 69.0,
     "layers": 80,
@@ -1225,8 +1165,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "neural-chat:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "params_b": 7.24,
     "layers": 32,
@@ -1279,8 +1217,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "starling-lm:alpha",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 8192,
     "params_b": 7.24,
     "layers": 32,
@@ -1294,8 +1230,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "starling-lm:beta",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 8192,
     "params_b": 7.24,
     "layers": 32,
@@ -1309,8 +1243,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "starling-lm:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 8192,
     "params_b": 7.24,
     "layers": 32,
@@ -1350,8 +1282,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "orca-mini:3b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 2048,
     "params_b": 3.43,
     "layers": 26,
@@ -1369,8 +1299,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "orca-mini:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 6.74,
     "layers": 32,
@@ -1423,8 +1351,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "orca-mini:13b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 13.0,
     "layers": 40,
@@ -1477,8 +1403,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "orca-mini:70b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 69.0,
     "layers": 80,
@@ -1505,8 +1429,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "zephyr:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "params_b": 7.24,
     "layers": 32,
@@ -1546,8 +1468,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "zephyr:141b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 65536,
     "params_b": 141.0,
     "layers": 56,
@@ -1563,8 +1483,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "dolphin-mixtral:8x7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "params_b": 46.7,
     "layers": 32,
@@ -1617,8 +1535,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "dolphin-mixtral:8x22b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 65536,
     "params_b": 141.0,
     "layers": 56,
@@ -1645,8 +1561,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "nous-hermes2:10.7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 10.7,
     "layers": 48,
@@ -1673,8 +1587,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "nous-hermes2:34b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 34.4,
     "layers": 60,
@@ -1701,8 +1613,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "starcoder2:3b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 16384,
     "params_b": 3.03,
     "layers": 30,
@@ -1729,8 +1639,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "starcoder2:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 16384,
     "params_b": 7.17,
     "layers": 32,
@@ -1757,8 +1665,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "starcoder2:15b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 16384,
     "params_b": 16.0,
     "layers": 40,
@@ -1798,8 +1704,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "tinyllama:1.1b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 2048,
     "params_b": 1.1,
     "layers": 22,
@@ -1839,8 +1743,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "command-r:35b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 32.3,
     "layers": 32,
@@ -1879,8 +1781,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "granite3-dense:2b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 2.63,
     "layers": 40,
@@ -1907,8 +1807,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "granite3-dense:8b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 8.17,
     "layers": 40,
@@ -1935,8 +1833,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "codegemma:2b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 8192,
     "params_b": 2.51,
     "layers": 18,
@@ -1976,8 +1872,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "codegemma:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 8192,
     "params_b": 8.54,
     "layers": 28,
@@ -2030,8 +1924,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "moondream:1.8b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 2048,
     "params_b": 1.42,
     "layers": 24,
@@ -2058,8 +1950,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "wizardlm2:7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "params_b": 7.24,
     "layers": 32,
@@ -2086,8 +1976,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "wizardlm2:8x22b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 65536,
     "params_b": 141.0,
     "layers": 56,
@@ -2103,8 +1991,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "solar:10.7b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 10.7,
     "layers": 48,
@@ -2144,8 +2030,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "stablelm2:zephyr",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 1.64,
     "layers": 24,
@@ -2159,8 +2043,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "stablelm2:1.6b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 1.64,
     "layers": 24,
@@ -2213,8 +2095,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "stablelm2:12b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 4096,
     "params_b": 12.1,
     "layers": 40,
@@ -2254,8 +2134,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "mistral-nemo:12b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 1024000,
     "params_b": 12.2,
     "layers": 40,
@@ -2282,8 +2160,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3.3:70b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 70.6,
     "layers": 80,
@@ -2307,8 +2183,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma2:2b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 8192,
     "params_b": 2.61,
     "layers": 26,
@@ -2348,8 +2222,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma2:9b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 8192,
     "params_b": 9.24,
     "layers": 42,
@@ -2389,8 +2261,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma2:27b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 8192,
     "params_b": 27.2,
     "layers": 46,
@@ -2430,8 +2300,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "codestral:22b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "params_b": 22.2,
     "layers": 56,
@@ -2458,8 +2326,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "mistral-small:22b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 22.2,
     "layers": 56,
@@ -2486,8 +2352,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "mistral-small:24b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 32768,
     "params_b": 23.6,
     "layers": 40,
@@ -2502,8 +2366,6 @@ const MODELS = [
   },
   {
     "ollama_tag": "devstral:24b",
-    "origin": null,
-    "organization": "TODO",
     "max_context": 131072,
     "params_b": 23.6,
     "layers": 40,

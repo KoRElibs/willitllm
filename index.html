@@ -11,7 +11,7 @@
 
   <header>
     <h1><span class="h1-will">will</span><span class="h1-it">it</span><span class="h1-llm">llm</span><span class="h1-tld">.com</span></h1>
-    <p>Pick a model. Enter your GPU's VRAM. Find out if it runs — and how much context you actually get.</p>
+    <p>Will it LLM? Pick your GPU, pick a model — find out.</p>
   </header>
 
   <div class="controls">
@@ -28,7 +28,7 @@
       </div>
     </div>
     <div class="field">
-      <label>Quantization</label>
+      <label>Variant</label>
       <div class="select-wrap">
         <select id="variantSelect"></select>
       </div>
@@ -38,11 +38,12 @@
       <label>KV Cache</label>
       <div class="select-wrap">
         <select id="kvCacheType">
-          <option value="2" selected>f16 — full precision</option>
-          <option value="1">q8_0 — ½ memory · longer context</option>
-          <option value="0.5">q4_0 — ¼ memory · longest context</option>
+          <option value="2" selected>≋≋≋≋≋  f16</option>
+          <option value="1">≋≋≋··  q8_0</option>
+          <option value="0.5">≋≋···  q4_0</option>
         </select>
       </div>
+      <div id="kvCacheInfo" class="variant-info kv-info"><span id="kvCacheInfoText"></span><span id="kvFlashTip" class="info-tip" hidden>ⓘ</span></div>
     </div>
   </div>
 
@@ -69,14 +70,14 @@
 
     <div class="result-headline" id="resultHeadline">
       <div class="verdict" id="verdict"></div>
-      <div class="result-ctx-row" id="resultCtxRow" hidden>
-        <span class="result-value" id="resultValue"></span>
-        <span class="result-label">recommended max context</span>
-        <span class="ctx-pct" id="ctxPct"></span>
+      <div class="scorecard" id="scorecard" hidden>
+        <div class="score-row"><span class="score-icon">⚡︎</span><span class="score-label">Speed</span><span class="score-stars" id="scoreSpeed"></span></div>
+        <div class="score-row"><span class="score-icon">◈</span><span class="score-label">Quality</span><span class="score-stars" id="scoreQuality"></span></div>
+        <div class="score-row"><span class="score-icon">◎</span><span class="score-label">Context</span><span class="score-stars" id="scoreContext"></span><span class="score-sub" id="scoreContextSub"></span></div>
+        <div class="score-row"><span class="score-icon">≋</span><span class="score-label">Precision</span><span class="score-stars" id="scorePrecision"></span></div>
       </div>
       <p class="ctx-hint" id="ctxHint" hidden></p>
       <span class="result-label" id="resultLabelOom" hidden></span>
-      <p class="flash-warn" id="flashWarn" hidden></p>
       <label class="win-toggle" id="winToggleLabel" hidden>
         <input type="checkbox" id="winToggle"> Windows instructions
       </label>
@@ -194,6 +195,7 @@
 </div>
 <div id="tooltip" class="tooltip" hidden></div>
 <script src="gpus.js"></script>
+<script src="libraries.js"></script>
 <script src="quantizations.js"></script>
 <script src="models.js"></script>
 <script src="app.js"></script>

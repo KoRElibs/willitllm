@@ -75,7 +75,7 @@ _NONSIZE_RE = re.compile(
 _QUANT_RE = re.compile(r"q\d|fp\d|bf\d|f16|int\d|gguf|ggml", re.IGNORECASE)
 
 _FIELD_ORDER = [
-    "ollama_tag", "origin", "organization", "moe",
+    "ollama_tag", "moe",
     "max_context", "params_b", "params_b_active",
     "layers", "num_attention_heads", "num_key_value_heads",
     "hidden_size", "head_dim",
@@ -278,8 +278,10 @@ def parse_models_js(path: Path) -> list[dict]:
         die(f"Failed to parse MODELS as JSON: {exc}")
 
 
-def load_libraries() -> list[str]:
-    return json.loads(LIBRARIES_JSON.read_text(encoding="utf-8"))
+def load_libraries() -> list[dict]:
+    """Return list of library dicts with keys: library, organization, origin."""
+    raw = json.loads(LIBRARIES_JSON.read_text(encoding="utf-8"))
+    return [{"library": x, "organization": None, "origin": None} if isinstance(x, str) else x for x in raw]
 
 
 # ── file patching ──────────────────────────────────────────────────────────────
@@ -355,11 +357,12 @@ def insert_entry(path: Path, entry: dict) -> None:
 
 # ── discover ───────────────────────────────────────────────────────────────────
 
-def discover(libraries: list[str], existing: set[str], apply: bool, path: Path) -> None:
+def discover(libraries: list[dict], existing: set[str], apply: bool, path: Path) -> None:
     print(f"Scanning {len(libraries)} libraries ...\n")
     added = 0
 
-    for library in libraries:
+    for lib in libraries:
+        library = lib["library"]
         canonical_tags, variants_map = fetch_tags(library)
         if not canonical_tags:
             print(f"  {library:<42} no canonical tags found")
@@ -398,8 +401,6 @@ def discover(libraries: list[str], existing: set[str], apply: bool, path: Path) 
 
             entry = {
                 "ollama_tag":   label,
-                "origin":       None,
-                "organization": "TODO",
                 **{k: v for k, v in data.items() if k in _FIELD_ORDER},
                 "variants":     variants if variants else [],
             }
@@ -416,7 +417,6 @@ def discover(libraries: list[str], existing: set[str], apply: bool, path: Path) 
     print(f"\n{'-' * 60}")
     if apply:
         print(f"  {added} entr{'y' if added == 1 else 'ies'} inserted.")
-        print("  Fill in TODO fields: organization, origin.")
         print("  Review:  git diff models.js")
     else:
         print("  Dry run.  To apply:  python scripts/update_models.py --discover --apply")
