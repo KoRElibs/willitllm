@@ -247,8 +247,8 @@ function render() {
     const rows = [
       ['scoreSpeed',     sSpeed],
       ['scoreQuality',   sQuality],
-      ['scoreContext',   sContext],
       ['scorePrecision', sPrecision],
+      ['scoreContext',   sContext],
     ];
     rows.forEach(([id, s]) => {
       const el = document.getElementById(id);
@@ -375,31 +375,15 @@ function render() {
     ? ollamaSrcLink + ' · derived'
     : ollamaSrcLink + ' · explicit';
 
-  // Model weights source → ollama library (official) or community upload (unverified)
-  const modelName      = model.ollama_tag.split(':')[0];
-  const isCommunity    = modelName.includes('/');
-  const ollamaPageUrl  = isCommunity
+  // Model weights source
+  const modelName     = model.ollama_tag.split(':')[0];
+  const ollamaPageUrl = modelName.includes('/')
     ? `https://ollama.com/${modelName}`
     : `https://ollama.com/library/${modelName}`;
   const srcEl = document.getElementById('detailSource');
-  const linkText = isCommunity ? 'ollama.com ↗' : 'ollama.com/library ↗';
-  const warning  = isCommunity
-    ? ' <span class="community-warning">⚠ community upload — not verified by Ollama</span>'
-    : '';
-  srcEl.innerHTML = `<a href="${ollamaPageUrl}" target="_blank" rel="noopener noreferrer">${linkText}</a>${warning}`;
+  srcEl.innerHTML = `<a href="${ollamaPageUrl}" target="_blank" rel="noopener noreferrer">ollama.com ↗</a>`;
 
-  // Provenance alert
-  const provenanceAlert = document.getElementById('provenanceAlert');
-  const ollamaPageLink  = `<a href="${ollamaPageUrl}" target="_blank" rel="noopener noreferrer">${isCommunity ? ollamaPageUrl.replace('https://', '') : `ollama.com/library/${modelName}`} ↗</a>`;
-  const orgName = meta.organization || 'the originating organization';
-  if (isCommunity) {
-    provenanceAlert.className = 'provenance-alert provenance-alert--community';
-    provenanceAlert.innerHTML = `<strong>⚠ Unverified upload.</strong> This model was uploaded by a community member — not by Ollama or ${orgName}. There is no guarantee these are the genuine ${orgName} weights. Check the source yourself: ${ollamaPageLink}`;
-  } else {
-    provenanceAlert.className = 'provenance-alert';
-    provenanceAlert.innerHTML = `<strong>Provenance:</strong> Listed in Ollama's official library. Not independently verified — check it yourself: ${ollamaPageLink}`;
-  }
-  provenanceAlert.hidden = false;
+  document.getElementById('provenanceAlert').hidden = true;
 
   // ── formula breakdown
   const formulaBox    = document.getElementById('formulaBox');

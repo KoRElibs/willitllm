@@ -327,6 +327,13 @@ header p {
   font-size: 11px;
 }
 
+/* ── AI notice (top of page) ── */
+.ai-notice {
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
 /* ── Disclaimer ── */
 .disclaimer {
   font-size: 11px;

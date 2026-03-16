@@ -11,7 +11,7 @@
 
   <header>
     <h1><span class="h1-will">will</span><span class="h1-it">it</span><span class="h1-llm">llm</span><span class="h1-tld">.com</span></h1>
-    <p>Will it LLM? Pick your GPU, pick a model — find out.</p>
+    <p>Pick your GPU, pick an ollama model — find out if it fits.</p>
   </header>
 
   <div class="controls">
@@ -73,8 +73,8 @@
       <div class="scorecard" id="scorecard" hidden>
         <div class="score-row"><span class="score-icon">⚡︎</span><span class="score-label">Speed</span><span class="score-stars" id="scoreSpeed"></span></div>
         <div class="score-row"><span class="score-icon">◈</span><span class="score-label">Quality</span><span class="score-stars" id="scoreQuality"></span></div>
-        <div class="score-row"><span class="score-icon">◎</span><span class="score-label">Context</span><span class="score-stars" id="scoreContext"></span><span class="score-sub" id="scoreContextSub"></span></div>
         <div class="score-row"><span class="score-icon">≋</span><span class="score-label">Precision</span><span class="score-stars" id="scorePrecision"></span></div>
+        <div class="score-row"><span class="score-icon">◎</span><span class="score-label">Context</span><span class="score-stars" id="scoreContext"></span><span class="score-sub" id="scoreContextSub"></span></div>
       </div>
       <p class="ctx-hint" id="ctxHint" hidden></p>
       <span class="result-label" id="resultLabelOom" hidden></span>
@@ -168,19 +168,22 @@
       </div>
     </div>
 
+    <div class="ai-notice">Model metadata on this site was compiled using AI and has not been manually verified.</div>
+
     <div class="disclaimer">
-      <strong>These are estimates.</strong>
-      The <span id="overheadPct"></span>% overhead reserve accounts for driver and runtime overhead — actual usage varies.
+      <strong>This page covers models as served by ollama</strong> — weights, quantization, and architecture parameters
+      are read directly from ollama.com and reflect what ollama actually runs, not the original model releases.
+      Run <code>ollama show &lt;model&gt;</code> to verify values for your specific variant.
       <br><br>
-      <strong>Scores</strong> reflect the average of speed, quality, context fit, and KV cache precision.
+      <strong>No data on this page has been manually verified.</strong>
+      Architecture data is read from ollama.com, organization and origin were inferred by AI, and VRAM estimates
+      include a <span id="overheadPct"></span>% overhead heuristic. Treat results as a guide, not a guarantee —
+      always check the <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama library ↗</a> yourself.
+      <br><br>
+      <strong>Scores</strong> reflect the average of inference speed, quality, context fit, and KV cache precision.
       <span style="color:var(--green)">Green</span> = good overall,
       <span style="color:var(--amber)">amber</span> = acceptable,
       <span style="color:var(--orange)">orange</span> = degraded.
-      A model that fits with a reduced context window still runs — it just has less memory than it was designed for.
-      <br><br>
-      <strong>All architecture data</strong> is sourced from ollama.com blob pages (block_count, heads, key_length, context_length)
-      and may vary by fine-tuned variant. Run <code>ollama show &lt;model&gt;</code> for exact values.
-      <strong>Organization and origin</strong> were inferred by AI and may contain errors.
     </div>
 
   </div>
