@@ -9,7 +9,7 @@ DATA FLOW
   models.js       — output: MODELS array, one entry per canonical size tag
 
   Each MODELS entry has:
-    - Architecture fields (layers, heads, etc.) from the canonical tag blob page
+    - Architecture fields (block_count, heads, etc.) from the canonical tag blob page
     - params_b and weights_gb of the default variant from the detail page
     - variants: [{tag, quantization, weights_gb}] — one per available quant variant
       tag is the raw ollama sub-tag (e.g. "3b" for default, "3b-q4_K_M" for quant variants)
@@ -23,9 +23,9 @@ DATA FLOW
   Architecture data for each canonical tag is fetched from the blob page:
     1. https://ollama.com/library/{library}:{tag}         -> params_b, weights_gb, blob ID
     2. https://ollama.com/library/{library}:{tag}/blobs/{id} -> parse fields:
-         layers, num_attention_heads, num_key_value_heads,
-         hidden_size, max_context, quantization
-       head_dim = attention.key_length if explicit, else hidden_size / num_attention_heads
+         block_count, head_count, head_count_kv,
+         embedding_length, context_length, quantization
+       key_length = attention.key_length if explicit, else embedding_length / head_count
 
   weights_gb for each quant variant is fetched from its detail page only (no blob needed).
 
@@ -48,7 +48,7 @@ TODO (next steps)
        - Dropdown 1: library+size from ollama_tag (no name field)
        - Dropdown 2: weight quantization from variants array
        - Separate KV cache quantization selector (f16/q8_0/q4_0)
-       - Context slider up to max_context
+       - Context slider up to context_length
        - Total VRAM = variants[selected].weights_gb + KV cache bytes
 """
 
@@ -60,7 +60,7 @@ import urllib.request
 from pathlib import Path
 
 MODELS_JS      = Path(__file__).parent.parent / "models.js"
-LIBRARIES_JSON = Path(__file__).parent.parent / "libraries.json"
+LIBRARIES_JS = Path(__file__).parent.parent / "libraries.js"
 OLLAMA_BASE    = "https://ollama.com"
 GB_TOLERANCE   = 0.15
 
@@ -76,9 +76,9 @@ _QUANT_RE = re.compile(r"q\d|fp\d|bf\d|f16|int\d|gguf|ggml", re.IGNORECASE)
 
 _FIELD_ORDER = [
     "ollama_tag", "moe",
-    "max_context", "params_b", "params_b_active",
-    "layers", "num_attention_heads", "num_key_value_heads",
-    "hidden_size", "head_dim",
+    "context_length", "params_b", "params_b_active",
+    "block_count", "head_count", "head_count_kv",
+    "embedding_length", "key_length",
     "variants",
 ]
 
@@ -148,7 +148,7 @@ def fetch_blob_data(library: str, tag: str) -> dict:
     """
     Fetch full metadata for a canonical library:tag.
     Step 1 — detail page: params_b, weights_gb, blob ID.
-    Step 2 — blob page: architecture fields (layers, heads, hidden_size, etc.).
+    Step 2 — blob page: architecture fields (block_count, heads, embedding_length, etc.).
     """
     try:
         detail_html = http_get(
@@ -232,29 +232,29 @@ def _parse_blob(html: str) -> dict:
 
     layers = iv("block_count")
     if layers:
-        r["layers"] = layers
+        r["block_count"] = layers
 
     nh = iv("attention.head_count")
     if nh:
-        r["num_attention_heads"] = nh
+        r["head_count"] = nh
 
     nkv = iv("attention.head_count_kv")
     if nkv:
-        r["num_key_value_heads"] = nkv
+        r["head_count_kv"] = nkv
 
     hs = iv("embedding_length")
     if hs:
-        r["hidden_size"] = hs
+        r["embedding_length"] = hs
 
     ctx = iv("context_length")
     if ctx:
-        r["max_context"] = ctx
+        r["context_length"] = ctx
 
     kl = iv("attention.key_length")
     if kl:
-        r["head_dim"] = kl
+        r["key_length"] = kl
     elif hs and nh:
-        r["head_dim"] = hs // nh
+        r["key_length"] = hs // nh
 
     qt = pairs.get("general.file_type")
     if qt:
@@ -279,9 +279,37 @@ def parse_models_js(path: Path) -> list[dict]:
 
 
 def load_libraries() -> list[dict]:
-    """Return list of library dicts with keys: library, organization, origin."""
-    raw = json.loads(LIBRARIES_JSON.read_text(encoding="utf-8"))
-    return [{"library": x, "organization": None, "origin": None} if isinstance(x, str) else x for x in raw]
+    """Parse libraries.js — the single source of truth for tracked libraries.
+    The file uses JSON-compatible syntax so we can strip the const wrapper and parse directly."""
+    text = LIBRARIES_JS.read_text(encoding="utf-8")
+    # Strip JS comments and const wrapper; file may start with // comment lines
+    lines = [l for l in text.splitlines() if not l.strip().startswith("//")]
+    import re as _re
+    trimmed = "\n".join(lines).strip().removeprefix("const LIBRARIES =").rstrip(";").strip()
+    # Strip trailing commas before ] or } (JS allows them, JSON does not)
+    trimmed = _re.sub(r",(\s*[}\]])", r"\1", trimmed)
+    return json.loads(trimmed)
+
+
+def write_libraries_js(libs: list[dict]) -> None:
+    """Write libraries.js with JSON-compatible quoted keys so the scraper can parse it back."""
+    def jv(v): return "null" if v is None else f'"{v}"'
+    header = (
+        "// Two consumers:\n"
+        "//   1. Browser — loaded as <script src=\"libraries.js\">, exposes LIBRARIES global\n"
+        "//   2. Python scraper (scripts/update_models.py) — strips \"const LIBRARIES =\" wrapper and parses as JSON\n"
+        "// Keys must therefore be quoted (valid JSON). Do not change to unquoted JS shorthand.\n"
+    )
+    lines = [header + "const LIBRARIES = ["]
+    for lib in libs:
+        lines.append(
+            f'  {{ "library": {jv(lib["library"]):<22} '
+            f'"organization": {jv(lib.get("organization")):<26} '
+            f'"origin": {jv(lib.get("origin")):<20} '
+            f'"source": {jv(lib.get("source"))} }},'
+        )
+    lines.append("];\n")
+    LIBRARIES_JS.write_text("\n".join(lines), encoding="utf-8")
 
 
 # ── file patching ──────────────────────────────────────────────────────────────
@@ -394,7 +422,7 @@ def discover(libraries: list[dict], existing: set[str], apply: bool, path: Path)
                 if vdata and vdata["quantization"] != default_quant:
                     variants.append(vdata)
 
-            required = ("layers", "num_key_value_heads", "head_dim", "max_context")
+            required = ("block_count", "head_count_kv", "key_length", "context_length")
             missing_fields = [f for f in required if f not in data]
             if not variants:
                 missing_fields.append("variants")

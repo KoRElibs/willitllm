@@ -102,28 +102,28 @@
         <div class="detail-val" style="color:var(--purple)">Mixture of Experts (MoE)</div>
       </div>
       <div class="detail-row">
-        <div class="detail-key" data-tip="The maximum context length the model was trained on. Think of it as the model's memory limit — it cannot meaningfully process more tokens than this at once. Do not set num_ctx above this value.">max_position_embeddings</div>
+        <div class="detail-key" data-tip="The maximum context length the model was trained on. Think of it as the model's memory limit — it cannot meaningfully process more tokens than this at once. Do not set num_ctx above this value.">context_length</div>
         <div class="detail-val" id="detailMaxCtx"></div>
         <div class="detail-src src-config-json" id="srcMaxCtx"></div>
       </div>
       <div class="details-header">Architecture</div>
       <div class="detail-row">
-        <div class="detail-key" data-tip="The number of transformer layers (blocks) stacked in the model. Every token in your context window needs KV cache memory for each layer — more layers means more VRAM per token of context.">num_hidden_layers</div>
+        <div class="detail-key" data-tip="The number of transformer layers (blocks) stacked in the model. Every token in your context window needs KV cache memory for each layer — more layers means more VRAM per token of context.">block_count</div>
         <div class="detail-val" id="detailLayers"></div>
         <div class="detail-src src-config-json"></div>
       </div>
       <div class="detail-row">
-        <div class="detail-key" data-tip="Total number of attention heads in each layer. Not directly used in the VRAM calculation — shown here because it is used to derive head_dim. With GQA, this is higher than num_key_value_heads.">num_attention_heads</div>
+        <div class="detail-key" data-tip="Total number of attention heads in each layer. Not directly used in the VRAM calculation — shown here because it is used to derive key_length. With GQA, this is higher than head_count_kv.">head_count</div>
         <div class="detail-val" id="detailAttnHeads"></div>
         <div class="detail-src src-config-json" id="srcAttnHeads"></div>
       </div>
       <div class="detail-row">
-        <div class="detail-key" data-tip="With Grouped Query Attention (GQA), multiple attention heads share one KV head pair, cutting memory without much quality loss. This smaller number — not the total heads — is what drives the VRAM calculation.">num_key_value_heads</div>
+        <div class="detail-key" data-tip="With Grouped Query Attention (GQA), multiple attention heads share one KV head pair, cutting memory without much quality loss. This smaller number — not the total heads — is what drives the VRAM calculation.">head_count_kv</div>
         <div class="detail-val"><span id="detailKvHeads"></span> <span class="gqa-note">← used (GQA)</span></div>
         <div class="detail-src src-config-json"></div>
       </div>
       <div class="detail-row">
-        <div class="detail-key" data-tip="The size of each key/value vector per attention head. Derived from hidden_size ÷ num_attention_heads. Together with layers and KV heads, this determines how many bytes each token of context costs.">head_dim</div>
+        <div class="detail-key" data-tip="The size of each key/value vector per attention head. Derived from embedding_length ÷ head_count. Together with block_count and KV heads, this determines how many bytes each token of context costs.">key_length</div>
         <div class="detail-val"><span id="detailHeadDim"></span> <span class="derived-note">(<span id="detailHiddenSize"></span> ÷ <span id="detailAttnHeadsDiv"></span>)</span></div>
         <div class="detail-src src-config-json" id="srcHeadDim"></div>
       </div>
@@ -141,7 +141,7 @@
 
     <div class="formula-box" id="formulaBox" hidden>
       <div class="formula-header">Calculation</div>
-      <div>bytes_per_token = layers × kv_heads × head_dim × 2(K+V) × <span id="fBpeLabel"></span></div>
+      <div>bytes_per_token = block_count × head_count_kv × key_length × 2(K+V) × <span id="fBpeLabel"></span></div>
       <div class="formula-line">
         &nbsp;&nbsp;= <span class="hl" id="fLayers"></span>
         × <span class="hl" id="fKvHeads"></span>
@@ -160,7 +160,7 @@
       <div class="formula-spacer">→ largest power-of-2 that fits:</div>
       <div class="formula-line">&nbsp;&nbsp;<span class="hl-g" id="fMaxCtx"></span></div>
       <div id="archLimitNote" hidden>
-        <div class="formula-spacer" style="color:var(--amber)">⚠ capped at model's architectural limit (max_position_embeddings = <span id="fArchLimit"></span> tokens)</div>
+        <div class="formula-spacer" style="color:var(--muted)">↑ capped at model's architectural limit (context_length = <span id="fArchLimit"></span> tokens)</div>
       </div>
     </div>
 
@@ -179,8 +179,8 @@
       Model metadata (organization, origin) was inferred from AI training knowledge and may contain errors.
       <br><br>
       <strong>Weight sizes and architecture parameters</strong> are sourced entirely from ollama.com —
-      the model detail page (weights, parameter count) and the model blob page (layers, heads, head_dim,
-      max_position_embeddings). Quantization varies by tag — run <code>ollama show &lt;model&gt;</code>
+      the model detail page (weights, parameter count) and the model blob page (block_count, heads, key_length,
+      context_length). Quantization varies by tag — run <code>ollama show &lt;model&gt;</code>
       for exact values. Verify for fine-tuned variants.
       <strong>KV cache</strong> defaults to f16. Set <code>OLLAMA_KV_CACHE_TYPE=q8_0</code> or <code>q4_0</code>
       to halve or quarter the cache size — requires Flash Attention.

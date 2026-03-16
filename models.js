@@ -1,131 +1,56 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// MODEL DATABASE — data quality procedure and field reference
+// MODEL DATABASE
 // ─────────────────────────────────────────────────────────────────────────────
-//
-// ── STRUCTURE ────────────────────────────────────────────────────────────────
-//
-// scripts/libraries.json — authoritative list of ollama library slugs to track.
-//   Do NOT add entries to libraries.json unless explicitly instructed.
-//
-// MODELS (this file) — one entry per tag per library.
-//   Must cover every available tag of every library in libraries.json.
-//   Must not contain entries for libraries absent from libraries.json.
-//
-// scripts/update_models.py — automates discovery and verification.
-//   Run with --discover to find missing entries.
-//   Run with --apply to write changes to this file.
 //
 // ── DATA SOURCE ──────────────────────────────────────────────────────────────
 //
-// All data comes from ollama.com — no HuggingFace, no local tooling.
-//
-// For each canonical size tag (e.g. "3b", "scout"):
+// All model data scraped from ollama.com.
+// For each canonical tag (e.g. "8b"):
 //   1. https://ollama.com/library/{library}:{tag}
 //      → params_b, default weights_gb, blob ID
-//   2. https://ollama.com/library/{library}:{tag}/blobs/{hex_id}
-//      → layers, num_attention_heads, num_key_value_heads,
-//        hidden_size, max_context, quantization
-//      head_dim = attention.key_length if explicit, else hidden_size / num_attention_heads
+//   2. https://ollama.com/library/{library}:{tag}/blobs/{id}
+//      → block_count, head_count, head_count_kv,
+//        embedding_length, context_length, key_length
 //
-// Quant variants (hyphenated tags starting with the canonical tag, e.g.
-// "3b-instruct-q8_0") are fetched from their own detail pages for weights_gb only
-// and stored in the variants array.
+// ── FIELD REFERENCE ──────────────────────────────────────────────────────────
 //
-// ── FIELD DEFINITIONS ────────────────────────────────────────────────────────
+// ollama_tag          "{library}:{tag}" — matches the ollama pull command.
+//                     One entry per canonical size tag (e.g. "llama3.2:3b").
 //
-// ollama_tag   : "{library}:{canonical_tag}" — the canonical pull tag.
-//                library must match an entry in libraries.json.
-//                One MODELS entry per canonical tag (e.g. "llama3.2:3b").
-//                UI displays this as "{library} {tag}" (e.g. "llama3.2 3b").
+// moe                 true for Mixture-of-Experts models. Omit for dense.
 //
-// organization : Lab or company that trained the model.
+// context_length      Architectural context window limit in tokens.
 //
-// origin       : Country of the organization's headquarters.
-//                null if uncertain or community project.
+// params_b            Total parameters in billions.
 //
-// moe          : true if Mixture-of-Experts architecture. Omit for dense models.
+// params_b_active     Active parameters per forward pass (MoE only).
 //
-// params_b     : Total parameter count in billions. Source: detail page.
+// block_count         Transformer decoder layer count.
 //
-// params_b_active : Active parameters per forward pass — MoE models only. Omit for dense.
+// head_count          Total query attention heads.
 //
-// layers       : Transformer decoder layer count. Source: blob page.
+// head_count_kv       KV head count. Less than head_count for GQA.
+//                     CRITICAL — used in the KV cache VRAM formula.
 //
-// num_attention_heads : Total query heads. Source: blob page.
-//                Used only to derive head_dim when not explicit.
+// embedding_length    Model embedding dimension.
 //
-// num_key_value_heads : KV head count (= num_attention_heads for MHA, less for GQA).
-//                CRITICAL — used directly in the KV cache formula. Source: blob page.
+// key_length          Size of each KV head. Explicit from blob page if available,
+//                     otherwise derived as embedding_length / head_count.
+//                     CRITICAL — used in the KV cache VRAM formula.
 //
-// hidden_size  : Embedding dimension. Source: blob page.
-//                Used to derive head_dim when not explicit.
-//
-// head_dim     : Size of each KV head vector. Source: blob page (attention.key_length)
-//                if explicit, otherwise derived as hidden_size / num_attention_heads.
-//                CRITICAL — used directly in the KV cache formula.
-//
-// variants     : Array of available quantization options, each with:
-//                  quantization — GGUF quant level (e.g. "Q4_K_M", "Q8_0", "F16")
-//                  weights_gb   — compressed model size for this quant (1 decimal)
-//                Source: detail page of each quant variant tag on ollama.com.
-//                Used in the UI to let the user pick weight quantization, which
-//                directly determines how much VRAM the model weights consume.
+// variants            [{tag, quantization, weights_gb}, ...]
+//                     First entry is the default (canonical tag itself).
+//                     tag         — ollama sub-tag (e.g. "8b", "8b-q4_K_M")
+//                     quantization — GGUF quant type (e.g. "Q4_K_M", "BF16")
+//                     weights_gb  — compressed model file size
 //
 // ── KV CACHE FORMULA ─────────────────────────────────────────────────────────
 //
-//   bytes_per_token = layers × num_key_value_heads × head_dim × 2(K+V) × bpe
-//   where bpe = bytes per element: f16=2, q8_0=1, q4_0=0.5
+//   bytes_per_token = block_count × head_count_kv × key_length × 2 × bpe
+//   bpe: f16=2, q8_0=1, q4_0=0.5
 //
-//   Example — Llama 3.1 8B: 32 × 8 × 128 × 4 = 131,072 bytes/token (128 KB)
+//   Example — Llama 3.1 8B: 32 × 8 × 128 × 2 × 2 = 131,072 bytes/token
 //
-// ── KNOWN ORGANIZATIONS ──────────────────────────────────────────────────────
-//
-//   namespace / slug        organization            origin
-//   ──────────────────────  ──────────────────────  ──────────────
-//   meta-llama / codellama  Meta                    USA
-//   mistralai               Mistral AI              France
-//   google                  Google                  USA
-//   microsoft / WizardLM    Microsoft               USA
-//   ibm-granite             IBM                     USA
-//   CohereForAI             Cohere                  Canada
-//   tiiuae                  TII UAE                 UAE
-//   nvidia                  NVIDIA                  USA
-//   openai                  OpenAI                  USA
-//   allenai                 Allen AI                USA
-//   bigcode                 BigCode                 null  (international consortium)
-//   epfl-llm                EPFL                    Switzerland
-//   stabilityai             Stability AI            UK
-//   upstage                 Upstage                 South Korea
-//   LGAI-RESEARCH           LG AI Research          South Korea
-//   HuggingFaceTB           HuggingFace             USA
-//   TinyLlama               TinyLlama               Singapore
-//   LiquidAI                Liquid AI               USA
-//   lmsys                   LMSYS                   USA
-//   llava-hf                LLaVA                   USA
-//   deepcogito              DeepCogito              USA
-//   NousResearch / teknium  NousResearch            USA
-//   vikhyatk                Moondream               USA
-//   phind                   Phind                   USA
-//   Groq                    Groq                    USA
-//   Intel                   Intel                   USA
-//   jinaai                  Jina AI                 Germany
-//   berkeley-nest           UC Berkeley             USA
-//   Nexusflow               Nexusflow               USA
-//   cognitivecomputations   Cognitive Computations  null  (community)
-//   SkunkworksAI            SkunkworksAI            null  (community)
-//   WizardLM-Research       WizardLM                null  (community)
-//   defog-ai                Defog                   null  (HQ unconfirmed)
-//   jondurbin / cloudyu     community               null  (community)
-//
-// ─────────────────────────────────────────────────────────────────────────────
-// Last verified: March 2026
-//
-// TODO
-//   - Each entry currently has only 1 variant (default quant). Run the script
-//     with a --variants mode (to be added) to populate full variants arrays.
-//   - Run: python scripts/update_models.py --discover --apply
-//     to scaffold entries for the ~60 libraries not yet represented.
-//   - app.js needs refactoring to use the new schema (see script TODO block).
 // ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -133,13 +58,13 @@ const MODELS = [
 
   {
     "ollama_tag": "llama3.1:8b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 8.03,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "8b", "quantization": "Q4_K_M", "weights_gb": 4.9},
       {"tag": "8b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 3.2},
@@ -172,13 +97,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3.1:70b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 70.6,
-    "layers": 80,
-    "num_attention_heads": 64,
-    "num_key_value_heads": 8,
-    "hidden_size": 8192,
-    "head_dim": 128,
+    "block_count": 80,
+    "head_count": 64,
+    "head_count_kv": 8,
+    "embedding_length": 8192,
+    "key_length": 128,
     "variants": [
       {"tag": "70b", "quantization": "Q4_K_M", "weights_gb": 43.0},
       {"tag": "70b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 26.0},
@@ -210,13 +135,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3.1:405b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 406.0,
-    "layers": 126,
-    "num_attention_heads": 128,
-    "num_key_value_heads": 8,
-    "hidden_size": 16384,
-    "head_dim": 128,
+    "block_count": 126,
+    "head_count": 128,
+    "head_count_kv": 8,
+    "embedding_length": 16384,
+    "key_length": 128,
     "variants": [
       {"tag": "405b", "quantization": "Q4_K_M", "weights_gb": 243.0},
       {"tag": "405b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 149.0},
@@ -249,13 +174,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3.2:1b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 1.24,
-    "layers": 16,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 2048,
-    "head_dim": 64,
+    "block_count": 16,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 2048,
+    "key_length": 64,
     "variants": [
       {"tag": "1b", "quantization": "Q8_0", "weights_gb": 1.3},
       {"tag": "1b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 1.0},
@@ -264,13 +189,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3.2:3b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 3.21,
-    "layers": 28,
-    "num_attention_heads": 24,
-    "num_key_value_heads": 8,
-    "hidden_size": 3072,
-    "head_dim": 128,
+    "block_count": 28,
+    "head_count": 24,
+    "head_count_kv": 8,
+    "embedding_length": 3072,
+    "key_length": 128,
     "variants": [
       {"tag": "3b", "quantization": "Q4_K_M", "weights_gb": 2.0},
       {"tag": "3b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 1.4},
@@ -303,12 +228,12 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma3:270m",
-    "max_context": 32768,
-    "layers": 18,
-    "num_attention_heads": 4,
-    "num_key_value_heads": 1,
-    "hidden_size": 640,
-    "head_dim": 256,
+    "context_length": 32768,
+    "block_count": 18,
+    "head_count": 4,
+    "head_count_kv": 1,
+    "embedding_length": 640,
+    "key_length": 256,
     "variants": [
       {"tag": "270m", "quantization": "Q8_0", "weights_gb": 0.29},
       {"tag": "270m-it-q8_0", "quantization": "Q8_0", "weights_gb": 0.29},
@@ -317,25 +242,25 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma3:1b",
-    "max_context": 32768,
-    "layers": 26,
-    "num_attention_heads": 4,
-    "num_key_value_heads": 1,
-    "hidden_size": 1152,
-    "head_dim": 256,
+    "context_length": 32768,
+    "block_count": 26,
+    "head_count": 4,
+    "head_count_kv": 1,
+    "embedding_length": 1152,
+    "key_length": 256,
     "variants": [
       {"tag": "1b-it-q8_0", "quantization": "Q8_0", "weights_gb": 1.1}
     ]
   },
   {
     "ollama_tag": "gemma3:4b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 4.3,
-    "layers": 34,
-    "num_attention_heads": 8,
-    "num_key_value_heads": 4,
-    "hidden_size": 2560,
-    "head_dim": 256,
+    "block_count": 34,
+    "head_count": 8,
+    "head_count_kv": 4,
+    "embedding_length": 2560,
+    "key_length": 256,
     "variants": [
       {"tag": "4b", "quantization": "Q4_K_M", "weights_gb": 3.3},
       {"tag": "4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 5.0}
@@ -343,13 +268,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma3:12b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 12.2,
-    "layers": 48,
-    "num_attention_heads": 16,
-    "num_key_value_heads": 8,
-    "hidden_size": 3840,
-    "head_dim": 256,
+    "block_count": 48,
+    "head_count": 16,
+    "head_count_kv": 8,
+    "embedding_length": 3840,
+    "key_length": 256,
     "variants": [
       {"tag": "12b", "quantization": "Q4_K_M", "weights_gb": 8.1},
       {"tag": "12b-it-q8_0", "quantization": "Q8_0", "weights_gb": 13.0}
@@ -357,13 +282,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma3:27b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 27.4,
-    "layers": 62,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 16,
-    "hidden_size": 5376,
-    "head_dim": 128,
+    "block_count": 62,
+    "head_count": 32,
+    "head_count_kv": 16,
+    "embedding_length": 5376,
+    "key_length": 128,
     "variants": [
       {"tag": "27b", "quantization": "Q4_K_M", "weights_gb": 17.0},
       {"tag": "27b-it-q8_0", "quantization": "Q8_0", "weights_gb": 30.0}
@@ -371,13 +296,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "mistral:7b",
-    "max_context": 32768,
+    "context_length": 32768,
     "params_b": 7.25,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "7b", "quantization": "Q4_K_M", "weights_gb": 4.4},
       {"tag": "7b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 3.1},
@@ -449,13 +374,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "phi4:14b",
-    "max_context": 16384,
+    "context_length": 16384,
     "params_b": 14.7,
-    "layers": 40,
-    "num_attention_heads": 40,
-    "num_key_value_heads": 10,
-    "hidden_size": 5120,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 40,
+    "head_count_kv": 10,
+    "embedding_length": 5120,
+    "key_length": 128,
     "variants": [
       {"tag": "14b", "quantization": "Q4_K_M", "weights_gb": 9.1},
       {"tag": "14b-q8_0", "quantization": "Q8_0", "weights_gb": 16.0}
@@ -463,13 +388,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3:8b",
-    "max_context": 8192,
+    "context_length": 8192,
     "params_b": 8.03,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "8b", "quantization": "Q4_0", "weights_gb": 4.7},
       {"tag": "8b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 3.2},
@@ -502,13 +427,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3:70b",
-    "max_context": 8192,
+    "context_length": 8192,
     "params_b": 70.6,
-    "layers": 80,
-    "num_attention_heads": 64,
-    "num_key_value_heads": 8,
-    "hidden_size": 8192,
-    "head_dim": 128,
+    "block_count": 80,
+    "head_count": 64,
+    "head_count_kv": 8,
+    "embedding_length": 8192,
+    "key_length": 128,
     "variants": [
       {"tag": "70b", "quantization": "Q4_0", "weights_gb": 40.0},
       {"tag": "70b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 26.0},
@@ -541,13 +466,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "codellama:7b",
-    "max_context": 16384,
+    "context_length": 16384,
     "params_b": 6.74,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 32,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 32,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 3.8},
       {"tag": "7b-code-q2_K", "quantization": "Q2_K", "weights_gb": 2.8},
@@ -593,13 +518,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "codellama:13b",
-    "max_context": 16384,
+    "context_length": 16384,
     "params_b": 13.0,
-    "layers": 40,
-    "num_attention_heads": 40,
-    "num_key_value_heads": 40,
-    "hidden_size": 5120,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 40,
+    "head_count_kv": 40,
+    "embedding_length": 5120,
+    "key_length": 128,
     "variants": [
       {"tag": "13b", "quantization": "Q4_0", "weights_gb": 7.4},
       {"tag": "13b-code-q2_K", "quantization": "Q2_K", "weights_gb": 5.4},
@@ -645,13 +570,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "codellama:34b",
-    "max_context": 16384,
+    "context_length": 16384,
     "params_b": 33.7,
-    "layers": 48,
-    "num_attention_heads": 64,
-    "num_key_value_heads": 8,
-    "hidden_size": 8192,
-    "head_dim": 128,
+    "block_count": 48,
+    "head_count": 64,
+    "head_count_kv": 8,
+    "embedding_length": 8192,
+    "key_length": 128,
     "variants": [
       {"tag": "34b", "quantization": "Q4_0", "weights_gb": 19.0},
       {"tag": "34b-code-q2_K", "quantization": "Q2_K", "weights_gb": 14.0},
@@ -697,13 +622,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "codellama:70b",
-    "max_context": 2048,
+    "context_length": 2048,
     "params_b": 69.0,
-    "layers": 80,
-    "num_attention_heads": 64,
-    "num_key_value_heads": 8,
-    "hidden_size": 8192,
-    "head_dim": 128,
+    "block_count": 80,
+    "head_count": 64,
+    "head_count_kv": 8,
+    "embedding_length": 8192,
+    "key_length": 128,
     "variants": [
       {"tag": "70b", "quantization": "Q4_0", "weights_gb": 39.0},
       {"tag": "70b-code-q2_K", "quantization": "Q2_K", "weights_gb": 25.0},
@@ -749,13 +674,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "mixtral:8x7b",
-    "max_context": 32768,
+    "context_length": 32768,
     "params_b": 46.7,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "8x7b", "quantization": "Q4_0", "weights_gb": 26.0},
       {"tag": "8x7b-instruct-v0.1-q2_K", "quantization": "Q2_K", "weights_gb": 17.0},
@@ -788,13 +713,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "mixtral:8x22b",
-    "max_context": 65536,
+    "context_length": 65536,
     "params_b": 141.0,
-    "layers": 56,
-    "num_attention_heads": 48,
-    "num_key_value_heads": 8,
-    "hidden_size": 6144,
-    "head_dim": 128,
+    "block_count": 56,
+    "head_count": 48,
+    "head_count_kv": 8,
+    "embedding_length": 6144,
+    "key_length": 128,
     "variants": [
       {"tag": "8x22b", "quantization": "Q4_0", "weights_gb": 80.0},
       {"tag": "8x22b-instruct-v0.1-q2_K", "quantization": "Q2_K", "weights_gb": 52.0},
@@ -827,39 +752,39 @@ const MODELS = [
   },
   {
     "ollama_tag": "phi3:medium",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 14.0,
-    "layers": 40,
-    "num_attention_heads": 40,
-    "num_key_value_heads": 10,
-    "hidden_size": 5120,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 40,
+    "head_count_kv": 10,
+    "embedding_length": 5120,
+    "key_length": 128,
     "variants": [
       {"tag": "medium", "quantization": "Q4_0", "weights_gb": 7.9}
     ]
   },
   {
     "ollama_tag": "phi3:mini",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 3.82,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 32,
-    "hidden_size": 3072,
-    "head_dim": 96,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 32,
+    "embedding_length": 3072,
+    "key_length": 96,
     "variants": [
       {"tag": "mini", "quantization": "Q4_0", "weights_gb": 2.2}
     ]
   },
   {
     "ollama_tag": "phi3:3.8b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 3.82,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 32,
-    "hidden_size": 3072,
-    "head_dim": 96,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 32,
+    "embedding_length": 3072,
+    "key_length": 96,
     "variants": [
       {"tag": "3.8b", "quantization": "Q4_0", "weights_gb": 2.2},
       {"tag": "3.8b-mini-128k-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 1.4},
@@ -892,13 +817,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "phi3:14b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 14.0,
-    "layers": 40,
-    "num_attention_heads": 40,
-    "num_key_value_heads": 10,
-    "hidden_size": 5120,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 40,
+    "head_count_kv": 10,
+    "embedding_length": 5120,
+    "key_length": 128,
     "variants": [
       {"tag": "14b", "quantization": "Q4_0", "weights_gb": 7.9},
       {"tag": "14b-medium-128k-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 5.1},
@@ -931,13 +856,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llava:7b",
-    "max_context": 32768,
+    "context_length": 32768,
     "params_b": 7.24,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 4.7},
       {"tag": "7b-v1.5-q2_K", "quantization": "Q2_K", "weights_gb": 3.5},
@@ -983,13 +908,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llava:13b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 13.0,
-    "layers": 40,
-    "num_attention_heads": 40,
-    "num_key_value_heads": 40,
-    "hidden_size": 5120,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 40,
+    "head_count_kv": 40,
+    "embedding_length": 5120,
+    "key_length": 128,
     "variants": [
       {"tag": "13b", "quantization": "Q4_0", "weights_gb": 8.0},
       {"tag": "13b-v1.5-q2_K", "quantization": "Q2_K", "weights_gb": 6.1},
@@ -1022,13 +947,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llava:34b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 34.4,
-    "layers": 60,
-    "num_attention_heads": 56,
-    "num_key_value_heads": 8,
-    "hidden_size": 7168,
-    "head_dim": 128,
+    "block_count": 60,
+    "head_count": 56,
+    "head_count_kv": 8,
+    "embedding_length": 7168,
+    "key_length": 128,
     "variants": [
       {"tag": "34b", "quantization": "Q4_0", "weights_gb": 20.0},
       {"tag": "34b-v1.6-q2_K", "quantization": "Q2_K", "weights_gb": 14.0},
@@ -1048,13 +973,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama2:7b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 6.74,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 32,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 32,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 3.8},
       {"tag": "7b-chat-q2_K", "quantization": "Q2_K", "weights_gb": 2.8},
@@ -1087,13 +1012,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama2:13b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 13.0,
-    "layers": 40,
-    "num_attention_heads": 40,
-    "num_key_value_heads": 40,
-    "hidden_size": 5120,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 40,
+    "head_count_kv": 40,
+    "embedding_length": 5120,
+    "key_length": 128,
     "variants": [
       {"tag": "13b", "quantization": "Q4_0", "weights_gb": 7.4},
       {"tag": "13b-chat-q2_K", "quantization": "Q2_K", "weights_gb": 5.4},
@@ -1126,13 +1051,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama2:70b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 69.0,
-    "layers": 80,
-    "num_attention_heads": 64,
-    "num_key_value_heads": 8,
-    "hidden_size": 8192,
-    "head_dim": 128,
+    "block_count": 80,
+    "head_count": 64,
+    "head_count_kv": 8,
+    "embedding_length": 8192,
+    "key_length": 128,
     "variants": [
       {"tag": "70b", "quantization": "Q4_0", "weights_gb": 39.0},
       {"tag": "70b-chat-q2_K", "quantization": "Q2_K", "weights_gb": 29.0},
@@ -1165,13 +1090,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "neural-chat:7b",
-    "max_context": 32768,
+    "context_length": 32768,
     "params_b": 7.24,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 4.1},
       {"tag": "7b-v3.1-q2_K", "quantization": "Q2_K", "weights_gb": 3.1},
@@ -1217,39 +1142,39 @@ const MODELS = [
   },
   {
     "ollama_tag": "starling-lm:alpha",
-    "max_context": 8192,
+    "context_length": 8192,
     "params_b": 7.24,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "alpha", "quantization": "Q4_0", "weights_gb": 4.1}
     ]
   },
   {
     "ollama_tag": "starling-lm:beta",
-    "max_context": 8192,
+    "context_length": 8192,
     "params_b": 7.24,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "beta", "quantization": "Q4_0", "weights_gb": 4.1}
     ]
   },
   {
     "ollama_tag": "starling-lm:7b",
-    "max_context": 8192,
+    "context_length": 8192,
     "params_b": 7.24,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 4.1},
       {"tag": "7b-alpha-q2_K", "quantization": "Q2_K", "weights_gb": 2.7},
@@ -1282,13 +1207,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "orca-mini:3b",
-    "max_context": 2048,
+    "context_length": 2048,
     "params_b": 3.43,
-    "layers": 26,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 32,
-    "hidden_size": 3200,
-    "head_dim": 100,
+    "block_count": 26,
+    "head_count": 32,
+    "head_count_kv": 32,
+    "embedding_length": 3200,
+    "key_length": 100,
     "variants": [
       {"tag": "3b", "quantization": "Q4_0", "weights_gb": 2.0},
       {"tag": "3b-q4_1", "quantization": "Q4_1", "weights_gb": 2.2},
@@ -1299,13 +1224,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "orca-mini:7b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 6.74,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 32,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 32,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 3.8},
       {"tag": "7b-v2-q2_K", "quantization": "Q2_K", "weights_gb": 2.8},
@@ -1351,13 +1276,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "orca-mini:13b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 13.0,
-    "layers": 40,
-    "num_attention_heads": 40,
-    "num_key_value_heads": 40,
-    "hidden_size": 5120,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 40,
+    "head_count_kv": 40,
+    "embedding_length": 5120,
+    "key_length": 128,
     "variants": [
       {"tag": "13b", "quantization": "Q4_0", "weights_gb": 7.4},
       {"tag": "13b-v2-q2_K", "quantization": "Q2_K", "weights_gb": 5.4},
@@ -1403,13 +1328,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "orca-mini:70b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 69.0,
-    "layers": 80,
-    "num_attention_heads": 64,
-    "num_key_value_heads": 8,
-    "hidden_size": 8192,
-    "head_dim": 128,
+    "block_count": 80,
+    "head_count": 64,
+    "head_count_kv": 8,
+    "embedding_length": 8192,
+    "key_length": 128,
     "variants": [
       {"tag": "70b", "quantization": "Q4_0", "weights_gb": 39.0},
       {"tag": "70b-v3-q2_K", "quantization": "Q2_K", "weights_gb": 29.0},
@@ -1429,13 +1354,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "zephyr:7b",
-    "max_context": 32768,
+    "context_length": 32768,
     "params_b": 7.24,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 4.1},
       {"tag": "7b-alpha-q2_K", "quantization": "Q2_K", "weights_gb": 3.1},
@@ -1468,13 +1393,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "zephyr:141b",
-    "max_context": 65536,
+    "context_length": 65536,
     "params_b": 141.0,
-    "layers": 56,
-    "num_attention_heads": 48,
-    "num_key_value_heads": 8,
-    "hidden_size": 6144,
-    "head_dim": 128,
+    "block_count": 56,
+    "head_count": 48,
+    "head_count_kv": 8,
+    "embedding_length": 6144,
+    "key_length": 128,
     "variants": [
       {"tag": "141b", "quantization": "Q4_0", "weights_gb": 80.0},
       {"tag": "141b-v0.1-q2_K", "quantization": "Q2_K", "weights_gb": 52.0},
@@ -1483,13 +1408,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "dolphin-mixtral:8x7b",
-    "max_context": 32768,
+    "context_length": 32768,
     "params_b": 46.7,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "8x7b", "quantization": "Q4_0", "weights_gb": 26.0},
       {"tag": "8x7b-v2.5-q2_K", "quantization": "Q2_K", "weights_gb": 17.0},
@@ -1535,13 +1460,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "dolphin-mixtral:8x22b",
-    "max_context": 65536,
+    "context_length": 65536,
     "params_b": 141.0,
-    "layers": 56,
-    "num_attention_heads": 48,
-    "num_key_value_heads": 8,
-    "hidden_size": 6144,
-    "head_dim": 128,
+    "block_count": 56,
+    "head_count": 48,
+    "head_count_kv": 8,
+    "embedding_length": 6144,
+    "key_length": 128,
     "variants": [
       {"tag": "8x22b", "quantization": "Q4_0", "weights_gb": 80.0},
       {"tag": "8x22b-v2.9-q2_K", "quantization": "Q2_K", "weights_gb": 52.0},
@@ -1561,13 +1486,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "nous-hermes2:10.7b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 10.7,
-    "layers": 48,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 48,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "10.7b", "quantization": "Q4_0", "weights_gb": 6.1},
       {"tag": "10.7b-solar-q2_K", "quantization": "Q2_K", "weights_gb": 4.5},
@@ -1587,13 +1512,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "nous-hermes2:34b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 34.4,
-    "layers": 60,
-    "num_attention_heads": 56,
-    "num_key_value_heads": 8,
-    "hidden_size": 7168,
-    "head_dim": 128,
+    "block_count": 60,
+    "head_count": 56,
+    "head_count_kv": 8,
+    "embedding_length": 7168,
+    "key_length": 128,
     "variants": [
       {"tag": "34b", "quantization": "Q4_0", "weights_gb": 19.0},
       {"tag": "34b-yi-q2_K", "quantization": "Q2_K", "weights_gb": 15.0},
@@ -1613,13 +1538,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "starcoder2:3b",
-    "max_context": 16384,
+    "context_length": 16384,
     "params_b": 3.03,
-    "layers": 30,
-    "num_attention_heads": 24,
-    "num_key_value_heads": 2,
-    "hidden_size": 3072,
-    "head_dim": 128,
+    "block_count": 30,
+    "head_count": 24,
+    "head_count_kv": 2,
+    "embedding_length": 3072,
+    "key_length": 128,
     "variants": [
       {"tag": "3b", "quantization": "Q4_0", "weights_gb": 1.7},
       {"tag": "3b-q2_K", "quantization": "Q2_K", "weights_gb": 1.1},
@@ -1639,13 +1564,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "starcoder2:7b",
-    "max_context": 16384,
+    "context_length": 16384,
     "params_b": 7.17,
-    "layers": 32,
-    "num_attention_heads": 36,
-    "num_key_value_heads": 4,
-    "hidden_size": 4608,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 36,
+    "head_count_kv": 4,
+    "embedding_length": 4608,
+    "key_length": 128,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 4.0},
       {"tag": "7b-q2_K", "quantization": "Q2_K", "weights_gb": 2.7},
@@ -1665,13 +1590,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "starcoder2:15b",
-    "max_context": 16384,
+    "context_length": 16384,
     "params_b": 16.0,
-    "layers": 40,
-    "num_attention_heads": 48,
-    "num_key_value_heads": 4,
-    "hidden_size": 6144,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 48,
+    "head_count_kv": 4,
+    "embedding_length": 6144,
+    "key_length": 128,
     "variants": [
       {"tag": "15b", "quantization": "Q4_0", "weights_gb": 9.1},
       {"tag": "15b-instruct-v0.1-q2_K", "quantization": "Q2_K", "weights_gb": 6.2},
@@ -1704,13 +1629,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "tinyllama:1.1b",
-    "max_context": 2048,
+    "context_length": 2048,
     "params_b": 1.1,
-    "layers": 22,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 4,
-    "hidden_size": 2048,
-    "head_dim": 64,
+    "block_count": 22,
+    "head_count": 32,
+    "head_count_kv": 4,
+    "embedding_length": 2048,
+    "key_length": 64,
     "variants": [
       {"tag": "1.1b", "quantization": "Q4_0", "weights_gb": 0.62},
       {"tag": "1.1b-chat-v0.6-q2_K", "quantization": "Q2_K", "weights_gb": 0.47},
@@ -1743,13 +1668,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "command-r:35b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 32.3,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "35b", "quantization": "Q4_0", "weights_gb": 19.0},
       {"tag": "35b-08-2024-q2_K", "quantization": "Q2_K", "weights_gb": 13.0},
@@ -1781,13 +1706,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "granite3-dense:2b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 2.63,
-    "layers": 40,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 2048,
-    "head_dim": 64,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 2048,
+    "key_length": 64,
     "variants": [
       {"tag": "2b", "quantization": "Q4_K_M", "weights_gb": 1.6},
       {"tag": "2b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 1.0},
@@ -1807,13 +1732,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "granite3-dense:8b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 8.17,
-    "layers": 40,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "8b", "quantization": "Q4_K_M", "weights_gb": 4.9},
       {"tag": "8b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 3.1},
@@ -1833,13 +1758,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "codegemma:2b",
-    "max_context": 8192,
+    "context_length": 8192,
     "params_b": 2.51,
-    "layers": 18,
-    "num_attention_heads": 8,
-    "num_key_value_heads": 1,
-    "hidden_size": 2048,
-    "head_dim": 256,
+    "block_count": 18,
+    "head_count": 8,
+    "head_count_kv": 1,
+    "embedding_length": 2048,
+    "key_length": 256,
     "variants": [
       {"tag": "2b", "quantization": "Q4_0", "weights_gb": 1.6},
       {"tag": "2b-code-q2_K", "quantization": "Q2_K", "weights_gb": 1.2},
@@ -1872,13 +1797,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "codegemma:7b",
-    "max_context": 8192,
+    "context_length": 8192,
     "params_b": 8.54,
-    "layers": 28,
-    "num_attention_heads": 16,
-    "num_key_value_heads": 16,
-    "hidden_size": 3072,
-    "head_dim": 256,
+    "block_count": 28,
+    "head_count": 16,
+    "head_count_kv": 16,
+    "embedding_length": 3072,
+    "key_length": 256,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 5.0},
       {"tag": "7b-code-q2_K", "quantization": "Q2_K", "weights_gb": 3.5},
@@ -1924,13 +1849,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "moondream:1.8b",
-    "max_context": 2048,
+    "context_length": 2048,
     "params_b": 1.42,
-    "layers": 24,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 32,
-    "hidden_size": 2048,
-    "head_dim": 64,
+    "block_count": 24,
+    "head_count": 32,
+    "head_count_kv": 32,
+    "embedding_length": 2048,
+    "key_length": 64,
     "variants": [
       {"tag": "1.8b", "quantization": "Q4_0", "weights_gb": 1.7},
       {"tag": "1.8b-v2-q2_K", "quantization": "Q2_K", "weights_gb": 1.5},
@@ -1950,13 +1875,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "wizardlm2:7b",
-    "max_context": 32768,
+    "context_length": 32768,
     "params_b": 7.24,
-    "layers": 32,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 4.1},
       {"tag": "7b-q2_K", "quantization": "Q2_K", "weights_gb": 2.7},
@@ -1976,13 +1901,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "wizardlm2:8x22b",
-    "max_context": 65536,
+    "context_length": 65536,
     "params_b": 141.0,
-    "layers": 56,
-    "num_attention_heads": 48,
-    "num_key_value_heads": 8,
-    "hidden_size": 6144,
-    "head_dim": 128,
+    "block_count": 56,
+    "head_count": 48,
+    "head_count_kv": 8,
+    "embedding_length": 6144,
+    "key_length": 128,
     "variants": [
       {"tag": "8x22b", "quantization": "Q4_0", "weights_gb": 80.0},
       {"tag": "8x22b-q2_K", "quantization": "Q2_K", "weights_gb": 52.0},
@@ -1991,13 +1916,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "solar:10.7b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 10.7,
-    "layers": 48,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 4096,
-    "head_dim": 128,
+    "block_count": 48,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
     "variants": [
       {"tag": "10.7b", "quantization": "Q4_0", "weights_gb": 6.1},
       {"tag": "10.7b-instruct-v1-q2_K", "quantization": "Q2_K", "weights_gb": 4.5},
@@ -2030,26 +1955,26 @@ const MODELS = [
   },
   {
     "ollama_tag": "stablelm2:zephyr",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 1.64,
-    "layers": 24,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 2048,
-    "head_dim": 64,
+    "block_count": 24,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 2048,
+    "key_length": 64,
     "variants": [
       {"tag": "zephyr", "quantization": "Q4_0", "weights_gb": 0.96}
     ]
   },
   {
     "ollama_tag": "stablelm2:1.6b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 1.64,
-    "layers": 24,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 2048,
-    "head_dim": 64,
+    "block_count": 24,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 2048,
+    "key_length": 64,
     "variants": [
       {"tag": "1.6b", "quantization": "Q4_0", "weights_gb": 0.96},
       {"tag": "1.6b-chat-q2_K", "quantization": "Q2_K", "weights_gb": 0.68},
@@ -2095,13 +2020,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "stablelm2:12b",
-    "max_context": 4096,
+    "context_length": 4096,
     "params_b": 12.1,
-    "layers": 40,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 5120,
-    "head_dim": 160,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 5120,
+    "key_length": 160,
     "variants": [
       {"tag": "12b", "quantization": "Q4_0", "weights_gb": 7.0},
       {"tag": "12b-chat-q2_K", "quantization": "Q2_K", "weights_gb": 4.7},
@@ -2134,13 +2059,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "mistral-nemo:12b",
-    "max_context": 1024000,
+    "context_length": 1024000,
     "params_b": 12.2,
-    "layers": 40,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 5120,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 5120,
+    "key_length": 128,
     "variants": [
       {"tag": "12b", "quantization": "Q4_0", "weights_gb": 7.1},
       {"tag": "12b-instruct-2407-q2_K", "quantization": "Q2_K", "weights_gb": 4.8},
@@ -2160,13 +2085,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "llama3.3:70b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 70.6,
-    "layers": 80,
-    "num_attention_heads": 64,
-    "num_key_value_heads": 8,
-    "hidden_size": 8192,
-    "head_dim": 128,
+    "block_count": 80,
+    "head_count": 64,
+    "head_count_kv": 8,
+    "embedding_length": 8192,
+    "key_length": 128,
     "variants": [
       {"tag": "70b", "quantization": "Q4_K_M", "weights_gb": 43.0},
       {"tag": "70b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 26.0},
@@ -2183,13 +2108,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma2:2b",
-    "max_context": 8192,
+    "context_length": 8192,
     "params_b": 2.61,
-    "layers": 26,
-    "num_attention_heads": 8,
-    "num_key_value_heads": 4,
-    "hidden_size": 2304,
-    "head_dim": 256,
+    "block_count": 26,
+    "head_count": 8,
+    "head_count_kv": 4,
+    "embedding_length": 2304,
+    "key_length": 256,
     "variants": [
       {"tag": "2b", "quantization": "Q4_0", "weights_gb": 1.6},
       {"tag": "2b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 1.2},
@@ -2222,13 +2147,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma2:9b",
-    "max_context": 8192,
+    "context_length": 8192,
     "params_b": 9.24,
-    "layers": 42,
-    "num_attention_heads": 16,
-    "num_key_value_heads": 8,
-    "hidden_size": 3584,
-    "head_dim": 256,
+    "block_count": 42,
+    "head_count": 16,
+    "head_count_kv": 8,
+    "embedding_length": 3584,
+    "key_length": 256,
     "variants": [
       {"tag": "9b", "quantization": "Q4_0", "weights_gb": 5.4},
       {"tag": "9b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 3.8},
@@ -2261,13 +2186,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "gemma2:27b",
-    "max_context": 8192,
+    "context_length": 8192,
     "params_b": 27.2,
-    "layers": 46,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 16,
-    "hidden_size": 4608,
-    "head_dim": 128,
+    "block_count": 46,
+    "head_count": 32,
+    "head_count_kv": 16,
+    "embedding_length": 4608,
+    "key_length": 128,
     "variants": [
       {"tag": "27b", "quantization": "Q4_0", "weights_gb": 16.0},
       {"tag": "27b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 10.0},
@@ -2300,13 +2225,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "codestral:22b",
-    "max_context": 32768,
+    "context_length": 32768,
     "params_b": 22.2,
-    "layers": 56,
-    "num_attention_heads": 48,
-    "num_key_value_heads": 8,
-    "hidden_size": 6144,
-    "head_dim": 128,
+    "block_count": 56,
+    "head_count": 48,
+    "head_count_kv": 8,
+    "embedding_length": 6144,
+    "key_length": 128,
     "variants": [
       {"tag": "22b", "quantization": "Q4_0", "weights_gb": 13.0},
       {"tag": "22b-v0.1-q2_K", "quantization": "Q2_K", "weights_gb": 8.3},
@@ -2326,13 +2251,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "mistral-small:22b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 22.2,
-    "layers": 56,
-    "num_attention_heads": 48,
-    "num_key_value_heads": 8,
-    "hidden_size": 6144,
-    "head_dim": 128,
+    "block_count": 56,
+    "head_count": 48,
+    "head_count_kv": 8,
+    "embedding_length": 6144,
+    "key_length": 128,
     "variants": [
       {"tag": "22b", "quantization": "Q4_0", "weights_gb": 13.0},
       {"tag": "22b-instruct-2409-q2_K", "quantization": "Q2_K", "weights_gb": 8.3},
@@ -2352,13 +2277,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "mistral-small:24b",
-    "max_context": 32768,
+    "context_length": 32768,
     "params_b": 23.6,
-    "layers": 40,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 5120,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 5120,
+    "key_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 14.0},
       {"tag": "24b-instruct-2501-q8_0", "quantization": "Q8_0", "weights_gb": 25.0}
@@ -2366,13 +2291,13 @@ const MODELS = [
   },
   {
     "ollama_tag": "devstral:24b",
-    "max_context": 131072,
+    "context_length": 131072,
     "params_b": 23.6,
-    "layers": 40,
-    "num_attention_heads": 32,
-    "num_key_value_heads": 8,
-    "hidden_size": 5120,
-    "head_dim": 128,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 5120,
+    "key_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 14.0},
       {"tag": "24b-small-2505-q8_0", "quantization": "Q8_0", "weights_gb": 25.0}

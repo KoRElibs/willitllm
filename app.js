@@ -40,9 +40,9 @@ function calcMaxContext(model, vramGB, bytesPerElement, weightsGB) {
   const availableBytes = (vramGB * OVERHEAD_FACTOR - weightsGB) * 1024 ** 3;
   if (availableBytes <= 0) return { maxCtx: 0, kvCacheGB: 0, freeGB: 0, availableBytes };
 
-  const perToken = model.layers * model.num_key_value_heads * model.head_dim * 2 * bytesPerElement;
+  const perToken = model.block_count * model.head_count_kv * model.key_length * 2 * bytesPerElement;
   const rawTokens = availableBytes / perToken;
-  const archLimit = model.max_context || Infinity;
+  const archLimit = model.context_length || Infinity;
   const archMaxRaw = Math.min(rawTokens, archLimit);
   const maxCtx = POWERS_OF_2.find(p => p <= archMaxRaw) || 0;
   const limitedByArch = isFinite(archLimit) && rawTokens > archLimit;
@@ -144,7 +144,7 @@ function markModelOptions(vramGB, bytesPerElement) {
       return;
     }
     const r   = calcMaxContext(m, vramGB, bytesPerElement, weightsGB);
-    const pct = m.max_context ? Math.round((r.maxCtx / m.max_context) * 100) : 100;
+    const pct = m.context_length ? Math.round((r.maxCtx / m.context_length) * 100) : 100;
     opt.textContent = modelLabel(m);
     opt.style.color = pct >= 66 ? '#56d88a' : pct >= 33 ? '#f5a623' : '#f07418';
   });
@@ -229,7 +229,7 @@ function render() {
 
   const sSpeed     = qi ? Math.max(1, Math.round((qi.speed   / 10) * 5)) : 0;
   const sQuality   = qi ? Math.max(1, Math.round((qi.quality / 10) * 5)) : 0;
-  const pct        = (!noFit && model.max_context) ? Math.round((r.maxCtx / model.max_context) * 100) : null;
+  const pct        = (!noFit && model.context_length) ? Math.round((r.maxCtx / model.context_length) * 100) : null;
   const sContext   = pct === null ? 0 : pct >= 90 ? 5 : pct >= 66 ? 4 : pct >= 40 ? 3 : pct >= 15 ? 2 : 1;
   const sPrecision = bytesPerElement === 2 ? 5 : bytesPerElement === 1 ? 3 : 2;
   const avg        = (sSpeed + sQuality + sContext + sPrecision) / 4;
@@ -254,7 +254,7 @@ function render() {
       el.style.color = scoreColor(s);
     });
     document.getElementById('scoreContextSub').textContent = pct !== null
-      ? `${fmtCtx(r.maxCtx)} tokens · ${pct}% of ${fmtCtx(model.max_context)} max`
+      ? `${fmtCtx(r.maxCtx)} tokens · ${pct}% of ${fmtCtx(model.context_length)} max`
       : `${fmtCtx(r.maxCtx)} tokens`;
     scorecard.hidden = false;
   } else {
@@ -281,7 +281,7 @@ function render() {
     originEl.className = 'detail-val community-origin';
   }
   document.getElementById('detailMoeRow').hidden            = !model.moe;
-  document.getElementById('detailMaxCtx').textContent       = model.max_context ? model.max_context.toLocaleString() + ' tokens' : '—';
+  document.getElementById('detailMaxCtx').textContent       = model.context_length ? model.context_length.toLocaleString() + ' tokens' : '—';
 
   if (noFit) {
     labelOom.textContent = `Model weights (${fmtGB(weightsGB)}) exceed available VRAM (${fmtGB(vramGB * OVERHEAD_FACTOR)} usable). This model will not load.`;
@@ -348,12 +348,12 @@ function render() {
   }
 
   // ── details table
-  document.getElementById('detailLayers').textContent    = model.layers;
-  document.getElementById('detailAttnHeads').textContent = model.num_attention_heads;
-  document.getElementById('detailKvHeads').textContent   = model.num_key_value_heads;
-  document.getElementById('detailHeadDim').textContent   = model.head_dim;
-  document.getElementById('detailHiddenSize').textContent   = model.hidden_size;
-  document.getElementById('detailAttnHeadsDiv').textContent = model.num_attention_heads;
+  document.getElementById('detailLayers').textContent    = model.block_count;
+  document.getElementById('detailAttnHeads').textContent = model.head_count;
+  document.getElementById('detailKvHeads').textContent   = model.head_count_kv;
+  document.getElementById('detailHeadDim').textContent   = model.key_length;
+  document.getElementById('detailHiddenSize').textContent   = model.embedding_length;
+  document.getElementById('detailAttnHeadsDiv').textContent = model.head_count;
   document.getElementById('detailBpe').textContent      = bytesPerElement;
   document.getElementById('detailBpeLabel').textContent = kvLabel;
   document.getElementById('detailWeights').textContent      = fmtGB(weightsGB);
@@ -365,7 +365,7 @@ function render() {
   const ollamaSrcLink = `<a href="${ollamaLibUrl}" target="_blank" rel="noopener noreferrer">ollama.com ↗</a>`;
   document.querySelectorAll('.src-config-json').forEach(el => { el.innerHTML = ollamaSrcLink; });
   document.getElementById('srcAttnHeads').innerHTML = ollamaSrcLink + ' · not used in calc';
-  const derivedHeadDim = model.head_dim === Math.floor(model.hidden_size / model.num_attention_heads);
+  const derivedHeadDim = model.key_length === Math.floor(model.embedding_length / model.head_count);
   document.getElementById('srcHeadDim').innerHTML = derivedHeadDim
     ? ollamaSrcLink + ' · derived'
     : ollamaSrcLink + ' · explicit';
@@ -400,10 +400,10 @@ function render() {
   const formulaBox    = document.getElementById('formulaBox');
   formulaBox.hidden   = noFit;
   if (!noFit) {
-    document.getElementById('fLayers').textContent    = model.layers;
-    document.getElementById('fKvHeads').textContent   = model.num_key_value_heads;
+    document.getElementById('fLayers').textContent    = model.block_count;
+    document.getElementById('fKvHeads').textContent   = model.head_count_kv;
     document.getElementById('fBpeLabel').textContent  = `${bytesPerElement}(${kvLabel})`;
-    document.getElementById('fHeadDim').textContent   = model.head_dim;
+    document.getElementById('fHeadDim').textContent   = model.key_length;
     document.getElementById('fPerToken').textContent  = `${r.perToken.toLocaleString()} bytes`;
     document.getElementById('fPerTokenKB').textContent = `(${(r.perToken / 1024).toFixed(1)} KB)`;
     document.getElementById('fAvailLabel').textContent = `available_vram = ${fmtGB(vramGB)} × ${OVERHEAD_FACTOR} overhead factor − ${fmtGB(weightsGB)} weights`;
