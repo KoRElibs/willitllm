@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Will It LLM?</title>
+<title>willitllm.com</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="page">
 
   <header>
-    <h1>// will-it-llm</h1>
+    <h1><span class="h1-will">will</span><span class="h1-it">it</span><span class="h1-llm">llm</span><span class="h1-tld">.com</span></h1>
     <p>Pick a model. Enter your GPU's VRAM. Find out if it runs — and how much context you actually get.</p>
   </header>
 
@@ -28,12 +28,19 @@
       </div>
     </div>
     <div class="field">
+      <label>Quantization</label>
+      <div class="select-wrap">
+        <select id="variantSelect"></select>
+      </div>
+      <div id="variantInfo" class="variant-info"></div>
+    </div>
+    <div class="field">
       <label>KV Cache</label>
       <div class="select-wrap">
         <select id="kvCacheType">
-          <option value="2" selected>f16 — default</option>
-          <option value="1">q8_0 — ½ memory, needs Flash Attention</option>
-          <option value="0.5">q4_0 — ¼ memory, needs Flash Attention</option>
+          <option value="2" selected>f16 — full precision</option>
+          <option value="1">q8_0 — ½ memory · longer context</option>
+          <option value="0.5">q4_0 — ¼ memory · longest context</option>
         </select>
       </div>
     </div>
@@ -70,8 +77,11 @@
       <p class="ctx-hint" id="ctxHint" hidden></p>
       <span class="result-label" id="resultLabelOom" hidden></span>
       <p class="flash-warn" id="flashWarn" hidden></p>
+      <label class="win-toggle" id="winToggleLabel" hidden>
+        <input type="checkbox" id="winToggle"> Windows instructions
+      </label>
       <pre class="ollama-cmd" id="ollamaCmd" hidden></pre>
-      <p class="ollama-hint" id="ollamaHint" hidden>Run the first line in your terminal. Once inside the session, type the second line.</p>
+      <p class="ollama-hint" id="ollamaHint" hidden></p>
     </div>
 
     <div class="provenance-alert" id="provenanceAlert" hidden></div>
@@ -79,58 +89,50 @@
     <div class="details">
       <div class="details-header">Model info</div>
       <div class="detail-row">
-        <div class="detail-key">organization</div>
+        <div class="detail-key" data-tip="The company or research group that created and published this model.">organization</div>
         <div class="detail-val" id="detailOrganization"></div>
-        <div class="detail-src" id="detailOrgSrc">models.js</div>
       </div>
       <div class="detail-row">
-        <div class="detail-key">origin</div>
+        <div class="detail-key" data-tip="Country or region where the originating organization is based.">origin</div>
         <div class="detail-val" id="detailOrigin"></div>
-        <div class="detail-src">models.js</div>
-      </div>
-      <div class="detail-row">
-        <div class="detail-key">specialty</div>
-        <div class="detail-val" id="detailSpecialty"></div>
-        <div class="detail-src">models.js</div>
       </div>
       <div class="detail-row" id="detailMoeRow" hidden>
-        <div class="detail-key">architecture</div>
+        <div class="detail-key" data-tip="Mixture of Experts (MoE) — only a fraction of parameters activate per token, allowing a large total parameter count with lower compute and memory cost than a dense model of the same size.">architecture</div>
         <div class="detail-val" style="color:var(--purple)">Mixture of Experts (MoE)</div>
-        <div class="detail-src">models.js</div>
       </div>
       <div class="detail-row">
-        <div class="detail-key">max_position_embeddings</div>
+        <div class="detail-key" data-tip="The maximum context length the model was trained on. Think of it as the model's memory limit — it cannot meaningfully process more tokens than this at once. Do not set num_ctx above this value.">max_position_embeddings</div>
         <div class="detail-val" id="detailMaxCtx"></div>
         <div class="detail-src src-config-json" id="srcMaxCtx"></div>
       </div>
       <div class="details-header">Architecture</div>
       <div class="detail-row">
-        <div class="detail-key">num_hidden_layers</div>
+        <div class="detail-key" data-tip="The number of transformer layers (blocks) stacked in the model. Every token in your context window needs KV cache memory for each layer — more layers means more VRAM per token of context.">num_hidden_layers</div>
         <div class="detail-val" id="detailLayers"></div>
         <div class="detail-src src-config-json"></div>
       </div>
       <div class="detail-row">
-        <div class="detail-key">num_attention_heads</div>
+        <div class="detail-key" data-tip="Total number of attention heads in each layer. Not directly used in the VRAM calculation — shown here because it is used to derive head_dim. With GQA, this is higher than num_key_value_heads.">num_attention_heads</div>
         <div class="detail-val" id="detailAttnHeads"></div>
         <div class="detail-src src-config-json" id="srcAttnHeads"></div>
       </div>
       <div class="detail-row">
-        <div class="detail-key">num_key_value_heads</div>
+        <div class="detail-key" data-tip="With Grouped Query Attention (GQA), multiple attention heads share one KV head pair, cutting memory without much quality loss. This smaller number — not the total heads — is what drives the VRAM calculation.">num_key_value_heads</div>
         <div class="detail-val"><span id="detailKvHeads"></span> <span class="gqa-note">← used (GQA)</span></div>
         <div class="detail-src src-config-json"></div>
       </div>
       <div class="detail-row">
-        <div class="detail-key">head_dim</div>
+        <div class="detail-key" data-tip="The size of each key/value vector per attention head. Derived from hidden_size ÷ num_attention_heads. Together with layers and KV heads, this determines how many bytes each token of context costs.">head_dim</div>
         <div class="detail-val"><span id="detailHeadDim"></span> <span class="derived-note">(<span id="detailHiddenSize"></span> ÷ <span id="detailAttnHeadsDiv"></span>)</span></div>
         <div class="detail-src src-config-json" id="srcHeadDim"></div>
       </div>
       <div class="detail-row">
-        <div class="detail-key">bytes_per_element</div>
+        <div class="detail-key" data-tip="Precision of each number stored in the KV cache. f16 = 2 bytes, works everywhere. q8_0 = 1 byte (half the cache). q4_0 = 0.5 bytes (quarter the cache). Lower precision = more context for the same VRAM, but requires Flash Attention support on your GPU.">bytes_per_element</div>
         <div class="detail-val"><span id="detailBpe"></span> <span class="derived-note">(<span id="detailBpeLabel"></span>)</span></div>
-        <div class="detail-src">ollama default</div>
+        <div class="detail-src">kv cache selector</div>
       </div>
       <div class="detail-row">
-        <div class="detail-key">model weights</div>
+        <div class="detail-key" data-tip="How much VRAM the model's parameters occupy. This is the fixed baseline cost — it must fit before any context window can be allocated. Quantization (e.g. Q4_K_M) compresses the weights to reduce this at a small quality cost.">model weights</div>
         <div class="detail-val"><span id="detailWeights"></span> <span class="derived-note">(<span id="detailQuantization"></span>)</span></div>
         <div class="detail-src" id="detailSource"></div>
       </div>
@@ -173,23 +175,26 @@
       Orange means the model still runs — you just have a shorter context window than the model was designed for.
       <br><br>
       <strong>This site's data was compiled by AI</strong> (Claude), not manually verified by a human.
-      Model metadata (organization, origin, specialty) and HuggingFace config URLs were generated from AI training knowledge
-      and may contain errors. Architecture parameters are cross-checked against HuggingFace <code>config.json</code>
-      via an automated script, but the underlying URLs were AI-generated and not all have been confirmed live.
+      Model metadata (organization, origin) was inferred from AI training knowledge and may contain errors.
       <br><br>
-      <strong>Weight sizes</strong> are sourced from the ollama registry manifest (exact layer bytes, no model downloads).
-      Quantization varies by tag — run <code>ollama show &lt;model&gt;</code> for exact values.
-      <strong>Architecture parameters</strong> (layers, heads, head_dim, max_position_embeddings) are sourced from
-      HuggingFace <code>config.json</code> — verify for fine-tuned variants.
+      <strong>Weight sizes and architecture parameters</strong> are sourced entirely from ollama.com —
+      the model detail page (weights, parameter count) and the model blob page (layers, heads, head_dim,
+      max_position_embeddings). Quantization varies by tag — run <code>ollama show &lt;model&gt;</code>
+      for exact values. Verify for fine-tuned variants.
       <strong>KV cache</strong> defaults to f16. Set <code>OLLAMA_KV_CACHE_TYPE=q8_0</code> or <code>q4_0</code>
-      to halve or quarter the cache size — requires Flash Attention to be enabled.
+      to halve or quarter the cache size — requires Flash Attention.
+      Flash Attention is opt-in in ollama because it is not universally faster: benefits scale with context length
+      (negligible below 4k, meaningful above 8k), and newer GPU generations (H100, A100, RTX 40xx) gain more than older ones.
+      On AMD, Apple Silicon, and Intel Arc support is limited or experimental.
       Always monitor <code>nvidia-smi</code> when pushing context limits.
     </div>
 
   </div>
 
 </div>
+<div id="tooltip" class="tooltip" hidden></div>
 <script src="gpus.js"></script>
+<script src="quantizations.js"></script>
 <script src="models.js"></script>
 <script src="app.js"></script>
 </body>
