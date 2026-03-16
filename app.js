@@ -224,6 +224,8 @@ function render() {
   const scorecard = document.getElementById('scorecard');
   const ollamaCmd = document.getElementById('ollamaCmd');
 
+  const meta = libMeta(model);
+
   // ── Scorecard ─────────────────────────────────────────────────────────────
   function stars(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
 
@@ -253,9 +255,12 @@ function render() {
       el.textContent = stars(s);
       el.style.color = scoreColor(s);
     });
-    document.getElementById('scoreContextSub').textContent = pct !== null
+    const ctxSub = pct !== null
       ? `${fmtCtx(r.maxCtx)} tokens · ${pct}% of ${fmtCtx(model.context_length)} max`
       : `${fmtCtx(r.maxCtx)} tokens`;
+    document.getElementById('scoreContextSub').textContent = meta.multimodal
+      ? ctxSub + ' · images consume tokens'
+      : ctxSub;
     scorecard.hidden = false;
   } else {
     scorecard.hidden = true;
@@ -268,7 +273,6 @@ function render() {
   verdictEl.classList.add('verdict-anim');
 
   // ── model info
-  const meta = libMeta(model);
   const orgEl = document.getElementById('detailOrganization');
   orgEl.textContent = meta.organization || '—';
 
@@ -281,6 +285,7 @@ function render() {
     originEl.className = 'detail-val community-origin';
   }
   document.getElementById('detailMoeRow').hidden            = !model.moe;
+  document.getElementById('detailMultimodalRow').hidden     = !meta.multimodal;
   document.getElementById('detailMaxCtx').textContent       = model.context_length ? model.context_length.toLocaleString() + ' tokens' : '—';
 
   if (noFit) {

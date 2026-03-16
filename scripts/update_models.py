@@ -306,7 +306,9 @@ def write_libraries_js(libs: list[dict]) -> None:
             f'  {{ "library": {jv(lib["library"]):<22} '
             f'"organization": {jv(lib.get("organization")):<26} '
             f'"origin": {jv(lib.get("origin")):<20} '
-            f'"source": {jv(lib.get("source"))} }},'
+            f'"source": {jv(lib.get("source")):<50} '
+            + ('"multimodal": true ' if lib.get("multimodal") else "")
+            + "},"
         )
     lines.append("];\n")
     LIBRARIES_JS.write_text("\n".join(lines), encoding="utf-8")

@@ -101,6 +101,10 @@
         <div class="detail-key" data-tip="Mixture of Experts (MoE) — only a fraction of parameters activate per token, allowing a large total parameter count with lower compute and memory cost than a dense model of the same size.">architecture</div>
         <div class="detail-val" style="color:var(--purple)">Mixture of Experts (MoE)</div>
       </div>
+      <div class="detail-row" id="detailMultimodalRow" hidden>
+        <div class="detail-key" data-tip="This model can process images in addition to text. Images are converted to tokens that consume the context window — so usable text context is reduced when images are provided.">modality</div>
+        <div class="detail-val" style="color:var(--accent)">Multimodal (text + vision)</div>
+      </div>
       <div class="detail-row">
         <div class="detail-key" data-tip="The maximum context length the model was trained on. Think of it as the model's memory limit — it cannot meaningfully process more tokens than this at once. Do not set num_ctx above this value.">context_length</div>
         <div class="detail-val" id="detailMaxCtx"></div>
@@ -166,28 +170,17 @@
 
     <div class="disclaimer">
       <strong>These are estimates.</strong>
-      Actual VRAM usage varies with ollama version, quantization, batch size, and OS/driver overhead —
-      the <span id="overheadPct"></span>% overhead reserve is a heuristic, not a guarantee.
+      The <span id="overheadPct"></span>% overhead reserve accounts for driver and runtime overhead — actual usage varies.
       <br><br>
-      <strong>Color coding</strong> reflects how much of the model's architectural context limit fits in your VRAM:
-      <span style="color:var(--green)">green ≥ 66%</span>,
-      <span style="color:var(--amber)">amber ≥ 33%</span>,
-      <span style="color:var(--orange)">orange &lt; 33%</span>.
-      Orange means the model still runs — you just have a shorter context window than the model was designed for.
+      <strong>Scores</strong> reflect the average of speed, quality, context fit, and KV cache precision.
+      <span style="color:var(--green)">Green</span> = good overall,
+      <span style="color:var(--amber)">amber</span> = acceptable,
+      <span style="color:var(--orange)">orange</span> = degraded.
+      A model that fits with a reduced context window still runs — it just has less memory than it was designed for.
       <br><br>
-      <strong>This site's data was compiled by AI</strong> (Claude), not manually verified by a human.
-      Model metadata (organization, origin) was inferred from AI training knowledge and may contain errors.
-      <br><br>
-      <strong>Weight sizes and architecture parameters</strong> are sourced entirely from ollama.com —
-      the model detail page (weights, parameter count) and the model blob page (block_count, heads, key_length,
-      context_length). Quantization varies by tag — run <code>ollama show &lt;model&gt;</code>
-      for exact values. Verify for fine-tuned variants.
-      <strong>KV cache</strong> defaults to f16. Set <code>OLLAMA_KV_CACHE_TYPE=q8_0</code> or <code>q4_0</code>
-      to halve or quarter the cache size — requires Flash Attention.
-      Flash Attention is opt-in in ollama because it is not universally faster: benefits scale with context length
-      (negligible below 4k, meaningful above 8k), and newer GPU generations (H100, A100, RTX 40xx) gain more than older ones.
-      On AMD, Apple Silicon, and Intel Arc support is limited or experimental.
-      Always monitor <code>nvidia-smi</code> when pushing context limits.
+      <strong>All architecture data</strong> is sourced from ollama.com blob pages (block_count, heads, key_length, context_length)
+      and may vary by fine-tuned variant. Run <code>ollama show &lt;model&gt;</code> for exact values.
+      <strong>Organization and origin</strong> were inferred by AI and may contain errors.
     </div>
 
   </div>

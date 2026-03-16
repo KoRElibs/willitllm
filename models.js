@@ -2302,5 +2302,140 @@ const MODELS = [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 14.0},
       {"tag": "24b-small-2505-q8_0", "quantization": "Q8_0", "weights_gb": 25.0}
     ]
+  },
+  {
+    "ollama_tag": "mistral-small3.1:24b",
+    "context_length": 131072,
+    "params_b": 24.0,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 5120,
+    "key_length": 128,
+    "variants": [
+      {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 15.0},
+      {"tag": "24b-instruct-2503-q8_0", "quantization": "Q8_0", "weights_gb": 26.0}
+    ]
+  },
+  {
+    "ollama_tag": "mistral-small3.2:24b",
+    "context_length": 131072,
+    "params_b": 24.0,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 5120,
+    "key_length": 128,
+    "variants": [
+      {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 15.0},
+      {"tag": "24b-instruct-2506-q8_0", "quantization": "Q8_0", "weights_gb": 26.0}
+    ]
+  },
+  {
+    "ollama_tag": "mistral-large:123b",
+    "context_length": 131072,
+    "params_b": 123.0,
+    "block_count": 88,
+    "head_count": 96,
+    "head_count_kv": 8,
+    "embedding_length": 12288,
+    "key_length": 128,
+    "variants": [
+      {"tag": "123b", "quantization": "Q4_K_M", "weights_gb": 73.0},
+      {"tag": "123b-instruct-2407-q2_K", "quantization": "Q2_K", "weights_gb": 45.0},
+      {"tag": "123b-instruct-2407-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 53.0},
+      {"tag": "123b-instruct-2407-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 59.0},
+      {"tag": "123b-instruct-2407-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 65.0},
+      {"tag": "123b-instruct-2407-q4_0", "quantization": "Q4_0", "weights_gb": 69.0},
+      {"tag": "123b-instruct-2407-q4_1", "quantization": "Q4_1", "weights_gb": 77.0},
+      {"tag": "123b-instruct-2407-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 70.0},
+      {"tag": "123b-instruct-2407-q5_0", "quantization": "Q5_0", "weights_gb": 84.0},
+      {"tag": "123b-instruct-2407-q5_1", "quantization": "Q5_1", "weights_gb": 92.0},
+      {"tag": "123b-instruct-2407-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 84.0},
+      {"tag": "123b-instruct-2407-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 86.0},
+      {"tag": "123b-instruct-2407-q6_K", "quantization": "Q6_K", "weights_gb": 101.0},
+      {"tag": "123b-instruct-2407-q8_0", "quantization": "Q8_0", "weights_gb": 130.0},
+      {"tag": "123b-instruct-2411-q2_K", "quantization": "Q2_K", "weights_gb": 45.0},
+      {"tag": "123b-instruct-2411-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 53.0},
+      {"tag": "123b-instruct-2411-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 59.0},
+      {"tag": "123b-instruct-2411-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 65.0},
+      {"tag": "123b-instruct-2411-q4_0", "quantization": "Q4_0", "weights_gb": 69.0},
+      {"tag": "123b-instruct-2411-q4_1", "quantization": "Q4_1", "weights_gb": 77.0},
+      {"tag": "123b-instruct-2411-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 70.0},
+      {"tag": "123b-instruct-2411-q5_0", "quantization": "Q5_0", "weights_gb": 84.0},
+      {"tag": "123b-instruct-2411-q5_1", "quantization": "Q5_1", "weights_gb": 92.0},
+      {"tag": "123b-instruct-2411-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 84.0},
+      {"tag": "123b-instruct-2411-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 86.0},
+      {"tag": "123b-instruct-2411-q6_K", "quantization": "Q6_K", "weights_gb": 101.0},
+      {"tag": "123b-instruct-2411-q8_0", "quantization": "Q8_0", "weights_gb": 130.0}
+    ]
+  },
+  {
+    "ollama_tag": "mathstral:7b",
+    "context_length": 32768,
+    "params_b": 7.25,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
+    "variants": [
+      {"tag": "7b", "quantization": "Q4_0", "weights_gb": 4.1},
+      {"tag": "7b-v0.1-q2_K", "quantization": "Q2_K", "weights_gb": 2.7},
+      {"tag": "7b-v0.1-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 3.2},
+      {"tag": "7b-v0.1-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 3.5},
+      {"tag": "7b-v0.1-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 3.8},
+      {"tag": "7b-v0.1-q4_1", "quantization": "Q4_1", "weights_gb": 4.6},
+      {"tag": "7b-v0.1-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 4.1},
+      {"tag": "7b-v0.1-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 4.4},
+      {"tag": "7b-v0.1-q5_0", "quantization": "Q5_0", "weights_gb": 5.0},
+      {"tag": "7b-v0.1-q5_1", "quantization": "Q5_1", "weights_gb": 5.4},
+      {"tag": "7b-v0.1-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 5.0},
+      {"tag": "7b-v0.1-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 5.1},
+      {"tag": "7b-v0.1-q6_K", "quantization": "Q6_K", "weights_gb": 5.9},
+      {"tag": "7b-v0.1-q8_0", "quantization": "Q8_0", "weights_gb": 7.7}
+    ]
+  },
+  {
+    "ollama_tag": "ministral-3:3b",
+    "context_length": 262144,
+    "params_b": 3.85,
+    "block_count": 26,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 3072,
+    "key_length": 128,
+    "variants": [
+      {"tag": "3b", "quantization": "Q4_K_M", "weights_gb": 3.0},
+      {"tag": "3b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 4.5}
+    ]
+  },
+  {
+    "ollama_tag": "ministral-3:8b",
+    "context_length": 262144,
+    "params_b": 8.92,
+    "block_count": 34,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
+    "variants": [
+      {"tag": "8b", "quantization": "Q4_K_M", "weights_gb": 6.0},
+      {"tag": "8b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 9.9}
+    ]
+  },
+  {
+    "ollama_tag": "ministral-3:14b",
+    "context_length": 262144,
+    "params_b": 13.9,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 5120,
+    "key_length": 128,
+    "variants": [
+      {"tag": "14b", "quantization": "Q4_K_M", "weights_gb": 9.1},
+      {"tag": "14b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 15.0}
+    ]
   }
 ];
