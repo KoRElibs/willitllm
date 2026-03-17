@@ -181,6 +181,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 2048,
     "key_length": 64,
+    "value_length": 64,
     "variants": [
       {"tag": "1b", "quantization": "Q8_0", "weights_gb": 1.3},
       {"tag": "1b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 1.0},
@@ -196,6 +197,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 3072,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "3b", "quantization": "Q4_K_M", "weights_gb": 2.0},
       {"tag": "3b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 1.4},
@@ -234,6 +236,7 @@ const MODELS = [
     "head_count_kv": 1,
     "embedding_length": 640,
     "key_length": 256,
+    "value_length": 256,
     "variants": [
       {"tag": "270m", "quantization": "Q8_0", "weights_gb": 0.29},
       {"tag": "270m-it-q8_0", "quantization": "Q8_0", "weights_gb": 0.29},
@@ -248,6 +251,7 @@ const MODELS = [
     "head_count_kv": 1,
     "embedding_length": 1152,
     "key_length": 256,
+    "value_length": 256,
     "variants": [
       {"tag": "1b-it-q8_0", "quantization": "Q8_0", "weights_gb": 1.1}
     ]
@@ -261,6 +265,7 @@ const MODELS = [
     "head_count_kv": 4,
     "embedding_length": 2560,
     "key_length": 256,
+    "value_length": 256,
     "variants": [
       {"tag": "4b", "quantization": "Q4_K_M", "weights_gb": 3.3},
       {"tag": "4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 5.0}
@@ -275,6 +280,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 3840,
     "key_length": 256,
+    "value_length": 256,
     "variants": [
       {"tag": "12b", "quantization": "Q4_K_M", "weights_gb": 8.1},
       {"tag": "12b-it-q8_0", "quantization": "Q8_0", "weights_gb": 13.0}
@@ -289,6 +295,7 @@ const MODELS = [
     "head_count_kv": 16,
     "embedding_length": 5376,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "27b", "quantization": "Q4_K_M", "weights_gb": 17.0},
       {"tag": "27b-it-q8_0", "quantization": "Q8_0", "weights_gb": 30.0}
@@ -1765,6 +1772,7 @@ const MODELS = [
     "head_count_kv": 1,
     "embedding_length": 2048,
     "key_length": 256,
+    "value_length": 256,
     "variants": [
       {"tag": "2b", "quantization": "Q4_0", "weights_gb": 1.6},
       {"tag": "2b-code-q2_K", "quantization": "Q2_K", "weights_gb": 1.2},
@@ -1804,6 +1812,7 @@ const MODELS = [
     "head_count_kv": 16,
     "embedding_length": 3072,
     "key_length": 256,
+    "value_length": 256,
     "variants": [
       {"tag": "7b", "quantization": "Q4_0", "weights_gb": 5.0},
       {"tag": "7b-code-q2_K", "quantization": "Q2_K", "weights_gb": 3.5},
@@ -2066,6 +2075,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 5120,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "12b", "quantization": "Q4_0", "weights_gb": 7.1},
       {"tag": "12b-instruct-2407-q2_K", "quantization": "Q2_K", "weights_gb": 4.8},
@@ -2092,6 +2102,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 8192,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "70b", "quantization": "Q4_K_M", "weights_gb": 43.0},
       {"tag": "70b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 26.0},
@@ -2115,6 +2126,7 @@ const MODELS = [
     "head_count_kv": 4,
     "embedding_length": 2304,
     "key_length": 256,
+    "value_length": 256,
     "variants": [
       {"tag": "2b", "quantization": "Q4_0", "weights_gb": 1.6},
       {"tag": "2b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 1.2},
@@ -2154,6 +2166,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 3584,
     "key_length": 256,
+    "value_length": 256,
     "variants": [
       {"tag": "9b", "quantization": "Q4_0", "weights_gb": 5.4},
       {"tag": "9b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 3.8},
@@ -2193,6 +2206,7 @@ const MODELS = [
     "head_count_kv": 16,
     "embedding_length": 4608,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "27b", "quantization": "Q4_0", "weights_gb": 16.0},
       {"tag": "27b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 10.0},
@@ -2258,6 +2272,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 6144,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "22b", "quantization": "Q4_0", "weights_gb": 13.0},
       {"tag": "22b-instruct-2409-q2_K", "quantization": "Q2_K", "weights_gb": 8.3},
@@ -2284,6 +2299,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 5120,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 14.0},
       {"tag": "24b-instruct-2501-q8_0", "quantization": "Q8_0", "weights_gb": 25.0}
@@ -2298,6 +2314,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 5120,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 14.0},
       {"tag": "24b-small-2505-q8_0", "quantization": "Q8_0", "weights_gb": 25.0}
@@ -2312,6 +2329,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 5120,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 15.0},
       {"tag": "24b-instruct-2503-q8_0", "quantization": "Q8_0", "weights_gb": 26.0}
@@ -2326,6 +2344,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 5120,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 15.0},
       {"tag": "24b-instruct-2506-q8_0", "quantization": "Q8_0", "weights_gb": 26.0}
@@ -2340,6 +2359,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 12288,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "123b", "quantization": "Q4_K_M", "weights_gb": 73.0},
       {"tag": "123b-instruct-2407-q2_K", "quantization": "Q2_K", "weights_gb": 45.0},
@@ -2405,6 +2425,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 3072,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "3b", "quantization": "Q4_K_M", "weights_gb": 3.0},
       {"tag": "3b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 4.5}
@@ -2419,6 +2440,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 4096,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "8b", "quantization": "Q4_K_M", "weights_gb": 6.0},
       {"tag": "8b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 9.9}
@@ -2433,6 +2455,7 @@ const MODELS = [
     "head_count_kv": 8,
     "embedding_length": 5120,
     "key_length": 128,
+    "value_length": 128,
     "variants": [
       {"tag": "14b", "quantization": "Q4_K_M", "weights_gb": 9.1},
       {"tag": "14b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 15.0}

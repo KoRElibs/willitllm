@@ -12,7 +12,7 @@ function getBytesPerElement() {
   return parseFloat(document.getElementById('kvCacheType').value);
 }
 
-const OVERHEAD_FACTOR = 0.92;    // reserve ~8% for CUDA context, activations, OS
+const OVERHEAD_GB = 0.5;    // fixed reservation for CUDA context, driver, ollama overhead
 const CTX_LABELS = [
   [131072,'128k'],[65536,'64k'],[32768,'32k'],[16384,'16k'],
   [8192,'8k'],[4096,'4k'],[2048,'2k'],[1024,'1k'],
@@ -41,10 +41,11 @@ function formatModelOption(m) {
 // CORE CALC
 // ─────────────────────────────────────────────────────────────────────────────
 function calcMaxContext(model, vramGB, bytesPerElement, weightsGB) {
-  const availableBytes = (vramGB * OVERHEAD_FACTOR - weightsGB) * 1024 ** 3;
+  const availableBytes = (vramGB - OVERHEAD_GB - weightsGB) * 1024 ** 3;
   if (availableBytes <= 0) return { maxCtx: 0, kvCacheGB: 0, freeGB: 0, availableBytes };
 
-  const perToken = model.block_count * model.head_count_kv * model.key_length * 2 * bytesPerElement;
+  const valueDim = model.value_length ?? model.key_length;
+  const perToken = model.block_count * model.head_count_kv * (model.key_length + valueDim) * bytesPerElement;
   const rawTokens = availableBytes / perToken;
   const archLimit = model.context_length || Infinity;
   const archMaxRaw = Math.min(rawTokens, archLimit);
@@ -133,7 +134,7 @@ function markModelOptions(vramGB, bytesPerElement) {
   Array.from(sel.options).forEach((opt, i) => {
     const m = MODELS[i];
     const weightsGB = m.variants && m.variants.length ? m.variants[0].weights_gb : 0;
-    const fits = weightsGB < vramGB * OVERHEAD_FACTOR;
+    const fits = weightsGB < vramGB - OVERHEAD_GB;
     if (!fits) {
       opt.textContent = `✗  ${formatModelOption(m)}`;
       opt.style.color = '#f06464';
@@ -181,7 +182,7 @@ function render() {
   markModelOptions(vramGB, bytesPerElement);
 
   const ctxResult = calcMaxContext(model, vramGB, bytesPerElement, weightsGB);
-  const noFit     = weightsGB >= vramGB * OVERHEAD_FACTOR;
+  const noFit     = weightsGB >= vramGB - OVERHEAD_GB;
 
   // ── memory bar
   const modelPct   = Math.min(100, (weightsGB / vramGB) * 100);
@@ -278,7 +279,7 @@ function render() {
     ? model.context_length.toLocaleString() + ' tokens' : '—';
 
   if (noFit) {
-    labelOom.textContent = `Model weights (${fmtGB(weightsGB)}) exceed available VRAM (${fmtGB(vramGB * OVERHEAD_FACTOR)} usable). This model will not load.`;
+    labelOom.textContent = `Model weights (${fmtGB(weightsGB)}) exceed available VRAM (${fmtGB(vramGB - OVERHEAD_GB)} usable). This model will not load.`;
     labelOom.hidden = false;
     ollamaCmd.hidden = true;
     document.getElementById('ollamaHint').hidden = true;
@@ -345,11 +346,9 @@ function render() {
   // ── details table
   const detailValues = {
     detailLayers:       model.block_count,
-    detailAttnHeads:    model.head_count,
     detailKvHeads:      model.head_count_kv,
     detailHeadDim:      model.key_length,
-    detailHiddenSize:   model.embedding_length,
-    detailAttnHeadsDiv: model.head_count,
+    detailValueLength:  model.value_length ?? model.key_length,
     detailBpe:          bytesPerElement,
     detailBpeLabel:     kvLabel,
     detailWeights:      fmtGB(weightsGB),
@@ -364,11 +363,6 @@ function render() {
   const ollamaLibUrl  = `https://ollama.com/library/${library}`;
   const ollamaSrcLink = `<a href="${ollamaLibUrl}" target="_blank" rel="noopener noreferrer">ollama.com ↗</a>`;
   document.querySelectorAll('.src-config-json').forEach(el => { el.innerHTML = ollamaSrcLink; });
-  document.getElementById('srcAttnHeads').innerHTML = ollamaSrcLink + ' · not used in calc';
-  const derivedHeadDim = model.key_length === Math.floor(model.embedding_length / model.head_count);
-  document.getElementById('srcHeadDim').innerHTML = derivedHeadDim
-    ? ollamaSrcLink + ' · derived'
-    : ollamaSrcLink + ' · explicit';
 
   // Model weights source
   const modelName     = model.ollama_tag.split(':')[0];
@@ -384,15 +378,18 @@ function render() {
   const formulaBox  = document.getElementById('formulaBox');
   formulaBox.hidden = noFit;
   if (!noFit) {
+    const valueDim = model.value_length ?? model.key_length;
+    document.getElementById('formulaHeader').textContent     = `Max context: ${fmtCtx(ctxResult.maxCtx)} tokens`;
     document.getElementById('formulaBlockCount').textContent = model.block_count;
     document.getElementById('formulaKvHeads').textContent    = model.head_count_kv;
     document.getElementById('formulaBpeLabel').textContent   = `${bytesPerElement}(${kvLabel})`;
+    document.getElementById('formulaValueLength').textContent = valueDim;
     document.getElementById('formulaKeyLength').textContent  = model.key_length;
     document.getElementById('formulaPerToken').textContent   = `${ctxResult.perToken.toLocaleString()} bytes`;
     document.getElementById('formulaPerTokenKB').textContent = `(${(ctxResult.perToken / 1024).toFixed(1)} KB)`;
-    document.getElementById('formulaAvailLabel').textContent = `available_vram = ${fmtGB(vramGB)} × ${OVERHEAD_FACTOR} overhead factor − ${fmtGB(weightsGB)} weights`;
-    document.getElementById('formulaAvailGB').textContent    = fmtGB(vramGB * OVERHEAD_FACTOR - weightsGB);
-    document.getElementById('formulaAvailBytes').textContent = `${Math.round((vramGB * OVERHEAD_FACTOR - weightsGB) * 1024 ** 3).toLocaleString()} bytes`;
+    document.getElementById('formulaAvailLabel').textContent = `available_vram = ${fmtGB(vramGB)} − ${fmtGB(OVERHEAD_GB)} overhead − ${fmtGB(weightsGB)} weights`;
+    document.getElementById('formulaAvailGB').textContent    = fmtGB(vramGB - OVERHEAD_GB - weightsGB);
+    document.getElementById('formulaAvailBytes').textContent = `${Math.round((vramGB - OVERHEAD_GB - weightsGB) * 1024 ** 3).toLocaleString()} bytes`;
     document.getElementById('formulaRawTokens').textContent  = Math.round(ctxResult.rawTokens).toLocaleString();
     document.getElementById('formulaMaxCtx').textContent     = `${ctxResult.maxCtx.toLocaleString()} tokens (${fmtCtx(ctxResult.maxCtx)})`;
     const archCapNote = document.getElementById('formulaArchCapNote');
@@ -409,7 +406,7 @@ function render() {
 // INIT
 // ─────────────────────────────────────────────────────────────────────────────
 function init() {
-  document.getElementById('overheadPct').textContent = Math.round((1 - OVERHEAD_FACTOR) * 100);
+  document.getElementById('overheadReserved').textContent = fmtGB(OVERHEAD_GB);
 
   // Build GPU dropdown from gpus.js data
   const vramSel = document.getElementById('vramInput');

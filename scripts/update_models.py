@@ -78,7 +78,7 @@ _FIELD_ORDER = [
     "ollama_tag", "moe",
     "context_length", "params_b", "params_b_active",
     "block_count", "head_count", "head_count_kv",
-    "embedding_length", "key_length",
+    "embedding_length", "key_length", "value_length",
     "variants",
 ]
 
@@ -256,6 +256,10 @@ def _parse_blob(html: str) -> dict:
     elif hs and nh:
         r["key_length"] = hs // nh
 
+    vl = iv("attention.value_length")
+    if vl:
+        r["value_length"] = vl
+
     qt = pairs.get("general.file_type")
     if qt:
         r["default_quantization"] = qt  # used to build variants, not stored at top level
@@ -367,7 +371,18 @@ def patch_entry(path: Path, tag: str, changes: dict) -> None:
         pattern = rf'("{re.escape(field)}"\s*:\s*)(?:"[^"]*"|-?\d+\.?\d*)'
         patched = re.sub(pattern, rf"\g<1>{jv}", block)
         if patched == block:
-            print(f"    WARNING: '{field}' not found in block for '{tag}'")
+            # Field not present — insert it before the next field in _FIELD_ORDER, or before "variants"
+            pos = _FIELD_ORDER.index(field) if field in _FIELD_ORDER else len(_FIELD_ORDER)
+            anchor = next(
+                (f for f in _FIELD_ORDER[pos + 1:] if re.search(rf'"{re.escape(f)}"\s*:', block)),
+                None,
+            )
+            if anchor:
+                insert_before = re.search(rf'"{re.escape(anchor)}"\s*:', block).start()
+                indent = "    "
+                block = block[:insert_before] + f'"{field}": {jv},\n{indent}' + block[insert_before:]
+            else:
+                print(f"    WARNING: '{field}' not found in block for '{tag}'")
         else:
             block = patched
 
