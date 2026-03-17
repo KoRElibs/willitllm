@@ -233,10 +233,10 @@ header p {
   font-family: var(--mono);
   font-size: 13px;
 }
-.score-icon { width: 1.2em; text-align: center; color: var(--text); }
-.score-label { width: 5.5em; color: var(--muted); }
+.score-icon  { width: 1.2em; text-align: center; color: var(--text); }
+.score-label { min-width: 6.5em; color: var(--muted); }
 .score-stars { letter-spacing: 0.05em; }
-.score-sub   { color: var(--muted); font-size: 12px; }
+.score-sub   { display: block; color: var(--muted); font-size: 11px; margin-top: 1px; margin-left: 7.7em; }
 
 
 .result-label { color: var(--muted); font-size: 13px; }
@@ -277,7 +277,9 @@ header p {
 .detail-row > div { padding: 9px 16px; }
 .detail-key   { color: var(--muted); }
 .detail-val   { color: var(--text); }
-.community-origin { color: var(--muted); font-style: italic; }
+.community-origin  { color: var(--muted); font-style: italic; }
+.detail-moe        { color: var(--purple); }
+.detail-multimodal { color: var(--accent); }
 .detail-src        { color: var(--muted); font-size: 11px; opacity: 0.7; }
 .detail-src a      { color: var(--accent); text-decoration: underline; }
 .detail-src a:hover { opacity: 0.75; }
@@ -357,7 +359,8 @@ header p {
   font-size: 12px;
   color: var(--accent);
   line-height: 1.9;
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 .ollama-cmd .cmd-muted { color: var(--muted); }
 .flash-warn {
@@ -394,6 +397,7 @@ header p {
   position: fixed;
   z-index: 100;
   width: 260px;
+  max-width: 90vw;
   background: var(--bg3);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -432,4 +436,24 @@ header p {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 13px;
+}
+
+/* ── Mobile ── */
+@media (max-width: 600px) {
+  body { padding: 20px 12px; }
+
+  header h1 { font-size: 24px; margin-bottom: 6px; }
+  header p  { font-size: 13px; }
+
+  .controls { grid-template-columns: 1fr; gap: 12px; }
+
+  .detail-row { grid-template-columns: 1fr 1fr; }
+  .detail-src { display: none; }
+
+  .formula-box { font-size: 11px; line-height: 1.6; padding: 12px 14px; }
+
+  .score-label { width: 4.5em; font-size: 12px; }
+  .score-row   { font-size: 12px; gap: 6px; }
+
+  .bar-legend  { gap: 12px; font-size: 11px; }
 }

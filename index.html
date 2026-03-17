@@ -99,16 +99,16 @@
       </div>
       <div class="detail-row" id="detailMoeRow" hidden>
         <div class="detail-key" data-tip="Mixture of Experts (MoE) — only a fraction of parameters activate per token, allowing a large total parameter count with lower compute and memory cost than a dense model of the same size.">architecture</div>
-        <div class="detail-val" style="color:var(--purple)">Mixture of Experts (MoE)</div>
+        <div class="detail-val detail-moe">Mixture of Experts (MoE)</div>
       </div>
       <div class="detail-row" id="detailMultimodalRow" hidden>
         <div class="detail-key" data-tip="This model can process images in addition to text. Images are converted to tokens that consume the context window — so usable text context is reduced when images are provided.">modality</div>
-        <div class="detail-val" style="color:var(--accent)">Multimodal (text + vision)</div>
+        <div class="detail-val detail-multimodal">Multimodal (text + vision)</div>
       </div>
       <div class="detail-row">
         <div class="detail-key" data-tip="The maximum context length the model was trained on. Think of it as the model's memory limit — it cannot meaningfully process more tokens than this at once. Do not set num_ctx above this value.">context_length</div>
         <div class="detail-val" id="detailMaxCtx"></div>
-        <div class="detail-src src-config-json" id="srcMaxCtx"></div>
+        <div class="detail-src src-config-json"></div>
       </div>
       <div class="details-header">Architecture</div>
       <div class="detail-row">
@@ -145,26 +145,26 @@
 
     <div class="formula-box" id="formulaBox" hidden>
       <div class="formula-header">Calculation</div>
-      <div>bytes_per_token = block_count × head_count_kv × key_length × 2(K+V) × <span id="fBpeLabel"></span></div>
+      <div>bytes_per_token = block_count × head_count_kv × key_length × 2(K+V) × <span id="formulaBpeLabel"></span></div>
       <div class="formula-line">
-        &nbsp;&nbsp;= <span class="hl" id="fLayers"></span>
-        × <span class="hl" id="fKvHeads"></span>
-        × <span class="hl" id="fHeadDim"></span>
+        &nbsp;&nbsp;= <span class="hl" id="formulaBlockCount"></span>
+        × <span class="hl" id="formulaKvHeads"></span>
+        × <span class="hl" id="formulaKeyLength"></span>
         × 2 × 2
-        = <span class="hl-a" id="fPerToken"></span> / token
-        <span class="formula-muted" id="fPerTokenKB"></span>
+        = <span class="hl-a" id="formulaPerToken"></span> / token
+        <span class="formula-muted" id="formulaPerTokenKB"></span>
       </div>
-      <div class="formula-spacer" id="fAvailLabel"></div>
+      <div class="formula-spacer" id="formulaAvailLabel"></div>
       <div class="formula-line">
-        &nbsp;&nbsp;= <span class="hl-a" id="fAvailGB"></span>
-        = <span class="hl-a" id="fAvailBytes"></span>
+        &nbsp;&nbsp;= <span class="hl-a" id="formulaAvailGB"></span>
+        = <span class="hl-a" id="formulaAvailBytes"></span>
       </div>
       <div class="formula-spacer">raw_max_tokens = available_vram ÷ bytes_per_token</div>
-      <div class="formula-line">&nbsp;&nbsp;= <span class="hl-a" id="fRawTokens"></span> tokens</div>
+      <div class="formula-line">&nbsp;&nbsp;= <span class="hl-a" id="formulaRawTokens"></span> tokens</div>
       <div class="formula-spacer">→ largest power-of-2 that fits:</div>
-      <div class="formula-line">&nbsp;&nbsp;<span class="hl-g" id="fMaxCtx"></span></div>
-      <div id="archLimitNote" hidden>
-        <div class="formula-spacer" style="color:var(--muted)">↑ capped at model's architectural limit (context_length = <span id="fArchLimit"></span> tokens)</div>
+      <div class="formula-line">&nbsp;&nbsp;<span class="hl-g" id="formulaMaxCtx"></span></div>
+      <div id="formulaArchCapNote" hidden>
+        <div class="formula-spacer formula-muted">↑ capped at model's architectural limit (context_length = <span id="formulaArchLimit"></span> tokens)</div>
       </div>
     </div>
 

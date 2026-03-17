@@ -8,12 +8,16 @@ const KV_CACHE_INFO = {
   'q4_0': { summary: 'Quarter the memory per token — more precision loss, maximum context for the VRAM.' },
 };
 
-
 function getBytesPerElement() {
   return parseFloat(document.getElementById('kvCacheType').value);
 }
-const OVERHEAD_FACTOR   = 0.92;    // reserve ~8% for CUDA context, activations, OS
-const POWERS_OF_2       = [131072, 65536, 32768, 16384, 8192, 4096, 2048, 1024];
+
+const OVERHEAD_FACTOR = 0.92;    // reserve ~8% for CUDA context, activations, OS
+const CTX_LABELS = [
+  [131072,'128k'],[65536,'64k'],[32768,'32k'],[16384,'16k'],
+  [8192,'8k'],[4096,'4k'],[2048,'2k'],[1024,'1k'],
+];
+const POWERS_OF_2 = [131072, 65536, 32768, 16384, 8192, 4096, 2048, 1024];
 
 const FLAGS = {
   'USA': '🇺🇸', 'France': '🇫🇷', 'EU': '🇪🇺', 'Canada': '🇨🇦',
@@ -22,15 +26,15 @@ const FLAGS = {
 };
 const LIB_META = Object.fromEntries(LIBRARIES.map(l => [l.library, l]));
 
-function libMeta(m) {
+function getLibMeta(m) {
   return LIB_META[m.ollama_tag.split(':')[0]] || {};
 }
 
-function modelLabel(m) {
-  const [library, tag] = m.ollama_tag.split(':');
-  const meta = LIB_META[library];
-  const flag = meta?.origin ? (FLAGS[meta.origin] || '🌍') : '👥';
-  return `${library} ${tag}  ${flag}`;
+function formatModelOption(m) {
+  const [library] = m.ollama_tag.split(':');
+  const libInfo = LIB_META[library];
+  const flag = libInfo?.origin ? (FLAGS[libInfo.origin] || '🌍') : '👥';
+  return `${m.ollama_tag}  ${flag}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,21 +66,13 @@ function fmtTokensHuman(n) {
   return `≈${w} words · ~${pages} pages`;
 }
 function fmtCtx(n) {
-  if (n >= 131072) return '128k';
-  if (n >= 65536)  return '64k';
-  if (n >= 32768)  return '32k';
-  if (n >= 16384)  return '16k';
-  if (n >= 8192)   return '8k';
-  if (n >= 4096)   return '4k';
-  if (n >= 2048)   return '2k';
-  if (n >= 1024)   return '1k';
-  return '0';
+  return (CTX_LABELS.find(([t]) => n >= t) || [0, '0'])[1];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VARIANT DROPDOWN
 // ─────────────────────────────────────────────────────────────────────────────
-function rating(val, filled, empty, max = 5) {
+function buildRatingBar(val, filled, empty, max = 5) {
   const n = Math.round((val / 10) * max);
   return filled.repeat(n) + empty.repeat(max - n);
 }
@@ -84,9 +80,9 @@ function rating(val, filled, empty, max = 5) {
 function updateVariantInfo(model) {
   const el = document.getElementById('variantInfo');
   if (!el) return;
-  const v = getSelectedVariant(model);
-  const qi = v && QUANT_INFO[v.quantization];
-  el.textContent = qi ? qi.summary : '';
+  const selectedVariant = getSelectedVariant(model);
+  const quantInfo = selectedVariant && QUANT_INFO[selectedVariant.quantization];
+  el.textContent = quantInfo ? quantInfo.summary : '';
 }
 
 function populateVariants(model) {
@@ -99,13 +95,13 @@ function populateVariants(model) {
     updateVariantInfo(model);
     return;
   }
-  model.variants.forEach((v, i) => {
+  model.variants.forEach((variant, i) => {
     const opt = document.createElement('option');
     opt.value = i;
-    const qi = QUANT_INFO[v.quantization];
-    const spd = qi ? rating(qi.speed,   '⚡︎', '·') : '·····';
-    const qlt = qi ? rating(qi.quality, '★', '☆') : '☆☆☆☆☆';
-    opt.textContent = `${spd} ${qlt}  ${v.tag} — ${v.weights_gb.toFixed(1)} GB`;
+    const quantInfo     = QUANT_INFO[variant.quantization];
+    const speedRating   = quantInfo ? buildRatingBar(quantInfo.speed,   '⚡︎', '·') : '·····';
+    const qualityRating = quantInfo ? buildRatingBar(quantInfo.quality, '★',  '☆') : '☆☆☆☆☆';
+    opt.textContent = `${speedRating} ${qualityRating}  ${variant.tag} — ${variant.weights_gb.toFixed(1)} GB`;
     sel.appendChild(opt);
   });
   updateVariantInfo(model);
@@ -124,9 +120,9 @@ function getSelectedVariant(model) {
 // Build the full ollama tag for a specific variant, e.g. "llama3.2:3b-q4_K_M".
 // Uses the stored variant.tag (the original sub-tag from ollama.com).
 function variantOllamaTag(model, variantIdx) {
-  const v = model.variants[variantIdx];
+  const variant = model.variants[variantIdx];
   const library = model.ollama_tag.split(':')[0];
-  return `${library}:${v.tag}`;
+  return `${library}:${variant.tag}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,14 +135,14 @@ function markModelOptions(vramGB, bytesPerElement) {
     const weightsGB = m.variants && m.variants.length ? m.variants[0].weights_gb : 0;
     const fits = weightsGB < vramGB * OVERHEAD_FACTOR;
     if (!fits) {
-      opt.textContent  = `✗  ${modelLabel(m)}`;
-      opt.style.color  = '#f06464';
+      opt.textContent = `✗  ${formatModelOption(m)}`;
+      opt.style.color = '#f06464';
       return;
     }
-    const r   = calcMaxContext(m, vramGB, bytesPerElement, weightsGB);
-    const pct = m.context_length ? Math.round((r.maxCtx / m.context_length) * 100) : 100;
-    opt.textContent = modelLabel(m);
-    opt.style.color = pct >= 66 ? '#56d88a' : pct >= 33 ? '#f5a623' : '#f07418';
+    const ctxResult     = calcMaxContext(m, vramGB, bytesPerElement, weightsGB);
+    const contextFitPct = m.context_length ? Math.round((ctxResult.maxCtx / m.context_length) * 100) : 100;
+    opt.textContent = formatModelOption(m);
+    opt.style.color = contextFitPct >= 66 ? '#56d88a' : contextFitPct >= 33 ? '#f5a623' : '#f07418';
   });
 }
 
@@ -160,7 +156,7 @@ function render() {
   const kvLabel         = KV_CACHE_LABELS[String(bytesPerElement)] || 'f16';
   const kvInfo          = KV_CACHE_INFO[kvLabel];
   if (kvInfo) { document.getElementById('kvCacheInfoText').textContent = `${kvLabel} — ${kvInfo.summary}`; }
-  const model           = MODELS[modelIdx];
+  const model = MODELS[modelIdx];
 
   const noModel = document.getElementById('noModel');
   const results = document.getElementById('results');
@@ -174,48 +170,44 @@ function render() {
   noModel.hidden = true;
   results.hidden = false;
 
-  const variant   = getSelectedVariant(model);
-  const weightsGB = variant ? variant.weights_gb : 0;
+  const variant      = getSelectedVariant(model);
+  const weightsGB    = variant ? variant.weights_gb : 0;
   const quantization = variant ? variant.quantization : '—';
 
-  const qi = variant ? QUANT_INFO[variant.quantization] : null;
-  const infoEl = document.getElementById('variantInfo');
-  if (qi) {
-    infoEl.textContent  = `${variant.quantization} — ${qi.summary}`;
-  } else {
-    infoEl.textContent  = '';
-  }
+  const quantInfo = variant ? QUANT_INFO[variant.quantization] : null;
+  const infoEl    = document.getElementById('variantInfo');
+  infoEl.textContent = quantInfo ? `${variant.quantization} — ${quantInfo.summary}` : '';
 
   markModelOptions(vramGB, bytesPerElement);
 
-  const r      = calcMaxContext(model, vramGB, bytesPerElement, weightsGB);
-  const noFit  = weightsGB >= vramGB * OVERHEAD_FACTOR;
+  const ctxResult = calcMaxContext(model, vramGB, bytesPerElement, weightsGB);
+  const noFit     = weightsGB >= vramGB * OVERHEAD_FACTOR;
 
   // ── memory bar
   const modelPct   = Math.min(100, (weightsGB / vramGB) * 100);
-  const contextPct = noFit ? 0 : Math.min(100 - modelPct, (r.kvCacheGB / vramGB) * 100);
+  const contextPct = noFit ? 0 : Math.min(100 - modelPct, (ctxResult.kvCacheGB / vramGB) * 100);
   const freePct    = Math.max(0, 100 - modelPct - contextPct);
 
   document.getElementById('barTotal').textContent = fmtGB(vramGB) + ' total';
 
   const segModel = document.getElementById('segModel');
-  segModel.className     = 'membar-seg ' + (noFit ? 'seg-overflow' : 'seg-model');
-  segModel.style.width   = modelPct.toFixed(1) + '%';
-  segModel.textContent   = modelPct > 12 ? fmtGB(weightsGB) : '';
+  segModel.className   = 'membar-seg ' + (noFit ? 'seg-overflow' : 'seg-model');
+  segModel.style.width = modelPct.toFixed(1) + '%';
+  segModel.textContent = modelPct > 12 ? fmtGB(weightsGB) : '';
 
   const segContext = document.getElementById('segContext');
   segContext.className   = 'membar-seg ' + (noFit ? 'seg-overflow' : 'seg-context');
   segContext.style.width = contextPct.toFixed(1) + '%';
-  segContext.textContent = contextPct > 8 ? fmtCtx(r.maxCtx) : '';
+  segContext.textContent = contextPct > 8 ? fmtCtx(ctxResult.maxCtx) : '';
 
   const segFree = document.getElementById('segFree');
-  segFree.style.width = freePct.toFixed(1) + '%';
-  segFree.style.flex  = freePct < 1 ? `0 0 ${freePct.toFixed(1)}%` : '1';
-  segFree.textContent = freePct > 8 ? fmtGB(r.freeGB) : '';
+  segFree.style.width  = freePct.toFixed(1) + '%';
+  segFree.style.flex   = freePct < 1 ? `0 0 ${freePct.toFixed(1)}%` : '1';
+  segFree.textContent  = freePct > 8 ? fmtGB(ctxResult.freeGB) : '';
 
   document.getElementById('legendModel').textContent   = `Model weights (${fmtGB(weightsGB)})`;
-  document.getElementById('legendContext').textContent = `KV cache @ ${fmtCtx(r.maxCtx)} ctx (${fmtGB(r.kvCacheGB)})`;
-  document.getElementById('legendFree').textContent    = `Free (${fmtGB(Math.max(0, r.freeGB))})`;
+  document.getElementById('legendContext').textContent = `KV cache @ ${fmtCtx(ctxResult.maxCtx)} ctx (${fmtGB(ctxResult.kvCacheGB)})`;
+  document.getElementById('legendFree').textContent    = `Free (${fmtGB(Math.max(0, ctxResult.freeGB))})`;
 
   // ── result headline
   const headline  = document.getElementById('resultHeadline');
@@ -224,41 +216,38 @@ function render() {
   const scorecard = document.getElementById('scorecard');
   const ollamaCmd = document.getElementById('ollamaCmd');
 
-  const meta = libMeta(model);
+  const libInfo = getLibMeta(model);
 
-  // ── Scorecard ─────────────────────────────────────────────────────────────
+  // ── Scorecard
   function stars(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
-
-  const sSpeed     = qi ? Math.max(1, Math.round((qi.speed   / 10) * 5)) : 0;
-  const sQuality   = qi ? Math.max(1, Math.round((qi.quality / 10) * 5)) : 0;
-  const pct        = (!noFit && model.context_length) ? Math.round((r.maxCtx / model.context_length) * 100) : null;
-  const sContext   = pct === null ? 0 : pct >= 90 ? 5 : pct >= 66 ? 4 : pct >= 40 ? 3 : pct >= 15 ? 2 : 1;
-  const sPrecision = bytesPerElement === 2 ? 5 : bytesPerElement === 1 ? 3 : 2;
-  const avg        = (sSpeed + sQuality + sContext + sPrecision) / 4;
-  const scoreClass = noFit ? 'error' : avg >= 4 ? 'score-high' : avg >= 3 ? 'score-mid' : avg >= 2 ? 'score-low' : 'score-poor';
-
-  function scoreColor(n) {
+  function colorForScore(n) {
     return n >= 4 ? 'var(--green)' : n === 3 ? 'var(--amber)' : n === 2 ? 'var(--orange)' : 'var(--red)';
   }
+
+  const scoreSpeed     = quantInfo ? Math.max(1, Math.round((quantInfo.speed   / 10) * 5)) : 0;
+  const scoreQuality   = quantInfo ? Math.max(1, Math.round((quantInfo.quality / 10) * 5)) : 0;
+  const contextFitPct  = (!noFit && model.context_length) ? Math.round((ctxResult.maxCtx / model.context_length) * 100) : null;
+  const scoreContext   = contextFitPct === null ? 0 : contextFitPct >= 90 ? 5 : contextFitPct >= 66 ? 4 : contextFitPct >= 40 ? 3 : contextFitPct >= 15 ? 2 : 1;
+  const scorePrecision = bytesPerElement === 2 ? 5 : bytesPerElement === 1 ? 3 : 2;
+  const scoreAvg       = (scoreSpeed + scoreQuality + scoreContext + scorePrecision) / 4;
+  const scoreClass     = noFit ? 'error' : scoreAvg >= 4 ? 'score-high' : scoreAvg >= 3 ? 'score-mid' : scoreAvg >= 2 ? 'score-low' : 'score-poor';
 
   headline.className = `result-headline ${scoreClass}`;
 
   if (!noFit) {
-    const rows = [
-      ['scoreSpeed',     sSpeed],
-      ['scoreQuality',   sQuality],
-      ['scorePrecision', sPrecision],
-      ['scoreContext',   sContext],
-    ];
-    rows.forEach(([id, s]) => {
+    [
+      ['scoreSpeed',     scoreSpeed],
+      ['scoreQuality',   scoreQuality],
+      ['scorePrecision', scorePrecision],
+      ['scoreContext',   scoreContext],
+    ].forEach(([id, score]) => {
       const el = document.getElementById(id);
-      el.textContent = stars(s);
-      el.style.color = scoreColor(s);
+      el.textContent = stars(score);
+      el.style.color = colorForScore(score);
     });
-    const ctxSub = pct !== null
-      ? `${fmtCtx(r.maxCtx)} tokens · ${pct}% of ${fmtCtx(model.context_length)} max`
-      : `${fmtCtx(r.maxCtx)} tokens`;
-    document.getElementById('scoreContextSub').textContent = meta.multimodal
+
+    const ctxSub = `${fmtCtx(ctxResult.maxCtx)} tokens${contextFitPct !== null && contextFitPct < 100 ? ` · ${contextFitPct}% of ${fmtCtx(model.context_length)} max` : ''}`;
+    document.getElementById('scoreContextSub').textContent = libInfo.multimodal
       ? ctxSub + ' · images consume tokens'
       : ctxSub;
     scorecard.hidden = false;
@@ -273,20 +262,20 @@ function render() {
   verdictEl.classList.add('verdict-anim');
 
   // ── model info
-  const orgEl = document.getElementById('detailOrganization');
-  orgEl.textContent = meta.organization || '—';
+  document.getElementById('detailOrganization').textContent = libInfo.organization || '—';
 
   const originEl = document.getElementById('detailOrigin');
-  if (meta.origin) {
-    originEl.textContent = `${FLAGS[meta.origin] || ''} ${meta.origin}`.trim();
+  if (libInfo.origin) {
+    originEl.textContent = `${FLAGS[libInfo.origin] || ''} ${libInfo.origin}`.trim();
     originEl.className = 'detail-val';
   } else {
     originEl.textContent = 'community project';
     originEl.className = 'detail-val community-origin';
   }
-  document.getElementById('detailMoeRow').hidden            = !model.moe;
-  document.getElementById('detailMultimodalRow').hidden     = !meta.multimodal;
-  document.getElementById('detailMaxCtx').textContent       = model.context_length ? model.context_length.toLocaleString() + ' tokens' : '—';
+  document.getElementById('detailMoeRow').hidden        = !model.moe;
+  document.getElementById('detailMultimodalRow').hidden = !libInfo.multimodal;
+  document.getElementById('detailMaxCtx').textContent   = model.context_length
+    ? model.context_length.toLocaleString() + ' tokens' : '—';
 
   if (noFit) {
     labelOom.textContent = `Model weights (${fmtGB(weightsGB)}) exceed available VRAM (${fmtGB(vramGB * OVERHEAD_FACTOR)} usable). This model will not load.`;
@@ -297,8 +286,8 @@ function render() {
     labelOom.hidden = true;
 
     const ctxHint = document.getElementById('ctxHint');
-    if (sContext <= 3) {
-      ctxHint.textContent = `Runs fine at ${fmtCtx(r.maxCtx)} — ${fmtTokensHuman(r.maxCtx)} of typical English text. Keep num_ctx at or below this limit (the command below sets it).`;
+    if (scoreContext <= 3) {
+      ctxHint.textContent = `Runs fine at ${fmtCtx(ctxResult.maxCtx)} — ${fmtTokensHuman(ctxResult.maxCtx)} of typical English text. Keep num_ctx at or below this limit (the command below sets it).`;
       ctxHint.hidden = false;
     } else {
       ctxHint.hidden = true;
@@ -319,31 +308,32 @@ function render() {
       flashTip.hidden = true;
     }
 
-    const hintEl    = document.getElementById('ollamaHint');
-    const winToggle = document.getElementById('winToggle');
+    const hintEl         = document.getElementById('ollamaHint');
+    const winToggle      = document.getElementById('winToggle');
     const winToggleLabel = document.getElementById('winToggleLabel');
-    const useWindows = winToggle.checked;
+    const useWindows     = winToggle.checked;
     winToggleLabel.hidden = false;
-    const m = s => `<span class="cmd-muted">${s}</span>`;
+
+    const muted      = s => `<span class="cmd-muted">${s}</span>`;
     const variantIdx = getSelectedVariantIdx(model);
-    const runTag   = variantOllamaTag(model, variantIdx);
-    const runLines = `ollama run ${runTag}\n>>> /set parameter num_ctx ${r.maxCtx}`;
+    const runTag     = variantOllamaTag(model, variantIdx);
+    const runLines   = `ollama run ${runTag}\n>>> /set parameter num_ctx ${ctxResult.maxCtx}`;
 
     if (useWindows) {
       ollamaCmd.innerHTML = [
-        m(`# 1. Open: System Properties → Environment Variables → New user variable`),
-        m(`#    Name:  OLLAMA_KV_CACHE_TYPE`),
-        m(`#    Value: ${kvLabel}`),
-        m(`# 2. Right-click Ollama in the system tray → Quit, then relaunch Ollama`),
-        m(`# 3. Run:`),
+        muted(`# 1. Open: System Properties → Environment Variables → New user variable`),
+        muted(`#    Name:  OLLAMA_KV_CACHE_TYPE`),
+        muted(`#    Value: ${kvLabel}`),
+        muted(`# 2. Right-click Ollama in the system tray → Quit, then relaunch Ollama`),
+        muted(`# 3. Run:`),
         runLines,
       ].join('\n');
       hintEl.textContent = 'Set the environment variable via Windows System Properties, restart Ollama from the system tray, then run the command.';
     } else {
       ollamaCmd.innerHTML = [
-        m(`# Stop ollama if running, then restart with the KV cache setting:`),
+        muted(`# Stop ollama if running, then restart with the KV cache setting:`),
         `OLLAMA_KV_CACHE_TYPE=${kvLabel} ollama serve`,
-        m(`# In a new terminal:`),
+        muted(`# In a new terminal:`),
         runLines,
       ].join('\n');
       hintEl.textContent = 'Restart ollama with the env var set, then run the command in a new terminal.';
@@ -353,16 +343,21 @@ function render() {
   }
 
   // ── details table
-  document.getElementById('detailLayers').textContent    = model.block_count;
-  document.getElementById('detailAttnHeads').textContent = model.head_count;
-  document.getElementById('detailKvHeads').textContent   = model.head_count_kv;
-  document.getElementById('detailHeadDim').textContent   = model.key_length;
-  document.getElementById('detailHiddenSize').textContent   = model.embedding_length;
-  document.getElementById('detailAttnHeadsDiv').textContent = model.head_count;
-  document.getElementById('detailBpe').textContent      = bytesPerElement;
-  document.getElementById('detailBpeLabel').textContent = kvLabel;
-  document.getElementById('detailWeights').textContent      = fmtGB(weightsGB);
-  document.getElementById('detailQuantization').textContent = quantization;
+  const detailValues = {
+    detailLayers:       model.block_count,
+    detailAttnHeads:    model.head_count,
+    detailKvHeads:      model.head_count_kv,
+    detailHeadDim:      model.key_length,
+    detailHiddenSize:   model.embedding_length,
+    detailAttnHeadsDiv: model.head_count,
+    detailBpe:          bytesPerElement,
+    detailBpeLabel:     kvLabel,
+    detailWeights:      fmtGB(weightsGB),
+    detailQuantization: quantization,
+  };
+  Object.entries(detailValues).forEach(([id, val]) => {
+    document.getElementById(id).textContent = val;
+  });
 
   // Architecture source cells → link to ollama library page
   const [library] = model.ollama_tag.split(':');
@@ -380,32 +375,32 @@ function render() {
   const ollamaPageUrl = modelName.includes('/')
     ? `https://ollama.com/${modelName}`
     : `https://ollama.com/library/${modelName}`;
-  const srcEl = document.getElementById('detailSource');
-  srcEl.innerHTML = `<a href="${ollamaPageUrl}" target="_blank" rel="noopener noreferrer">ollama.com ↗</a>`;
+  document.getElementById('detailSource').innerHTML =
+    `<a href="${ollamaPageUrl}" target="_blank" rel="noopener noreferrer">ollama.com ↗</a>`;
 
   document.getElementById('provenanceAlert').hidden = true;
 
   // ── formula breakdown
-  const formulaBox    = document.getElementById('formulaBox');
-  formulaBox.hidden   = noFit;
+  const formulaBox  = document.getElementById('formulaBox');
+  formulaBox.hidden = noFit;
   if (!noFit) {
-    document.getElementById('fLayers').textContent    = model.block_count;
-    document.getElementById('fKvHeads').textContent   = model.head_count_kv;
-    document.getElementById('fBpeLabel').textContent  = `${bytesPerElement}(${kvLabel})`;
-    document.getElementById('fHeadDim').textContent   = model.key_length;
-    document.getElementById('fPerToken').textContent  = `${r.perToken.toLocaleString()} bytes`;
-    document.getElementById('fPerTokenKB').textContent = `(${(r.perToken / 1024).toFixed(1)} KB)`;
-    document.getElementById('fAvailLabel').textContent = `available_vram = ${fmtGB(vramGB)} × ${OVERHEAD_FACTOR} overhead factor − ${fmtGB(weightsGB)} weights`;
-    document.getElementById('fAvailGB').textContent   = fmtGB(vramGB * OVERHEAD_FACTOR - weightsGB);
-    document.getElementById('fAvailBytes').textContent = `${Math.round((vramGB * OVERHEAD_FACTOR - weightsGB) * 1024 ** 3).toLocaleString()} bytes`;
-    document.getElementById('fRawTokens').textContent = Math.round(r.rawTokens).toLocaleString();
-    document.getElementById('fMaxCtx').textContent    = `${r.maxCtx.toLocaleString()} tokens (${fmtCtx(r.maxCtx)})`;
-    const archNote = document.getElementById('archLimitNote');
-    if (r.limitedByArch) {
-      document.getElementById('fArchLimit').textContent = r.archLimit.toLocaleString();
-      archNote.hidden = false;
+    document.getElementById('formulaBlockCount').textContent = model.block_count;
+    document.getElementById('formulaKvHeads').textContent    = model.head_count_kv;
+    document.getElementById('formulaBpeLabel').textContent   = `${bytesPerElement}(${kvLabel})`;
+    document.getElementById('formulaKeyLength').textContent  = model.key_length;
+    document.getElementById('formulaPerToken').textContent   = `${ctxResult.perToken.toLocaleString()} bytes`;
+    document.getElementById('formulaPerTokenKB').textContent = `(${(ctxResult.perToken / 1024).toFixed(1)} KB)`;
+    document.getElementById('formulaAvailLabel').textContent = `available_vram = ${fmtGB(vramGB)} × ${OVERHEAD_FACTOR} overhead factor − ${fmtGB(weightsGB)} weights`;
+    document.getElementById('formulaAvailGB').textContent    = fmtGB(vramGB * OVERHEAD_FACTOR - weightsGB);
+    document.getElementById('formulaAvailBytes').textContent = `${Math.round((vramGB * OVERHEAD_FACTOR - weightsGB) * 1024 ** 3).toLocaleString()} bytes`;
+    document.getElementById('formulaRawTokens').textContent  = Math.round(ctxResult.rawTokens).toLocaleString();
+    document.getElementById('formulaMaxCtx').textContent     = `${ctxResult.maxCtx.toLocaleString()} tokens (${fmtCtx(ctxResult.maxCtx)})`;
+    const archCapNote = document.getElementById('formulaArchCapNote');
+    if (ctxResult.limitedByArch) {
+      document.getElementById('formulaArchLimit').textContent = ctxResult.archLimit.toLocaleString();
+      archCapNote.hidden = false;
     } else {
-      archNote.hidden = true;
+      archCapNote.hidden = true;
     }
   }
 }
@@ -413,11 +408,6 @@ function render() {
 // ─────────────────────────────────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────────────────────────────────
-function gpuLabel(gpu) {
-  const suffix = gpu.vendor ? ` (${gpu.vendor})` : '';
-  return `${gpu.vram} GB — ${gpu.names.join(' · ')}${suffix}`;
-}
-
 function init() {
   document.getElementById('overheadPct').textContent = Math.round((1 - OVERHEAD_FACTOR) * 100);
 
@@ -427,20 +417,20 @@ function init() {
   // Generic entries — one per unique VRAM size
   const sizes = [...new Set(GPUS.map(g => g.vram))];
   sizes.forEach(vram => {
-    const entries = GPUS.filter(g => g.vram === vram);
+    const entries     = GPUS.filter(g => g.vram === vram);
     const flashValues = [...new Set(entries.map(g => g.flash))];
-    const flash = flashValues.length === 1 ? flashValues[0] : 'mixed';
-    const opt = document.createElement('option');
-    opt.value = vram;
+    const flash       = flashValues.length === 1 ? flashValues[0] : 'mixed';
+    const opt         = document.createElement('option');
+    opt.value         = vram;
     opt.dataset.flash = flash;
-    opt.textContent = `${vram} GB`;
+    opt.textContent   = `${vram} GB`;
     if (entries.some(g => g.default)) opt.selected = true;
     vramSel.appendChild(opt);
   });
 
   // Separator
   const sep = document.createElement('option');
-  sep.disabled = true;
+  sep.disabled    = true;
   sep.textContent = '— pick your card —';
   vramSel.appendChild(sep);
 
@@ -448,10 +438,10 @@ function init() {
   const cards = GPUS.flatMap(gpu => gpu.names.map(name => ({ name, vram: gpu.vram, flash: gpu.flash })));
   cards.sort((a, b) => a.name.localeCompare(b.name));
   cards.forEach(({ name, vram, flash }) => {
-    const opt = document.createElement('option');
-    opt.value = vram;
+    const opt         = document.createElement('option');
+    opt.value         = vram;
     opt.dataset.flash = flash;
-    opt.textContent = `${name} — ${vram} GB`;
+    opt.textContent   = `${name} — ${vram} GB`;
     vramSel.appendChild(opt);
   });
 
@@ -459,20 +449,17 @@ function init() {
 
   const sel = document.getElementById('modelSelect');
   MODELS.forEach((m, i) => {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = modelLabel(m);
+    const opt       = document.createElement('option');
+    opt.value       = i;
+    opt.textContent = formatModelOption(m);
     sel.appendChild(opt);
   });
 
-  // Populate variants on model change
   sel.addEventListener('change', () => {
-    const modelIdx = parseInt(sel.value);
-    populateVariants(MODELS[modelIdx]);
+    populateVariants(MODELS[parseInt(sel.value)]);
     render();
   });
 
-  // Populate variants for the initially selected model
   const initialIdx = parseInt(sel.value) || 0;
   if (MODELS[initialIdx]) populateVariants(MODELS[initialIdx]);
 
@@ -488,9 +475,9 @@ function init() {
     if (!el) { tip.hidden = true; return; }
     tip.textContent = el.dataset.tip;
     tip.hidden = false;
-    const r = el.getBoundingClientRect();
-    tip.style.top  = (r.bottom + 8) + 'px';
-    tip.style.left = Math.min(r.left, window.innerWidth - 276) + 'px';
+    const rect = el.getBoundingClientRect();
+    tip.style.top  = (rect.bottom + 8) + 'px';
+    tip.style.left = Math.min(rect.left, window.innerWidth - 276) + 'px';
   });
 
   render();
