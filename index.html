@@ -16,34 +16,32 @@
 
   <div class="controls">
     <div class="field">
-      <label>GPU VRAM</label>
+      <label>GPU VRAM<span id="labelGpu" class="field-selected"></span></label>
       <div class="select-wrap">
         <select id="vramInput"></select>
       </div>
     </div>
     <div class="field">
-      <label>Model</label>
+      <label>Model<span id="labelModel" class="field-selected"></span></label>
       <div class="select-wrap">
         <select id="modelSelect"></select>
       </div>
     </div>
     <div class="field">
-      <label>Variant</label>
+      <label>Variant<span id="labelVariant" class="field-selected"></span></label>
       <div class="select-wrap">
         <select id="variantSelect"></select>
       </div>
-      <div id="variantInfo" class="variant-info"></div>
     </div>
     <div class="field">
-      <label>KV Cache</label>
+      <label>KV Cache<span id="labelKv" class="field-selected"></span></label>
       <div class="select-wrap">
         <select id="kvCacheType">
-          <option value="2" selected>≋≋≋≋≋  f16</option>
-          <option value="1">≋≋≋··  q8_0</option>
-          <option value="0.5">≋≋···  q4_0</option>
+          <option value="2" selected>■■■  f16</option>
+          <option value="1">■■□  q8_0</option>
+          <option value="0.5">■□□  q4_0</option>
         </select>
       </div>
-      <div id="kvCacheInfo" class="variant-info kv-info"><span id="kvCacheInfoText"></span><span id="kvFlashTip" class="info-tip" hidden>ⓘ</span></div>
     </div>
   </div>
 
@@ -71,18 +69,23 @@
     <div class="result-headline" id="resultHeadline">
       <div class="verdict" id="verdict"></div>
       <div class="scorecard" id="scorecard" hidden>
-        <div class="score-row"><span class="score-icon">⚡︎</span><span class="score-label">Speed</span><span class="score-stars" id="scoreSpeed"></span></div>
-        <div class="score-row"><span class="score-icon">◈</span><span class="score-label">Quality</span><span class="score-stars" id="scoreQuality"></span></div>
-        <div class="score-row"><span class="score-icon">≋</span><span class="score-label">Precision</span><span class="score-stars" id="scorePrecision"></span></div>
-        <div class="score-row"><span class="score-icon">◎</span><span class="score-label">Context</span><span class="score-stars" id="scoreContext"></span><span class="score-sub" id="scoreContextSub"></span></div>
+        <div class="score-row"><span class="score-icon">↑</span><span class="score-label">Speed</span><span class="score-stars" id="scoreSpeed"></span></div>
+        <div class="score-row"><span class="score-icon">★</span><span class="score-label">Quality</span><span class="score-stars" id="scoreQuality"></span></div>
+        <div class="score-row"><span class="score-icon">■</span><span class="score-label">Precision</span><span class="score-stars" id="scorePrecision"></span></div>
+        <div class="score-row"><span class="score-icon">◎</span><span class="score-label">Context</span><span class="score-stars" id="scoreContext"></span></div>
       </div>
-      <p class="ctx-hint" id="ctxHint" hidden></p>
+      <div class="selection-info" id="selectionInfo" hidden>
+        <div id="selectionVariant"></div>
+        <div id="selectionKv"><span id="selectionKvText"></span><span id="kvFlashTip" class="info-tip" hidden>ⓘ</span></div>
+        <div id="ctxHint" hidden></div>
+      </div>
       <span class="result-label" id="resultLabelOom" hidden></span>
-      <label class="win-toggle" id="winToggleLabel" hidden>
-        <input type="checkbox" id="winToggle"> Windows instructions
-      </label>
       <pre class="ollama-cmd" id="ollamaCmd" hidden></pre>
-      <p class="ollama-hint" id="ollamaHint" hidden></p>
+      <div class="os-tabs" id="osTabs" hidden>
+        <button class="os-tab" id="tabLinux">▶ Linux / Mac</button>
+        <button class="os-tab" id="tabWindows">▶ Windows</button>
+      </div>
+      <pre class="ollama-cmd ollama-setup" id="ollamaSetup" hidden></pre>
     </div>
 
     <div class="provenance-alert" id="provenanceAlert" hidden></div>

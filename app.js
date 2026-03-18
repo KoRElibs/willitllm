@@ -3,9 +3,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 const KV_CACHE_LABELS = { '2': 'f16', '1': 'q8_0', '0.5': 'q4_0' };
 const KV_CACHE_INFO = {
-  'f16':  { summary: 'Full precision — works on every GPU, no setup needed.' },
-  'q8_0': { summary: 'Half the memory per token — slight precision loss, fits more context in VRAM.' },
-  'q4_0': { summary: 'Quarter the memory per token — more precision loss, maximum context for the VRAM.' },
+  'f16':  { summary: 'full precision — works on every GPU, no setup needed.' },
+  'q8_0': { summary: 'half the memory per token — slight precision loss, fits more context in VRAM.' },
+  'q4_0': { summary: 'quarter the memory per token — more precision loss, maximum context for the VRAM.' },
 };
 
 function getBytesPerElement() {
@@ -13,6 +13,9 @@ function getBytesPerElement() {
 }
 
 const OVERHEAD_GB = 0.5;    // fixed reservation for CUDA context, driver, ollama overhead
+
+let activeOsTab = null;                  // 'linux' | 'windows' | null
+const setupContent = { linux: '', windows: '' };
 const CTX_LABELS = [
   [131072,'128k'],[65536,'64k'],[32768,'32k'],[16384,'16k'],
   [8192,'8k'],[4096,'4k'],[2048,'2k'],[1024,'1k'],
@@ -78,12 +81,50 @@ function buildRatingBar(val, filled, empty, max = 5) {
   return filled.repeat(n) + empty.repeat(max - n);
 }
 
-function updateVariantInfo(model) {
-  const el = document.getElementById('variantInfo');
-  if (!el) return;
+function setLabel(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value ? ': ' + value : '';
+}
+
+function updateVariantLabel(model) {
   const selectedVariant = getSelectedVariant(model);
-  const quantInfo = selectedVariant && QUANT_INFO[selectedVariant.quantization];
-  el.textContent = quantInfo ? quantInfo.summary : '';
+  if (!selectedVariant) { setLabel('labelVariant', ''); return; }
+  const group = getVariantGroup(selectedVariant.tag, selectedVariant.quantization);
+  const label = group === '(default)'
+    ? selectedVariant.quantization
+    : `${group} · ${selectedVariant.quantization}`;
+  setLabel('labelVariant', label);
+}
+
+function updateGpuLabel() {
+  const sel = document.getElementById('vramInput');
+  if (sel.value) setLabel('labelGpu', sel.value + ' GB');
+}
+
+function updateKvLabel() {
+  const sel = document.getElementById('kvCacheType');
+  const opt = sel.selectedOptions[0];
+  if (!opt) return;
+  // Strip symbols, keep just the type name (f16 / q8_0 / q4_0)
+  setLabel('labelKv', opt.textContent.trim().replace(/^[■□\s]+/, ''));
+}
+
+function updateModelLabel() {
+  const sel = document.getElementById('modelSelect');
+  const opt = sel.selectedOptions[0];
+  if (!opt) return;
+  // Format: "library:size  🇺🇸" → "library size" (strip flag, replace colon)
+  const base = opt.textContent.trim().split(/\s{2,}/)[0].replace(':', ' ');
+  setLabel('labelModel', base);
+}
+
+function getVariantGroup(tag, quantization) {
+  if (/^\d+(\.\d+)?b$/i.test(tag)) return '(default)';
+  const rest = tag.replace(/^\d+(\.\d+)?b-/i, '');
+  const qSuffix = '-' + quantization.toLowerCase();
+  return rest.toLowerCase().endsWith(qSuffix)
+    ? rest.slice(0, -qSuffix.length) || '(default)'
+    : rest;
 }
 
 function populateVariants(model) {
@@ -93,19 +134,36 @@ function populateVariants(model) {
     const opt = document.createElement('option');
     opt.textContent = 'no variants';
     sel.appendChild(opt);
-    updateVariantInfo(model);
+    updateVariantLabel(model);
     return;
   }
+
+  // Group variants by custominfo (everything between size prefix and quantization suffix)
+  const groups = new Map();
   model.variants.forEach((variant, i) => {
-    const opt = document.createElement('option');
-    opt.value = i;
-    const quantInfo     = QUANT_INFO[variant.quantization];
-    const speedRating   = quantInfo ? buildRatingBar(quantInfo.speed,   '⚡︎', '·') : '·····';
-    const qualityRating = quantInfo ? buildRatingBar(quantInfo.quality, '★',  '☆') : '☆☆☆☆☆';
-    opt.textContent = `${speedRating} ${qualityRating}  ${variant.tag} — ${variant.weights_gb.toFixed(1)} GB`;
-    sel.appendChild(opt);
+    const group = getVariantGroup(variant.tag, variant.quantization);
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group).push({ variant, i });
   });
-  updateVariantInfo(model);
+
+  groups.forEach((items, groupName) => {
+    const container = groups.size > 1 ? document.createElement('optgroup') : sel;
+    if (groups.size > 1) {
+      container.label = groupName;
+      sel.appendChild(container);
+    }
+    items.forEach(({ variant, i }) => {
+      const opt        = document.createElement('option');
+      opt.value        = i;
+      const quantInfo  = QUANT_INFO[variant.quantization];
+      const speedRating   = quantInfo ? buildRatingBar(quantInfo.speed,   '↑', '·') : '·····';
+      const qualityRating = quantInfo ? buildRatingBar(quantInfo.quality, '★', '☆') : '☆☆☆☆☆';
+      opt.textContent  = `${speedRating} ${qualityRating}  ${variant.weights_gb.toFixed(1)} GB`;
+      container.appendChild(opt);
+    });
+  });
+
+  updateVariantLabel(model);
 }
 
 function getSelectedVariantIdx(model) {
@@ -156,8 +214,8 @@ function render() {
   const bytesPerElement = getBytesPerElement();
   const kvLabel         = KV_CACHE_LABELS[String(bytesPerElement)] || 'f16';
   const kvInfo          = KV_CACHE_INFO[kvLabel];
-  if (kvInfo) { document.getElementById('kvCacheInfoText').textContent = `${kvLabel} — ${kvInfo.summary}`; }
   const model = MODELS[modelIdx];
+  updateVariantLabel(model);
 
   const noModel = document.getElementById('noModel');
   const results = document.getElementById('results');
@@ -176,8 +234,6 @@ function render() {
   const quantization = variant ? variant.quantization : '—';
 
   const quantInfo = variant ? QUANT_INFO[variant.quantization] : null;
-  const infoEl    = document.getElementById('variantInfo');
-  infoEl.textContent = quantInfo ? `${variant.quantization} — ${quantInfo.summary}` : '';
 
   markModelOptions(vramGB, bytesPerElement);
 
@@ -247,13 +303,18 @@ function render() {
       el.style.color = colorForScore(score);
     });
 
-    const ctxSub = `${fmtCtx(ctxResult.maxCtx)} tokens${contextFitPct !== null && contextFitPct < 100 ? ` · ${contextFitPct}% of ${fmtCtx(model.context_length)} max` : ''}`;
-    document.getElementById('scoreContextSub').textContent = libInfo.multimodal
-      ? ctxSub + ' · images consume tokens'
-      : ctxSub;
     scorecard.hidden = false;
+
+    const selInfo     = document.getElementById('selectionInfo');
+    const quantInfo   = variant ? QUANT_INFO[variant.quantization] : null;
+    document.getElementById('selectionVariant').textContent =
+      quantInfo ? `${variant.quantization} · ${quantInfo.summary[0].toLowerCase()}${quantInfo.summary.slice(1)}` : '';
+    document.getElementById('selectionKvText').textContent =
+      kvInfo ? `${kvLabel} · ${kvInfo.summary}` : '';
+    selInfo.hidden = false;
   } else {
     scorecard.hidden = true;
+    document.getElementById('selectionInfo').hidden = true;
   }
 
   // Restart animation on every render
@@ -282,17 +343,20 @@ function render() {
     labelOom.textContent = `Model weights (${fmtGB(weightsGB)}) exceed available VRAM (${fmtGB(vramGB - OVERHEAD_GB)} usable). This model will not load.`;
     labelOom.hidden = false;
     ollamaCmd.hidden = true;
-    document.getElementById('ollamaHint').hidden = true;
+    document.getElementById('ctxHint').hidden = true;
+    document.getElementById('osTabs').hidden = true;
+    document.getElementById('ollamaSetup').hidden = true;
   } else {
     labelOom.hidden = true;
 
     const ctxHint = document.getElementById('ctxHint');
-    if (scoreContext <= 3) {
-      ctxHint.textContent = `Runs fine at ${fmtCtx(ctxResult.maxCtx)} — ${fmtTokensHuman(ctxResult.maxCtx)} of typical English text. Keep num_ctx at or below this limit (the command below sets it).`;
-      ctxHint.hidden = false;
-    } else {
-      ctxHint.hidden = true;
-    }
+    const pages = Math.round(ctxResult.maxCtx / 333 / 5) * 5;
+    const pctPart = contextFitPct !== null && contextFitPct < 100
+      ? `${contextFitPct}% of max context`
+      : 'full context';
+    const mmPart = libInfo.multimodal ? ' · images use tokens' : '';
+    ctxHint.textContent = `${fmtCtx(ctxResult.maxCtx)} · ${pctPart} · ~${pages} pages of typical English text${mmPart}`;
+    ctxHint.hidden = false;
 
     const flashSel     = document.getElementById('vramInput').selectedOptions[0];
     const flashSupport = flashSel ? flashSel.dataset.flash : 'yes';
@@ -309,38 +373,40 @@ function render() {
       flashTip.hidden = true;
     }
 
-    const hintEl         = document.getElementById('ollamaHint');
-    const winToggle      = document.getElementById('winToggle');
-    const winToggleLabel = document.getElementById('winToggleLabel');
-    const useWindows     = winToggle.checked;
-    winToggleLabel.hidden = false;
-
     const muted      = s => `<span class="cmd-muted">${s}</span>`;
     const variantIdx = getSelectedVariantIdx(model);
     const runTag     = variantOllamaTag(model, variantIdx);
-    const runLines   = `ollama run ${runTag}\n>>> /set parameter num_ctx ${ctxResult.maxCtx}`;
 
-    if (useWindows) {
-      ollamaCmd.innerHTML = [
+    ollamaCmd.textContent = `ollama run ${runTag}\n>>> /set parameter num_ctx ${ctxResult.maxCtx}`;
+    ollamaCmd.hidden = false;
+
+    const osTabs = document.getElementById('osTabs');
+    if (bytesPerElement < 2) {
+      setupContent.linux = [
+        muted(`# Stop ollama if running, then restart with the KV cache setting:`),
+        `OLLAMA_KV_CACHE_TYPE=${kvLabel} ollama serve`,
+        muted(`# In a new terminal, run the command above`),
+      ].join('\n');
+      setupContent.windows = [
         muted(`# 1. Open: System Properties → Environment Variables → New user variable`),
         muted(`#    Name:  OLLAMA_KV_CACHE_TYPE`),
         muted(`#    Value: ${kvLabel}`),
-        muted(`# 2. Right-click Ollama in the system tray → Quit, then relaunch Ollama`),
-        muted(`# 3. Run:`),
-        runLines,
+        muted(`# 2. Right-click Ollama in system tray → Quit, then relaunch Ollama`),
+        muted(`# 3. Run the command above`),
       ].join('\n');
-      hintEl.textContent = 'Set the environment variable via Windows System Properties, restart Ollama from the system tray, then run the command.';
+      if (activeOsTab) {
+        document.getElementById('ollamaSetup').innerHTML = setupContent[activeOsTab];
+      }
+      osTabs.hidden = false;
     } else {
-      ollamaCmd.innerHTML = [
-        muted(`# Stop ollama if running, then restart with the KV cache setting:`),
-        `OLLAMA_KV_CACHE_TYPE=${kvLabel} ollama serve`,
-        muted(`# In a new terminal:`),
-        runLines,
-      ].join('\n');
-      hintEl.textContent = 'Restart ollama with the env var set, then run the command in a new terminal.';
+      osTabs.hidden = true;
+      document.getElementById('ollamaSetup').hidden = true;
+      activeOsTab = null;
+      document.getElementById('tabLinux').textContent  = '▶ Linux / Mac';
+      document.getElementById('tabWindows').textContent = '▶ Windows';
+      document.getElementById('tabLinux').classList.remove('active');
+      document.getElementById('tabWindows').classList.remove('active');
     }
-    hintEl.hidden = false;
-    ollamaCmd.hidden = false;
   }
 
   // ── details table
@@ -402,6 +468,30 @@ function render() {
   }
 }
 
+function setOsTab(os) {
+  const setupEl  = document.getElementById('ollamaSetup');
+  const tabLinux  = document.getElementById('tabLinux');
+  const tabWindows = document.getElementById('tabWindows');
+
+  if (activeOsTab === os) {
+    // collapse
+    activeOsTab = null;
+    setupEl.hidden = true;
+    tabLinux.textContent  = '▶ Linux / Mac';
+    tabWindows.textContent = '▶ Windows';
+    tabLinux.classList.remove('active');
+    tabWindows.classList.remove('active');
+  } else {
+    activeOsTab = os;
+    setupEl.innerHTML = setupContent[os];
+    setupEl.hidden = false;
+    tabLinux.textContent  = os === 'linux'   ? '▼ Linux / Mac' : '▶ Linux / Mac';
+    tabWindows.textContent = os === 'windows' ? '▼ Windows'     : '▶ Windows';
+    tabLinux.classList.toggle('active',   os === 'linux');
+    tabWindows.classList.toggle('active', os === 'windows');
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────────────────────────────────
@@ -420,7 +510,7 @@ function init() {
     const opt         = document.createElement('option');
     opt.value         = vram;
     opt.dataset.flash = flash;
-    opt.textContent   = `${vram} GB`;
+    opt.textContent   = `Generic ${vram} GB`;
     if (entries.some(g => g.default)) opt.selected = true;
     vramSel.appendChild(opt);
   });
@@ -438,7 +528,7 @@ function init() {
     const opt         = document.createElement('option');
     opt.value         = vram;
     opt.dataset.flash = flash;
-    opt.textContent   = `${name} — ${vram} GB`;
+    opt.textContent   = name;
     vramSel.appendChild(opt);
   });
 
@@ -454,16 +544,22 @@ function init() {
 
   sel.addEventListener('change', () => {
     populateVariants(MODELS[parseInt(sel.value)]);
+    updateModelLabel();
     render();
   });
 
   const initialIdx = parseInt(sel.value) || 0;
   if (MODELS[initialIdx]) populateVariants(MODELS[initialIdx]);
 
-  document.getElementById('vramInput').addEventListener('change', render);
-  document.getElementById('kvCacheType').addEventListener('change', render);
+  updateGpuLabel();
+  updateModelLabel();
+  updateKvLabel();
+
+  document.getElementById('vramInput').addEventListener('change', () => { updateGpuLabel(); render(); });
+  document.getElementById('kvCacheType').addEventListener('change', () => { updateKvLabel(); render(); });
   document.getElementById('variantSelect').addEventListener('change', render);
-  document.getElementById('winToggle').addEventListener('change', render);
+  document.getElementById('tabLinux').addEventListener('click',   () => setOsTab('linux'));
+  document.getElementById('tabWindows').addEventListener('click', () => setOsTab('windows'));
 
   // Tooltip
   const tip = document.getElementById('tooltip');
