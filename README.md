@@ -14,12 +14,13 @@ Given a GPU's VRAM and an LLM model, will-it-llm calculates:
 ## How the calculation works
 
 ```
-bytes_per_token = layers × kv_heads × head_dim × 2 (K+V) × 2 (fp16)
-available_vram  = (total_vram − model_weights) × 0.92  ← 8% overhead reserve
-max_context     = largest power-of-2 that fits in available_vram
+bytes_per_element = KV cache precision (2 = f16, 1 = q8_0, 0.5 = q4_0)
+bytes_per_token   = block_count × head_count_kv × (key_length + value_length) × bytes_per_element
+available_vram    = total_vram − model_weights − 0.5 GB overhead
+max_context       = largest power-of-2 that fits in available_vram
 ```
 
-The result is capped at the model's architectural `max_position_embeddings` limit where known.
+The result is capped at the model's architectural `context_length` limit.
 
 ## Stack
 
@@ -30,14 +31,16 @@ Pure static HTML/CSS/JS — no build step, no dependencies, no server.
 | `index.html` | Page structure and UI |
 | `app.js` | Calculation logic and rendering |
 | `styles.css` | Dark theme styling |
-| `models.js` | Model database (architecture params, metadata) |
+| `models.js` | Model database (architecture params, variants) |
+| `libraries.js` | Library metadata (organization, origin, multimodal flag) |
 | `gpus.js` | GPU database (VRAM tiers, Flash Attention support) |
-| `scripts/update_models.py` | Maintenance script — verifies and updates `models.js` |
+| `quantizations.js` | Quantization info (speed/quality ratings, summaries) |
+| `scripts/update_models.py` | Maintenance script — scrapes and updates `models.js` |
 
 ## Running locally
 
 ```bash
-git clone https://github.com/your-org/willitllm
+git clone https://github.com/KoRElibs/willitllm
 cd willitllm
 # open index.html in a browser — no server needed
 ```
@@ -52,26 +55,24 @@ python -m http.server
 
 ## Updating model data
 
-`scripts/update_models.py` cross-checks `models.js` against two live sources without downloading any model weights:
-
-- **HuggingFace config.json** — architecture params (layers, heads, head_dim, max_position_embeddings)
-- **Ollama registry manifest** — weight size and quantization
+`scripts/update_models.py` reads architecture parameters and weight sizes directly from the Ollama registry — no model weights are downloaded.
 
 ```bash
-python scripts/update_models.py              # dry run — show diffs
-python scripts/update_models.py --apply      # write changes to models.js
-python scripts/update_models.py --tag llama3.2:1b   # one model only
+python scripts/update_models.py                        # dry run — show what would change
+python scripts/update_models.py --apply                # write changes to models.js
+python scripts/update_models.py --discover --apply     # find and add new model sizes
+python scripts/update_models.py --tag llama3.2:3b      # one model only
 ```
 
-Requires internet access and `ollama` installed (not necessarily running).
+See `update_models_prompt.md` for full workflow documentation.
 
 ## Data provenance
 
-Model data in `models.js` was compiled by AI (Claude) from training knowledge and cross-checked against HuggingFace `config.json` via the update script. It has not been manually verified. Architecture parameters sourced from HuggingFace; weight sizes and quantization from the Ollama registry. Curated metadata (organization, origin, specialty) is AI-generated and may contain errors.
+All architecture parameters (`block_count`, `head_count_kv`, `key_length`, `value_length`, `context_length`) are read directly from the Ollama registry via the scraper. Weight sizes and quantization variants come from the same source. No data has been manually verified — treat all values as representative rather than authoritative. Organization and origin metadata is AI-generated and may contain errors.
 
 ## Contributing
 
-To add or correct a model, edit `models.js` directly and run `scripts/update_models.py --apply` to verify the architecture parameters against HuggingFace. Each model entry documents all required fields in the file header comment.
+To add a model or library, update `libraries.js` and run `scripts/update_models.py --discover --apply`. See `update_models_prompt.md` for step-by-step instructions.
 
 ## License
 

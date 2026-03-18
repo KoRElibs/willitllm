@@ -2460,5 +2460,53 @@ const MODELS = [
       {"tag": "14b", "quantization": "Q4_K_M", "weights_gb": 9.1},
       {"tag": "14b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 15.0}
     ]
+  },
+  {
+    "ollama_tag": "translategemma:4b",
+    "context_length": 131072,
+    "params_b": 4.3,
+    "block_count": 34,
+    "head_count": 8,
+    "head_count_kv": 4,
+    "embedding_length": 2560,
+    "key_length": 256,
+    "value_length": 256,
+    "variants": [
+      {"tag": "4b", "quantization": "Q4_K_M", "weights_gb": 3.3},
+      {"tag": "4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 4.9},
+      {"tag": "4b-it-bf16", "quantization": "BF16", "weights_gb": 8.6}
+    ]
+  },
+  {
+    "ollama_tag": "translategemma:12b",
+    "context_length": 131072,
+    "params_b": 12.2,
+    "block_count": 48,
+    "head_count": 16,
+    "head_count_kv": 8,
+    "embedding_length": 3840,
+    "key_length": 256,
+    "value_length": 256,
+    "variants": [
+      {"tag": "12b", "quantization": "Q4_K_M", "weights_gb": 8.1},
+      {"tag": "12b-it-q8_0", "quantization": "Q8_0", "weights_gb": 13.0},
+      {"tag": "12b-it-bf16", "quantization": "BF16", "weights_gb": 24.0}
+    ]
+  },
+  {
+    "ollama_tag": "translategemma:27b",
+    "context_length": 131072,
+    "params_b": 27.4,
+    "block_count": 62,
+    "head_count": 32,
+    "head_count_kv": 16,
+    "embedding_length": 5376,
+    "key_length": 128,
+    "value_length": 128,
+    "variants": [
+      {"tag": "27b", "quantization": "Q4_K_M", "weights_gb": 17.0},
+      {"tag": "27b-it-q8_0", "quantization": "Q8_0", "weights_gb": 30.0},
+      {"tag": "27b-it-bf16", "quantization": "BF16", "weights_gb": 55.0}
+    ]
   }
 ];

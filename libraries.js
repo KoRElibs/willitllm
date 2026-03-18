@@ -33,6 +33,7 @@ const LIBRARIES = [
   { "library": "mistral-nemo",    "organization": "Mistral AI",            "origin": "France",      "source": null },
   { "library": "llama3.3",        "organization": "Meta",                  "origin": "USA",         "source": null },
   { "library": "gemma2",          "organization": "Google DeepMind",       "origin": "USA",         "source": null },
+  { "library": "translategemma",  "organization": "Google DeepMind",       "origin": "USA",         "source": null,        "multimodal": true },
   { "library": "codestral",       "organization": "Mistral AI",            "origin": "France",      "source": null },
   { "library": "mistral-small",   "organization": "Mistral AI",            "origin": "France",      "source": null },
   { "library": "devstral",        "organization": "Mistral AI",            "origin": "France",      "source": null },
