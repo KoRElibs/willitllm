@@ -255,7 +255,9 @@ function render() {
   const segContext = document.getElementById('segContext');
   segContext.className   = 'membar-seg ' + (noFit ? 'seg-overflow' : 'seg-context');
   segContext.style.width = contextPct.toFixed(1) + '%';
-  segContext.textContent = contextPct > 8 ? fmtCtx(ctxResult.maxCtx) : '';
+  segContext.textContent = contextPct > 20
+    ? `${fmtCtx(ctxResult.maxCtx)} · ${fmtGB(ctxResult.kvCacheGB)}`
+    : contextPct > 8 ? fmtCtx(ctxResult.maxCtx) : '';
 
   const segFree = document.getElementById('segFree');
   segFree.style.width  = freePct.toFixed(1) + '%';
