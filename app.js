@@ -156,7 +156,7 @@ function populateVariants(model) {
       const opt        = document.createElement('option');
       opt.value        = i;
       const quantInfo  = QUANT_INFO[variant.quantization];
-      const speedRating   = quantInfo ? buildRatingBar(quantInfo.speed,   '↑', '·') : '·····';
+      const speedRating   = quantInfo ? buildRatingBar(quantInfo.speed,   '▶', '▷') : '▷▷▷▷▷';
       const qualityRating = quantInfo ? buildRatingBar(quantInfo.quality, '★', '☆') : '☆☆☆☆☆';
       opt.textContent  = `${speedRating} ${qualityRating}  ${variant.weights_gb.toFixed(1)} GB`;
       container.appendChild(opt);
