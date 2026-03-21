@@ -362,16 +362,17 @@ function render() {
 
     scorecard.hidden = false;
 
-    const selInfo     = document.getElementById('selectionInfo');
-    const quantInfo   = variant ? QUANT_INFO[variant.quantization] : null;
-    document.getElementById('selectionVariant').textContent =
-      quantInfo ? `${variant.quantization} · ${quantInfo.summary[0].toLowerCase()}${quantInfo.summary.slice(1)}` : '';
-    document.getElementById('selectionKvText').textContent =
-      kvInfo ? `${kvLabel} · ${kvInfo.summary}` : '';
-    selInfo.hidden = false;
+    const quantInfoFull = variant ? QUANT_INFO[variant.quantization] : null;
+    if (quantInfoFull) {
+      document.getElementById('scoreQuality').dataset.tip =
+        `${variant.quantization} · ${quantInfoFull.summary}`;
+    }
+    if (kvInfo) {
+      document.getElementById('scorePrecision').dataset.tip =
+        `${kvLabel} · ${kvInfo.summary}`;
+    }
   } else {
     scorecard.hidden = true;
-    document.getElementById('selectionInfo').hidden = true;
   }
 
   // Restart animation on every render
@@ -400,47 +401,48 @@ function render() {
     labelOom.textContent = `Model weights (${fmtGB(weightsGB)}) exceed available VRAM (${fmtGB(vramGB - OVERHEAD_GB)} usable). This model will not load.`;
     labelOom.hidden = false;
     ollamaCmd.hidden = true;
-    document.getElementById('ctxHint').hidden = true;
     document.getElementById('osTabs').hidden = true;
     document.getElementById('ollamaSetup').hidden = true;
-    document.getElementById('speedEstimates').hidden = true;
+    document.getElementById('speedGen').hidden = true;
+    document.getElementById('speedPrefill').hidden = true;
   } else {
     labelOom.hidden = true;
 
-    const ctxHint = document.getElementById('ctxHint');
     const pages = Math.round(ctxResult.maxCtx / 333 / 5) * 5;
     const pctPart = contextFitPct !== null && contextFitPct < 100
       ? `${contextFitPct}% of max context`
       : 'full context';
     const mmPart = libInfo.multimodal ? ' · images use tokens' : '';
-    ctxHint.textContent = `${fmtCtx(ctxResult.maxCtx)} · ${pctPart} · ~${pages} pages of typical English text${mmPart}`;
-    ctxHint.hidden = false;
+    document.getElementById('scoreContext').dataset.tip =
+      `${fmtCtx(ctxResult.maxCtx)} · ${pctPart} · ~${pages} pages of typical English text${mmPart}`;
 
-    // ── speed estimates
-    const speedEl   = document.getElementById('speedEstimates');
-    const speedEsts = calcSpeedEstimates(model, variant, vramGB, quantInfo);
+    // ── speed estimates (inline in scorecard rows)
+    const speedEsts  = calcSpeedEstimates(model, variant, vramGB, quantInfo);
+    const genEl      = document.getElementById('speedGen');
+    const prefillEl  = document.getElementById('speedPrefill');
+    const genericNote = speedEsts && !speedEsts.isExact ? ' Select your exact GPU for a tighter estimate.' : '';
     if (speedEsts) {
-      document.getElementById('speedGen').textContent     = fmtSpeed(speedEsts.genLo,     speedEsts.genHi);
-      document.getElementById('speedPrefill').textContent = fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi);
-      document.getElementById('speedNote').hidden         = speedEsts.isExact;
-      speedEl.hidden = false;
+      genEl.textContent    = fmtSpeed(speedEsts.genLo, speedEsts.genHi);
+      genEl.dataset.tip    = `Generation speed — output tokens per second.${genericNote}`;
+      genEl.hidden         = false;
+      prefillEl.textContent = fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi);
+      prefillEl.dataset.tip = `Processing speed — prompt tokens ingested per second.${genericNote}`;
+      prefillEl.hidden      = false;
     } else {
-      speedEl.hidden = true;
+      genEl.hidden     = true;
+      prefillEl.hidden = true;
     }
 
     const flashSel     = document.getElementById('vramInput').selectedOptions[0];
     const flashSupport = flashSel ? flashSel.dataset.flash : 'yes';
-    const flashTip     = document.getElementById('kvFlashTip');
-    if (bytesPerElement < 2) {
-      const tip = flashSupport === 'mixed'
-        ? `AMD support varies by ollama build and driver. Verify your setup before setting OLLAMA_KV_CACHE_TYPE.`
+    if (bytesPerElement < 2 && kvInfo) {
+      const flashNote = flashSupport === 'mixed'
+        ? ` AMD support varies by ollama build and driver — verify before setting OLLAMA_KV_CACHE_TYPE.`
         : flashSupport !== 'yes'
-        ? `Not supported on Turing (RTX 20xx) or older NVIDIA GPUs. This setting will have no effect or may cause errors.`
-        : `Gains are modest below 8k context — most effective at the longer context windows this VRAM allows.`;
-      flashTip.dataset.tip = tip;
-      flashTip.hidden = false;
-    } else {
-      flashTip.hidden = true;
+        ? ` Not supported on Turing (RTX 20xx) or older NVIDIA GPUs — this setting may have no effect or cause errors.`
+        : ` Gains are modest below 8k context.`;
+      document.getElementById('scorePrecision').dataset.tip =
+        `${kvLabel} · ${kvInfo.summary}${flashNote}`;
     }
 
     const muted      = s => `<span class="cmd-muted">${s}</span>`;

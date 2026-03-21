@@ -69,28 +69,10 @@
     <div class="result-headline" id="resultHeadline">
       <div class="verdict" id="verdict"></div>
       <div class="scorecard" id="scorecard" hidden>
-        <div class="score-row"><span class="score-icon">↑</span><span class="score-label">Speed</span><span class="score-stars" id="scoreSpeed"></span></div>
-        <div class="score-row"><span class="score-icon">★</span><span class="score-label">Quality</span><span class="score-stars" id="scoreQuality"></span></div>
-        <div class="score-row"><span class="score-icon">■</span><span class="score-label">Precision</span><span class="score-stars" id="scorePrecision"></span></div>
-        <div class="score-row"><span class="score-icon">◎</span><span class="score-label">Context</span><span class="score-stars" id="scoreContext"></span></div>
-      </div>
-      <div class="selection-info" id="selectionInfo" hidden>
-        <div id="selectionVariant"></div>
-        <div id="selectionKv"><span id="selectionKvText"></span><span id="kvFlashTip" class="info-tip" hidden>ⓘ</span></div>
-        <div id="ctxHint" hidden></div>
-      </div>
-      <div class="speed-estimates" id="speedEstimates" hidden>
-        <div class="speed-row">
-          <span class="speed-label">Processing speed</span>
-          <span class="speed-val" id="speedPrefill"></span>
-          <span class="speed-unit">tokens/sec into context</span>
-        </div>
-        <div class="speed-row">
-          <span class="speed-label">Generation speed</span>
-          <span class="speed-val" id="speedGen"></span>
-          <span class="speed-unit">tokens/sec output</span>
-        </div>
-        <div class="speed-note" id="speedNote">⤷ Select your exact GPU above for a tighter estimate</div>
+        <div class="score-row"><span class="score-icon">▶</span><span class="score-label" data-tip="How fast this model runs relative to its fastest possible configuration. Heavier quantization increases speed but reduces quality.">Speed</span><span class="score-stars" id="scoreSpeed"></span><span class="score-speed" id="speedGen" hidden></span></div>
+        <div class="score-row"><span class="score-icon">★</span><span class="score-label" data-tip="How much of this model's output quality is preserved compared to running it at full precision. Lower quantization = closer to the model's true capability.">Quality</span><span class="score-stars" id="scoreQuality"></span></div>
+        <div class="score-row"><span class="score-icon">■</span><span class="score-label" data-tip="How faithfully the context is stored in memory. Lower KV cache precision reduces how well the model can attend over its context window, regardless of how large that window is.">Context quality</span><span class="score-stars" id="scorePrecision"></span></div>
+        <div class="score-row"><span class="score-icon">◎</span><span class="score-label" data-tip="How much of this model's maximum context window fits in your available VRAM. 5 stars means you can use 90%+ of what the model was trained to handle.">Context size</span><span class="score-stars" id="scoreContext"></span><span class="score-speed" id="speedPrefill" hidden></span></div>
       </div>
       <span class="result-label" id="resultLabelOom" hidden></span>
       <pre class="ollama-cmd" id="ollamaCmd" hidden></pre>
