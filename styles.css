@@ -467,6 +467,7 @@ header p {
   header p  { font-size: 13px; }
 
   .controls { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field select { font-size: 11px; }
 
   .detail-row { grid-template-columns: 1fr 1fr; }
   .detail-src { display: none; }
