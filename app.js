@@ -136,41 +136,28 @@ function buildRatingBar(val, filled, empty, max = 5) {
   return filled.repeat(n) + empty.repeat(max - n);
 }
 
-function setLabel(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value ? ': ' + value : '';
-}
+function updateSelectionSummary(model) {
+  const el = document.getElementById('selectionSummary');
+  if (!el) return;
 
-function updateVariantLabel(model) {
-  const selectedVariant = getSelectedVariant(model);
-  if (!selectedVariant) { setLabel('labelVariant', ''); return; }
-  const group = getVariantGroup(selectedVariant.tag, selectedVariant.quantization);
-  const label = group === '(default)'
-    ? selectedVariant.quantization
-    : `${group} · ${selectedVariant.quantization}`;
-  setLabel('labelVariant', label);
-}
+  const modelSel = document.getElementById('modelSelect');
+  const modelOpt = modelSel.selectedOptions[0];
+  if (!modelOpt || modelOpt.value === '') { el.textContent = 'VRAM allocation'; return; }
 
-function updateGpuLabel() {
-  const sel = document.getElementById('vramInput');
-  if (sel.value) setLabel('labelGpu', sel.value + ' GB');
-}
+  const library = model ? model.ollama_tag.split(':')[0] : modelOpt.textContent.trim().split(/[:\s]/)[0];
+  const variant = model ? getSelectedVariant(model) : null;
+  const fullTag = variant ? `${library}:${variant.tag}` : library;
 
-function updateKvLabel() {
-  const sel = document.getElementById('kvCacheType');
-  const opt = sel.selectedOptions[0];
-  if (!opt) return;
-  // Strip symbols, keep just the type name (f16 / q8_0 / q4_0)
-  setLabel('labelKv', opt.textContent.trim().replace(/^[■□\s]+/, ''));
-}
+  const kvOpt = document.getElementById('kvCacheType').selectedOptions[0];
+  const kvLabel = kvOpt ? kvOpt.textContent.trim().replace(/^[■□\s]+/, '') : '';
 
-function updateModelLabel() {
-  const sel = document.getElementById('modelSelect');
-  const opt = sel.selectedOptions[0];
-  if (!opt) return;
-  // Format: "library:size  🇺🇸" → "library size" (strip flag, replace colon)
-  const base = opt.textContent.trim().split(/\s{2,}/)[0].replace(':', ' ');
-  setLabel('labelModel', base);
+  const gpuOpt = document.getElementById('vramInput').selectedOptions[0];
+  const gpuName = gpuOpt ? gpuOpt.textContent.trim() : '';
+
+  const modelParts = [fullTag, kvLabel ? `KV ${kvLabel}` : ''].filter(Boolean);
+  el.textContent = gpuName
+    ? `${gpuName}: ${modelParts.join(' · ')}`
+    : modelParts.join(' · ');
 }
 
 function getVariantGroup(tag, quantization) {
@@ -189,7 +176,7 @@ function populateVariants(model) {
     const opt = document.createElement('option');
     opt.textContent = 'no variants';
     sel.appendChild(opt);
-    updateVariantLabel(model);
+    updateSelectionSummary(model);
     return;
   }
 
@@ -226,7 +213,7 @@ function populateVariants(model) {
     });
   });
 
-  updateVariantLabel(model);
+  updateSelectionSummary(model);
 }
 
 function getSelectedVariantIdx(model) {
@@ -278,7 +265,7 @@ function render() {
   const kvLabel         = KV_CACHE_LABELS[String(bytesPerElement)] || 'f16';
   const kvInfo          = KV_CACHE_INFO[kvLabel];
   const model = MODELS[modelIdx];
-  updateVariantLabel(model);
+  updateSelectionSummary(model);
 
   const noModel = document.getElementById('noModel');
   const results = document.getElementById('results');
@@ -308,7 +295,7 @@ function render() {
   const contextPct = noFit ? 0 : Math.min(100 - modelPct, (ctxResult.kvCacheGB / vramGB) * 100);
   const freePct    = Math.max(0, 100 - modelPct - contextPct);
 
-  document.getElementById('barTotal').textContent = fmtGB(vramGB) + ' total';
+  document.getElementById('barTotal').textContent = fmtGB(vramGB);
 
   const segModel = document.getElementById('segModel');
   segModel.className   = 'membar-seg ' + (noFit ? 'seg-overflow' : 'seg-model');
@@ -621,19 +608,14 @@ function init() {
 
   sel.addEventListener('change', () => {
     populateVariants(MODELS[parseInt(sel.value)]);
-    updateModelLabel();
     render();
   });
 
   const initialIdx = parseInt(sel.value) || 0;
   if (MODELS[initialIdx]) populateVariants(MODELS[initialIdx]);
 
-  updateGpuLabel();
-  updateModelLabel();
-  updateKvLabel();
-
-  document.getElementById('vramInput').addEventListener('change', () => { updateGpuLabel(); render(); });
-  document.getElementById('kvCacheType').addEventListener('change', () => { updateKvLabel(); render(); });
+  document.getElementById('vramInput').addEventListener('change', render);
+  document.getElementById('kvCacheType').addEventListener('change', render);
   document.getElementById('variantSelect').addEventListener('change', render);
 
   // Re-build variant options on resize (mobile vs desktop format differs)
