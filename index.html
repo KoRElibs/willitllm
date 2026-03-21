@@ -45,7 +45,7 @@
     </div>
   </div>
 
-  <div id="noModel" class="no-model">Select a model and enter VRAM to calculate.</div>
+  <div id="noModel" class="no-model">Select a GPU and a model to find out.</div>
 
   <div id="results" hidden>
 
@@ -67,96 +67,166 @@
     </div>
 
     <div class="result-headline" id="resultHeadline">
-      <div class="verdict" id="verdict"></div>
-      <div class="scorecard" id="scorecard" hidden>
-        <div class="score-row"><span class="score-icon">▶</span><span class="score-label" data-tip="How fast this model runs relative to its fastest possible configuration. Heavier quantization increases speed but reduces quality.">Speed</span><span class="score-stars" id="scoreSpeed"></span><span class="score-speed" id="speedGen" hidden></span></div>
-        <div class="score-row"><span class="score-icon">★</span><span class="score-label" data-tip="How much of this model's output quality is preserved compared to running it at full precision. Lower quantization = closer to the model's true capability.">Quality</span><span class="score-stars" id="scoreQuality"></span></div>
-        <div class="score-row"><span class="score-icon">■</span><span class="score-label" data-tip="How faithfully the context is stored in memory. Lower KV cache precision reduces how well the model can attend over its context window, regardless of how large that window is.">Context quality</span><span class="score-stars" id="scorePrecision"></span></div>
-        <div class="score-row"><span class="score-icon">◎</span><span class="score-label" data-tip="How much of this model's maximum context window fits in your available VRAM. 5 stars means you can use 90%+ of what the model was trained to handle.">Context size</span><span class="score-stars" id="scoreContext"></span><span class="score-speed" id="speedPrefill" hidden></span></div>
+      <div class="result-main">
+        <div class="verdict" id="verdict"></div>
+        <div class="scorecard" id="scorecard" hidden>
+          <div class="score-row"><span class="score-icon">▶</span><span class="score-label" data-tip="How fast this model runs relative to its fastest possible configuration. Heavier quantization increases speed but reduces quality.">Speed</span><span class="score-stars" id="scoreSpeed"></span></div>
+          <div class="score-row"><span class="score-icon">★</span><span class="score-label" data-tip="How much of this model's output quality is preserved compared to running it at full precision. Lower quantization = closer to the model's true capability.">Quality</span><span class="score-stars" id="scoreQuality"></span></div>
+          <div class="score-row"><span class="score-icon">■</span><span class="score-label" data-tip="How faithfully the context is stored in memory. Lower KV cache precision reduces how well the model can attend over its context window, regardless of how large that window is.">Context quality</span><span class="score-stars" id="scorePrecision"></span></div>
+          <div class="score-row"><span class="score-icon">◎</span><span class="score-label" data-tip="How much of this model's maximum context window fits in your available VRAM. 5 stars means you can use 90%+ of what the model was trained to handle.">Context size</span><span class="score-stars" id="scoreContext"></span></div>
+        </div>
+        <span class="result-label" id="resultLabelOom" hidden></span>
       </div>
-      <span class="result-label" id="resultLabelOom" hidden></span>
-      <pre class="ollama-cmd" id="ollamaCmd" hidden></pre>
-      <div class="os-tabs" id="osTabs" hidden>
-        <button class="os-tab" id="tabLinux">▶ Linux / Mac</button>
-        <button class="os-tab" id="tabWindows">▶ Windows</button>
+      <div class="result-cmd">
+        <pre class="ollama-cmd" id="ollamaCmd" hidden></pre>
+        <div class="os-tabs" id="osTabs" hidden>
+          <button class="os-tab" id="tabLinux">▶ Linux / Mac</button>
+          <button class="os-tab" id="tabWindows">▶ Windows</button>
+        </div>
+        <pre class="ollama-cmd ollama-setup" id="ollamaSetup" hidden></pre>
       </div>
-      <pre class="ollama-cmd ollama-setup" id="ollamaSetup" hidden></pre>
+      <div class="result-aside" id="resultAside" hidden>
+        <div class="aside-stat" data-tip="Output tokens per second — how fast the model generates its response. Bandwidth-bound at batch size 1.">
+          <div class="aside-val" id="asideGenSpeed">—</div>
+          <div class="aside-label">generation</div>
+        </div>
+        <div class="aside-stat" data-tip="Input tokens per second — how fast the model processes your prompt before generating. Compute-bound.">
+          <div class="aside-val" id="asidePrefillSpeed">—</div>
+          <div class="aside-label">processing</div>
+        </div>
+        <div class="aside-divider"></div>
+        <div class="aside-stat" data-tip="Approximate amount of English text that fits in the available context window.">
+          <div class="aside-val" id="asideCtxPages">—</div>
+          <div class="aside-label" id="asideCtxLabel">—</div>
+        </div>
+      </div>
     </div>
 
     <div class="provenance-alert" id="provenanceAlert" hidden></div>
 
-    <div class="details">
-      <div class="details-header">Model info</div>
-      <div class="detail-row">
-        <div class="detail-key" data-tip="The company or research group that created and published this model.">organization</div>
-        <div class="detail-val" id="detailOrganization"></div>
+    <div class="info-tabs">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="tabModel">Model</button>
+        <button class="tab-btn" data-tab="tabGpu">GPU</button>
+        <button class="tab-btn" data-tab="tabFormula">Details</button>
       </div>
-      <div class="detail-row">
-        <div class="detail-key" data-tip="Country or region where the originating organization is based.">origin</div>
-        <div class="detail-val" id="detailOrigin"></div>
-      </div>
-      <div class="detail-row" id="detailMoeRow" hidden>
-        <div class="detail-key" data-tip="Mixture of Experts (MoE) — only a fraction of parameters activate per token, allowing a large total parameter count with lower compute and memory cost than a dense model of the same size.">architecture</div>
-        <div class="detail-val detail-moe">Mixture of Experts (MoE)</div>
-      </div>
-      <div class="detail-row" id="detailMultimodalRow" hidden>
-        <div class="detail-key" data-tip="This model can process images in addition to text. Images are converted to tokens that consume the context window — so usable text context is reduced when images are provided.">modality</div>
-        <div class="detail-val detail-multimodal">Multimodal (text + vision)</div>
-      </div>
-      <div class="detail-row">
-        <div class="detail-key" data-tip="The maximum context length the model was trained on. Think of it as the model's memory limit — it cannot meaningfully process more tokens than this at once. Do not set num_ctx above this value.">context_length</div>
-        <div class="detail-val" id="detailMaxCtx"></div>
-      </div>
-      <div class="details-header">Architecture</div>
-      <div class="detail-row">
-        <div class="detail-key" data-tip="The number of transformer layers (blocks) stacked in the model. Every token in your context window needs KV cache memory for each layer — more layers means more VRAM per token of context.">block_count</div>
-        <div class="detail-val" id="detailLayers"></div>
-      </div>
-      <div class="detail-row">
-        <div class="detail-key" data-tip="With Grouped Query Attention (GQA), multiple attention heads share one KV head pair, cutting memory without much quality loss. This number — not the total query heads — is what drives the VRAM calculation.">head_count_kv</div>
-        <div class="detail-val"><span id="detailKvHeads"></span> <span class="gqa-note">← used (GQA)</span></div>
-      </div>
-      <div class="detail-row">
-        <div class="detail-key" data-tip="Size of each key vector per attention head. Together with value_length, block_count and head_count_kv, this determines how many bytes each token of context costs.">key_length</div>
-        <div class="detail-val" id="detailHeadDim"></div>
-      </div>
-      <div class="detail-row">
-        <div class="detail-key" data-tip="Size of each value vector per attention head. Equal to key_length for standard architectures. Differs in models with MLA (e.g. DeepSeek V2/V3) where KV is compressed into a latent space.">value_length</div>
-        <div class="detail-val" id="detailValueLength"></div>
-      </div>
-      <div class="detail-row">
-        <div class="detail-key" data-tip="Precision of each number stored in the KV cache. f16 = 2 bytes, works everywhere. q8_0 = 1 byte (half the cache). q4_0 = 0.5 bytes (quarter the cache). Lower precision = more context for the same VRAM, but requires Flash Attention support on your GPU.">bytes_per_element</div>
-        <div class="detail-val"><span id="detailBpe"></span> <span class="derived-note">(<span id="detailBpeLabel"></span>)</span></div>
-      </div>
-      <div class="detail-row">
-        <div class="detail-key" data-tip="How much VRAM the model's parameters occupy. This is the fixed baseline cost — it must fit before any context window can be allocated. Quantization (e.g. Q4_K_M) compresses the weights to reduce this at a small quality cost.">model weights</div>
-        <div class="detail-val"><span id="detailWeights"></span> <span class="derived-note">(<span id="detailQuantization"></span>)</span></div>
-      </div>
-      <div class="details-source"><a id="detailOllamaLink" href="#" target="_blank" rel="noopener noreferrer">ollama.com ↗</a></div>
-    </div>
 
-    <div class="formula-box" id="formulaBox" hidden>
-      <div class="formula-header" id="formulaHeader">Max context window</div>
-      <div>bytes_per_token = block_count × head_count_kv × (key_length + value_length) × bytes_per_element</div>
-      <div class="formula-line">
-        &nbsp;&nbsp;= <span class="hl" id="formulaBlockCount"></span>
-        × <span class="hl" id="formulaKvHeads"></span>
-        × (<span class="hl" id="formulaKeyLength"></span> + <span class="hl" id="formulaValueLength"></span>)
-        × <span class="hl" id="formulaBpeLabel"></span>
-        = <span class="hl-a" id="formulaPerToken"></span> / token
-        <span class="formula-muted" id="formulaPerTokenKB"></span>
+      <div class="tab-panel active" id="tabModel">
+        <div class="details">
+          <div class="details-header">Model info</div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="The company or research group that created and published this model.">organization</div>
+            <div class="detail-val" id="detailOrganization"></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="Country or region where the originating organization is based.">origin</div>
+            <div class="detail-val" id="detailOrigin"></div>
+          </div>
+          <div class="detail-row" id="detailMoeRow" hidden>
+            <div class="detail-key" data-tip="Mixture of Experts (MoE) — only a fraction of parameters activate per token, allowing a large total parameter count with lower compute and memory cost than a dense model of the same size.">architecture</div>
+            <div class="detail-val detail-moe">Mixture of Experts (MoE)</div>
+          </div>
+          <div class="detail-row" id="detailMultimodalRow" hidden>
+            <div class="detail-key" data-tip="This model can process images in addition to text. Images are converted to tokens that consume the context window — so usable text context is reduced when images are provided.">modality</div>
+            <div class="detail-val detail-multimodal">Multimodal (text + vision)</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="The maximum context length the model was trained on. Think of it as the model's memory limit — it cannot meaningfully process more tokens than this at once. Do not set num_ctx above this value.">context_length</div>
+            <div class="detail-val" id="detailMaxCtx"></div>
+          </div>
+          <div class="details-header">Architecture</div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="The number of transformer layers (blocks) stacked in the model. Every token in your context window needs KV cache memory for each layer — more layers means more VRAM per token of context.">block_count</div>
+            <div class="detail-val" id="detailLayers"></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="With Grouped Query Attention (GQA), multiple attention heads share one KV head pair, cutting memory without much quality loss. This number — not the total query heads — is what drives the VRAM calculation.">head_count_kv</div>
+            <div class="detail-val"><span id="detailKvHeads"></span> <span class="gqa-note">← used (GQA)</span></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="Size of each key vector per attention head. Together with value_length, block_count and head_count_kv, this determines how many bytes each token of context costs.">key_length</div>
+            <div class="detail-val" id="detailHeadDim"></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="Size of each value vector per attention head. Equal to key_length for standard architectures. Differs in models with MLA (e.g. DeepSeek V2/V3) where KV is compressed into a latent space.">value_length</div>
+            <div class="detail-val" id="detailValueLength"></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="Precision of each number stored in the KV cache. f16 = 2 bytes, works everywhere. q8_0 = 1 byte (half the cache). q4_0 = 0.5 bytes (quarter the cache). Lower precision = more context for the same VRAM, but requires Flash Attention support on your GPU.">bytes_per_element</div>
+            <div class="detail-val"><span id="detailBpe"></span> <span class="derived-note">(<span id="detailBpeLabel"></span>)</span></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="How much VRAM the model's parameters occupy. This is the fixed baseline cost — it must fit before any context window can be allocated. Quantization (e.g. Q4_K_M) compresses the weights to reduce this at a small quality cost.">model weights</div>
+            <div class="detail-val"><span id="detailWeights"></span> <span class="derived-note">(<span id="detailQuantization"></span>)</span></div>
+          </div>
+          <div class="details-header">Quantization</div>
+          <div class="detail-row">
+            <div class="detail-key">type</div>
+            <div class="detail-val" id="quantType"></div>
+          </div>
+          <div class="detail-row detail-row-full">
+            <div class="detail-key">description</div>
+            <div class="detail-val" id="quantSummary"></div>
+          </div>
+          <div class="details-source"><a id="detailOllamaLink" href="#" target="_blank" rel="noopener noreferrer">ollama.com ↗</a></div>
+        </div>
       </div>
-      <div class="formula-spacer" id="formulaAvailLabel"></div>
-      <div class="formula-line">
-        &nbsp;&nbsp;= <span class="hl-a" id="formulaAvailGB"></span>
-        = <span class="hl-a" id="formulaAvailBytes"></span>
+
+      <div class="tab-panel" id="tabGpu">
+        <div class="details">
+          <div class="details-header">Card</div>
+          <div class="detail-row">
+            <div class="detail-key">GPU</div>
+            <div class="detail-val" id="gpuName"></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key">VRAM</div>
+            <div class="detail-val" id="gpuVramDisplay"></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="Memory bandwidth in GB/s. Token generation (decode) is bandwidth-bound — the GPU streams all model weights through memory once per output token.">bandwidth</div>
+            <div class="detail-val" id="gpuBandwidth"></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="FP16 tensor TFLOPS. Prompt processing (prefill) is compute-bound. llama.cpp dequantizes weights to fp16 before GEMM regardless of quantization, so fp16 TFLOPS is the right figure for all quant types.">tflops_fp16</div>
+            <div class="detail-val" id="gpuTflops"></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="Flash Attention support enables sub-f16 KV cache quantization (q8_0, q4_0), which halves or quarters KV cache memory and allows proportionally longer context windows.">flash attention</div>
+            <div class="detail-val" id="gpuFlash"></div>
+          </div>
+          <div class="details-header">Speed estimates</div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="Est. token generation speed (decode). Formula: bandwidth × gen_eff / active_weights_gb. Efficiency range varies by quantization type.">generation</div>
+            <div class="detail-val" id="gpuGenSpeedDetail"></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-key" data-tip="Est. prompt processing speed (prefill). Formula: tflops_fp16 × 1e12 × prefill_eff / (2 × active_params × 1e9). Efficiency is lower than theoretical due to poor tensor core utilization at batch size 1.">processing</div>
+            <div class="detail-val" id="gpuPrefillSpeedDetail"></div>
+          </div>
+        </div>
       </div>
-      <div class="formula-spacer">raw_max_tokens = available_vram ÷ bytes_per_token</div>
-      <div class="formula-line">&nbsp;&nbsp;= <span class="hl-a" id="formulaRawTokens"></span> tokens</div>
-      <div class="formula-spacer">→ largest power-of-2 that fits:</div>
-      <div class="formula-line">&nbsp;&nbsp;<span class="hl-g" id="formulaMaxCtx"></span></div>
-      <div id="formulaArchCapNote" hidden>
-        <div class="formula-spacer formula-muted">↑ capped at model's architectural limit (context_length = <span id="formulaArchLimit"></span> tokens)</div>
+
+      <div class="tab-panel" id="tabFormula">
+        <div class="formula-box" id="formulaBox" hidden>
+          <div class="formula-header" id="formulaHeader">Context window</div>
+          <div class="formula-muted">bytes_per_token = block_count × head_count_kv × (key_length + value_length) × bytes_per_element</div>
+          <div class="formula-line">&nbsp;&nbsp;= <span class="hl" id="formulaBlockCount"></span> × <span class="hl" id="formulaKvHeads"></span> × (<span class="hl" id="formulaKeyLength"></span> + <span class="hl" id="formulaValueLength"></span>) × <span class="hl" id="formulaBpeLabel"></span> = <span class="hl-a" id="formulaPerToken"></span>/token <span class="formula-muted" id="formulaPerTokenKB"></span></div>
+          <div class="formula-spacer formula-muted" id="formulaAvailLabel"></div>
+          <div class="formula-line">&nbsp;&nbsp;= <span class="hl-a" id="formulaAvailGB"></span> = <span class="hl-a" id="formulaAvailBytes"></span> &nbsp;→ raw: <span class="hl-a" id="formulaRawTokens"></span> tokens &nbsp;→ <span class="hl-g" id="formulaMaxCtx"></span></div>
+          <div id="formulaArchCapNote" hidden>
+            <div class="formula-muted formula-spacer">↑ capped at architectural context_length = <span id="formulaArchLimit"></span> tokens</div>
+          </div>
+
+          <div class="formula-header formula-spacer" id="formulaSpeedSection" hidden>Speed estimates</div>
+          <div id="formulaSpeedBody" hidden>
+            <div class="formula-muted">generation (t/s) = bandwidth × gen_eff / active_weights_gb</div>
+            <div class="formula-line">&nbsp;&nbsp;= <span class="hl" id="formulaGenBw"></span> GB/s × <span class="hl" id="formulaGenEff"></span> / <span class="hl" id="formulaGenWeights"></span> GB = <span class="hl-g" id="formulaGenResult"></span></div>
+            <div class="formula-muted formula-spacer">processing (t/s) = tflops_fp16 × 1e12 × prefill_eff / (2 × active_params × 1e9)</div>
+            <div class="formula-line">&nbsp;&nbsp;= <span class="hl" id="formulaPrefillTflops"></span> TFLOPS × 1e12 × <span class="hl" id="formulaPrefillEff"></span> / (2 × <span class="hl" id="formulaPrefillParams"></span>B × 1e9) = <span class="hl-g" id="formulaPrefillResult"></span></div>
+          </div>
+        </div>
+        <div id="formulaNoFit" class="formula-nofit" hidden>Model does not fit in available VRAM — no context window to calculate.</div>
       </div>
     </div>
 

@@ -2067,6 +2067,87 @@ const MODELS = [
     ]
   },
   {
+    "ollama_tag": "smollm2:135m",
+    "context_length": 8192,
+    "params_b": 0.135,
+    "block_count": 30,
+    "head_count": 9,
+    "head_count_kv": 3,
+    "embedding_length": 576,
+    "key_length": 64,
+    "variants": [
+      {"tag": "135m-instruct-q2_K",   "quantization": "Q2_K",   "weights_gb": 0.088},
+      {"tag": "135m-instruct-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 0.088},
+      {"tag": "135m-instruct-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 0.094},
+      {"tag": "135m-instruct-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 0.098},
+      {"tag": "135m-instruct-q4_0",   "quantization": "Q4_0",   "weights_gb": 0.092},
+      {"tag": "135m-instruct-q4_1",   "quantization": "Q4_1",   "weights_gb": 0.098},
+      {"tag": "135m-instruct-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 0.102},
+      {"tag": "135m-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 0.105},
+      {"tag": "135m-instruct-q5_0",   "quantization": "Q5_0",   "weights_gb": 0.105},
+      {"tag": "135m-instruct-q5_1",   "quantization": "Q5_1",   "weights_gb": 0.112},
+      {"tag": "135m-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 0.110},
+      {"tag": "135m-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 0.112},
+      {"tag": "135m-instruct-q6_K",   "quantization": "Q6_K",   "weights_gb": 0.120},
+      {"tag": "135m-instruct-q8_0",   "quantization": "Q8_0",   "weights_gb": 0.145},
+      {"tag": "135m-instruct-fp16",   "quantization": "F16",    "weights_gb": 0.271}
+    ]
+  },
+  {
+    "ollama_tag": "smollm2:360m",
+    "context_length": 8192,
+    "params_b": 0.36,
+    "block_count": 32,
+    "head_count": 15,
+    "head_count_kv": 5,
+    "embedding_length": 960,
+    "key_length": 64,
+    "variants": [
+      {"tag": "360m-instruct-q2_K",   "quantization": "Q2_K",   "weights_gb": 0.219},
+      {"tag": "360m-instruct-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 0.219},
+      {"tag": "360m-instruct-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 0.235},
+      {"tag": "360m-instruct-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 0.246},
+      {"tag": "360m-instruct-q4_0",   "quantization": "Q4_0",   "weights_gb": 0.229},
+      {"tag": "360m-instruct-q4_1",   "quantization": "Q4_1",   "weights_gb": 0.249},
+      {"tag": "360m-instruct-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 0.260},
+      {"tag": "360m-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 0.271},
+      {"tag": "360m-instruct-q5_0",   "quantization": "Q5_0",   "weights_gb": 0.268},
+      {"tag": "360m-instruct-q5_1",   "quantization": "Q5_1",   "weights_gb": 0.288},
+      {"tag": "360m-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 0.283},
+      {"tag": "360m-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 0.290},
+      {"tag": "360m-instruct-q6_K",   "quantization": "Q6_K",   "weights_gb": 0.367},
+      {"tag": "360m-instruct-q8_0",   "quantization": "Q8_0",   "weights_gb": 0.386},
+      {"tag": "360m-instruct-fp16",   "quantization": "F16",    "weights_gb": 0.726}
+    ]
+  },
+  {
+    "ollama_tag": "smollm2:1.7b",
+    "context_length": 8192,
+    "params_b": 1.71,
+    "block_count": 24,
+    "head_count": 32,
+    "head_count_kv": 32,
+    "embedding_length": 2048,
+    "key_length": 64,
+    "variants": [
+      {"tag": "1.7b-instruct-q2_K",   "quantization": "Q2_K",   "weights_gb": 0.675},
+      {"tag": "1.7b-instruct-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 0.777},
+      {"tag": "1.7b-instruct-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 0.860},
+      {"tag": "1.7b-instruct-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 0.933},
+      {"tag": "1.7b-instruct-q4_0",   "quantization": "Q4_0",   "weights_gb": 0.991},
+      {"tag": "1.7b-instruct-q4_1",   "quantization": "Q4_1",   "weights_gb": 1.1},
+      {"tag": "1.7b-instruct-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 0.999},
+      {"tag": "1.7b-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 1.1},
+      {"tag": "1.7b-instruct-q5_0",   "quantization": "Q5_0",   "weights_gb": 1.2},
+      {"tag": "1.7b-instruct-q5_1",   "quantization": "Q5_1",   "weights_gb": 1.3},
+      {"tag": "1.7b-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 1.2},
+      {"tag": "1.7b-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 1.2},
+      {"tag": "1.7b-instruct-q6_K",   "quantization": "Q6_K",   "weights_gb": 1.4},
+      {"tag": "1.7b-instruct-q8_0",   "quantization": "Q8_0",   "weights_gb": 1.8},
+      {"tag": "1.7b-instruct-fp16",   "quantization": "F16",    "weights_gb": 3.4}
+    ]
+  },
+  {
     "ollama_tag": "mistral-nemo:12b",
     "context_length": 1024000,
     "params_b": 12.2,
@@ -2507,6 +2588,73 @@ const MODELS = [
       {"tag": "27b", "quantization": "Q4_K_M", "weights_gb": 17.0},
       {"tag": "27b-it-q8_0", "quantization": "Q8_0", "weights_gb": 30.0},
       {"tag": "27b-it-bf16", "quantization": "BF16", "weights_gb": 55.0}
+    ]
+  },
+  {
+    "ollama_tag": "magistral:24b",
+    "context_length": 40000,
+    "params_b": 23.6,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 5120,
+    "key_length": 128,
+    "value_length": 128,
+    "variants": [
+      {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 14.0},
+      {"tag": "24b-small-2506-q8_0", "quantization": "Q8_0", "weights_gb": 25.0}
+    ]
+  },
+  {
+    "ollama_tag": "notus:7b",
+    "context_length": 32768,
+    "params_b": 7.24,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
+    "variants": [
+      {"tag": "7b", "quantization": "Q4_0", "weights_gb": 4.1},
+      {"tag": "7b-v1-q2_K", "quantization": "Q2_K", "weights_gb": 3.1},
+      {"tag": "7b-v1-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 3.2},
+      {"tag": "7b-v1-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 3.5},
+      {"tag": "7b-v1-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 3.8},
+      {"tag": "7b-v1-q4_1", "quantization": "Q4_1", "weights_gb": 4.6},
+      {"tag": "7b-v1-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 4.1},
+      {"tag": "7b-v1-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 4.4},
+      {"tag": "7b-v1-q5_0", "quantization": "Q5_0", "weights_gb": 5.0},
+      {"tag": "7b-v1-q5_1", "quantization": "Q5_1", "weights_gb": 5.4},
+      {"tag": "7b-v1-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 5.0},
+      {"tag": "7b-v1-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 5.1},
+      {"tag": "7b-v1-q6_K", "quantization": "Q6_K", "weights_gb": 5.9},
+      {"tag": "7b-v1-q8_0", "quantization": "Q8_0", "weights_gb": 7.7}
+    ]
+  },
+  {
+    "ollama_tag": "nuextract:3.8b",
+    "context_length": 4096,
+    "params_b": 3.82,
+    "block_count": 32,
+    "head_count": 32,
+    "head_count_kv": 32,
+    "embedding_length": 3072,
+    "key_length": 96,
+    "variants": [
+      {"tag": "3.8b", "quantization": "Q4_0", "weights_gb": 2.2},
+      {"tag": "3.8b-q2_K", "quantization": "Q2_K", "weights_gb": 1.4},
+      {"tag": "3.8b-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 1.7},
+      {"tag": "3.8b-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 2.0},
+      {"tag": "3.8b-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 2.1},
+      {"tag": "3.8b-q4_1", "quantization": "Q4_1", "weights_gb": 2.4},
+      {"tag": "3.8b-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 2.2},
+      {"tag": "3.8b-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 2.4},
+      {"tag": "3.8b-q5_0", "quantization": "Q5_0", "weights_gb": 2.6},
+      {"tag": "3.8b-q5_1", "quantization": "Q5_1", "weights_gb": 2.9},
+      {"tag": "3.8b-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 2.6},
+      {"tag": "3.8b-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 2.8},
+      {"tag": "3.8b-q6_K", "quantization": "Q6_K", "weights_gb": 3.1},
+      {"tag": "3.8b-q8_0", "quantization": "Q8_0", "weights_gb": 4.1}
     ]
   }
 ];

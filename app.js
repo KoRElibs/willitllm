@@ -34,10 +34,7 @@ function getLibMeta(m) {
 }
 
 function formatModelOption(m) {
-  const [library] = m.ollama_tag.split(':');
-  const libInfo = LIB_META[library];
-  const flag = libInfo?.origin ? (FLAGS[libInfo.origin] || '🌍') : '👥';
-  return `${m.ollama_tag}  ${flag}`;
+  return m.ollama_tag;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,6 +63,15 @@ function fmtSpeed(lo, hi) {
   const fmt = n => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
   return lo === hi ? `~${fmt(lo)} t/s` : `~${fmt(lo)}–${fmt(hi)} t/s`;
 }
+function fmtSpeedHuman(lo, hi) {
+  // Convert tokens/s → words/s (~0.75 words per token)
+  const fmt = n => {
+    const w = Math.round(n * 0.75);
+    return w >= 1000 ? `~${(w / 1000).toFixed(1)}k` : `~${w}`;
+  };
+  const loS = fmt(lo), hiS = fmt(hi);
+  return loS === hiS ? `${loS} words/s` : `${loS}–${hiS} words/s`;
+}
 
 // Returns { bwLo, bwHi, tflopsLo, tflopsHi, isExact } or null if no data available.
 // For a named card option (dataset.gpuIdx set), returns exact values (lo === hi).
@@ -91,6 +97,58 @@ function getGpuSpecs(vramGB) {
     tflopsHi: Math.max(...entries.map(g => g.tflops_fp16)),
     isExact:  false,
   };
+}
+
+function updateKvOptions() {
+  const gpuOpt     = document.getElementById('vramInput').selectedOptions[0];
+  const flash      = gpuOpt ? gpuOpt.dataset.flash : 'yes';
+  const flashOk    = flash === 'yes' || flash === 'mixed';
+  const kvSel      = document.getElementById('kvCacheType');
+  Array.from(kvSel.options).forEach(opt => {
+    const needsFlash = parseFloat(opt.value) < 2;
+    opt.hidden   = needsFlash && !flashOk;
+    opt.disabled = needsFlash && !flashOk;
+  });
+  // Reset to f16 if current selection is no longer available
+  if (parseFloat(kvSel.value) < 2 && !flashOk) kvSel.value = '2';
+}
+
+function populateGpuTab(vramGB, speedEsts) {
+  const sel    = document.getElementById('vramInput');
+  const opt    = sel.selectedOptions[0];
+  const gpuIdx = opt ? parseInt(opt.dataset.gpuIdx) : NaN;
+
+  let name, bandwidth, tflops, flash;
+  if (!isNaN(gpuIdx) && GPUS[gpuIdx]) {
+    const gpu = GPUS[gpuIdx];
+    name      = gpu.names.join(' / ');
+    bandwidth = gpu.bandwidth + ' GB/s';
+    tflops    = gpu.tflops_fp16 + ' TFLOPS';
+    flash     = gpu.flash;
+  } else {
+    const entries = GPUS.filter(g => g.vram === vramGB && g.bandwidth);
+    name = `${vramGB} GB (generic)`;
+    if (entries.length) {
+      const bwLo = Math.min(...entries.map(g => g.bandwidth));
+      const bwHi = Math.max(...entries.map(g => g.bandwidth));
+      const tLo  = Math.min(...entries.map(g => g.tflops_fp16));
+      const tHi  = Math.max(...entries.map(g => g.tflops_fp16));
+      bandwidth  = bwLo === bwHi ? `${bwLo} GB/s` : `${bwLo}–${bwHi} GB/s`;
+      tflops     = tLo  === tHi  ? `${tLo} TFLOPS` : `${tLo}–${tHi} TFLOPS`;
+      const flashVals = [...new Set(entries.map(g => g.flash))];
+      flash = flashVals.length === 1 ? flashVals[0] : 'varies';
+    } else {
+      bandwidth = '—'; tflops = '—'; flash = '—';
+    }
+  }
+
+  document.getElementById('gpuName').textContent         = name;
+  document.getElementById('gpuVramDisplay').textContent  = vramGB + ' GB';
+  document.getElementById('gpuBandwidth').textContent    = bandwidth;
+  document.getElementById('gpuTflops').textContent       = tflops;
+  document.getElementById('gpuFlash').textContent        = flash;
+  document.getElementById('gpuGenSpeedDetail').textContent     = speedEsts ? fmtSpeed(speedEsts.genLo,     speedEsts.genHi)     : '—';
+  document.getElementById('gpuPrefillSpeedDetail').textContent = speedEsts ? fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi) : '—';
 }
 
 function calcSpeedEstimates(model, variant, vramGB, quantInfo) {
@@ -239,18 +297,19 @@ function variantOllamaTag(model, variantIdx) {
 // ─────────────────────────────────────────────────────────────────────────────
 function markModelOptions(vramGB, bytesPerElement) {
   const sel = document.getElementById('modelSelect');
-  Array.from(sel.options).forEach((opt, i) => {
-    const m = MODELS[i];
+  Array.from(sel.options).forEach((opt) => {
+    const m = MODELS[parseInt(opt.value)];
+    if (!m) return;
     const weightsGB = m.variants && m.variants.length ? m.variants[0].weights_gb : 0;
-    const fits = weightsGB < vramGB - OVERHEAD_GB;
+    const fits      = weightsGB < vramGB - OVERHEAD_GB;
     if (!fits) {
-      opt.textContent = `✗  ${formatModelOption(m)}`;
+      opt.textContent = `✗  ${m.ollama_tag}`;
       opt.style.color = '#f06464';
       return;
     }
     const ctxResult     = calcMaxContext(m, vramGB, bytesPerElement, weightsGB);
     const contextFitPct = m.context_length ? Math.round((ctxResult.maxCtx / m.context_length) * 100) : 100;
-    opt.textContent = formatModelOption(m);
+    opt.textContent = m.ollama_tag;
     opt.style.color = contextFitPct >= 66 ? '#56d88a' : contextFitPct >= 33 ? '#f5a623' : '#f07418';
   });
 }
@@ -265,6 +324,7 @@ function render() {
   const kvLabel         = KV_CACHE_LABELS[String(bytesPerElement)] || 'f16';
   const kvInfo          = KV_CACHE_INFO[kvLabel];
   const model = MODELS[modelIdx];
+  let speedEsts = null;
   updateSelectionSummary(model);
 
   const noModel = document.getElementById('noModel');
@@ -295,7 +355,7 @@ function render() {
   const contextPct = noFit ? 0 : Math.min(100 - modelPct, (ctxResult.kvCacheGB / vramGB) * 100);
   const freePct    = Math.max(0, 100 - modelPct - contextPct);
 
-  document.getElementById('barTotal').textContent = fmtGB(vramGB);
+  document.getElementById('barTotal').textContent = Math.round(vramGB) + ' GB';
 
   const segModel = document.getElementById('segModel');
   segModel.className   = 'membar-seg ' + (noFit ? 'seg-overflow' : 'seg-model');
@@ -328,11 +388,12 @@ function render() {
   const libInfo = getLibMeta(model);
 
   // ── Scorecard
-  function stars(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
-  function colorForScore(n) {
-    return n >= 4 ? 'var(--green)' : n === 3 ? 'var(--amber)' : n === 2 ? 'var(--orange)' : 'var(--red)';
+  function bar10(n10) { return '■'.repeat(n10) + '□'.repeat(10 - n10); }
+  function colorForScore(n5) {
+    return n5 >= 4 ? 'var(--green)' : n5 === 3 ? 'var(--amber)' : n5 === 2 ? 'var(--orange)' : 'var(--red)';
   }
 
+  const ctxTradeoff = 'Quality vs size: better KV precision = more VRAM per token = smaller context window.';
   const scoreSpeed     = quantInfo ? Math.max(1, Math.round((quantInfo.speed   / 10) * 5)) : 0;
   const scoreQuality   = quantInfo ? Math.max(1, Math.round((quantInfo.quality / 10) * 5)) : 0;
   const contextFitPct  = (!noFit && model.context_length) ? Math.round((ctxResult.maxCtx / model.context_length) * 100) : null;
@@ -344,27 +405,33 @@ function render() {
   headline.className = `result-headline ${scoreClass}`;
 
   if (!noFit) {
-    [
-      ['scoreSpeed',     scoreSpeed],
-      ['scoreQuality',   scoreQuality],
-      ['scorePrecision', scorePrecision],
-      ['scoreContext',   scoreContext],
-    ].forEach(([id, score]) => {
+    // Speed & Quality: use raw 1-10 from quantInfo for full precision
+    // Precision & Context: scale 1-5 → 1-10
+    const bars = [
+      ['scoreSpeed',     quantInfo ? quantInfo.speed   : 0, scoreSpeed],
+      ['scoreQuality',   quantInfo ? quantInfo.quality : 0, scoreQuality],
+      ['scorePrecision', scorePrecision * 2,                scorePrecision],
+      ['scoreContext',   scoreContext   * 2,                scoreContext],
+    ];
+    bars.forEach(([id, n10, n5]) => {
       const el = document.getElementById(id);
-      el.textContent = stars(score);
-      el.style.color = colorForScore(score);
+      el.textContent = bar10(Math.round(n10));
+      el.style.color = colorForScore(n5);
     });
 
     scorecard.hidden = false;
 
     const quantInfoFull = variant ? QUANT_INFO[variant.quantization] : null;
     if (quantInfoFull) {
+      const tradeoff = 'Speed and quality trade off — higher quantization means faster generation but lower quality. You cannot have both at maximum.';
       document.getElementById('scoreQuality').dataset.tip =
-        `${variant.quantization} · ${quantInfoFull.summary}`;
+        `${variant.quantization} · ${quantInfoFull.summary} · ${tradeoff}`;
+      document.getElementById('scoreSpeed').dataset.tip =
+        `${variant.quantization} · ${quantInfoFull.summary} · ${tradeoff}`;
     }
     if (kvInfo) {
       document.getElementById('scorePrecision').dataset.tip =
-        `${kvLabel} · ${kvInfo.summary}`;
+        `${kvLabel} · ${ctxTradeoff}`;
     }
   } else {
     scorecard.hidden = true;
@@ -398,8 +465,7 @@ function render() {
     ollamaCmd.hidden = true;
     document.getElementById('osTabs').hidden = true;
     document.getElementById('ollamaSetup').hidden = true;
-    document.getElementById('speedGen').hidden = true;
-    document.getElementById('speedPrefill').hidden = true;
+    document.getElementById('resultAside').hidden = true;
   } else {
     labelOom.hidden = true;
 
@@ -409,36 +475,31 @@ function render() {
       : 'full context';
     const mmPart = libInfo.multimodal ? ' · images use tokens' : '';
     document.getElementById('scoreContext').dataset.tip =
-      `${fmtCtx(ctxResult.maxCtx)} · ${pctPart} · ~${pages} pages of typical English text${mmPart}`;
+      `${fmtCtx(ctxResult.maxCtx)} · ${pctPart}${mmPart} · ${ctxTradeoff}`;
+    // ── speed estimates
+    speedEsts = calcSpeedEstimates(model, variant, vramGB, quantInfo);
 
-    // ── speed estimates (inline in scorecard rows)
-    const speedEsts  = calcSpeedEstimates(model, variant, vramGB, quantInfo);
-    const genEl      = document.getElementById('speedGen');
-    const prefillEl  = document.getElementById('speedPrefill');
-    const genericNote = speedEsts && !speedEsts.isExact ? ' Select your exact GPU for a tighter estimate.' : '';
+    // ── result aside (right panel)
+    const asideEl = document.getElementById('resultAside');
+    const genEl    = document.getElementById('asideGenSpeed');
+    const prefEl   = document.getElementById('asidePrefillSpeed');
     if (speedEsts) {
-      genEl.textContent    = fmtSpeed(speedEsts.genLo, speedEsts.genHi);
-      genEl.dataset.tip    = `Generation speed — output tokens per second.${genericNote}`;
-      genEl.hidden         = false;
-      prefillEl.textContent = fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi);
-      prefillEl.dataset.tip = `Processing speed — prompt tokens ingested per second.${genericNote}`;
-      prefillEl.hidden      = false;
+      genEl.textContent    = fmtSpeedHuman(speedEsts.genLo, speedEsts.genHi);
+      genEl.dataset.tip    = `Generation: ${fmtSpeed(speedEsts.genLo, speedEsts.genHi)} — output tokens per second`;
+      prefEl.textContent   = fmtSpeedHuman(speedEsts.prefillLo, speedEsts.prefillHi);
+      prefEl.dataset.tip   = `Processing: ${fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi)} — prompt tokens ingested per second`;
     } else {
-      genEl.hidden     = true;
-      prefillEl.hidden = true;
+      genEl.textContent  = '—';
+      prefEl.textContent = '—';
     }
+    const humanCtx = fmtTokensHuman(ctxResult.maxCtx);
+    const [pagePart] = humanCtx.split(' · ').reverse();
+    const ctxPagesEl = document.getElementById('asideCtxPages');
+    ctxPagesEl.textContent  = pagePart;
+    ctxPagesEl.dataset.tip  = `${fmtCtx(ctxResult.maxCtx)} tokens · ${humanCtx}`;
+    document.getElementById('asideCtxLabel').textContent = `${fmtCtx(ctxResult.maxCtx)} context`;
+    asideEl.hidden = false;
 
-    const flashSel     = document.getElementById('vramInput').selectedOptions[0];
-    const flashSupport = flashSel ? flashSel.dataset.flash : 'yes';
-    if (bytesPerElement < 2 && kvInfo) {
-      const flashNote = flashSupport === 'mixed'
-        ? ` AMD support varies by ollama build and driver — verify before setting OLLAMA_KV_CACHE_TYPE.`
-        : flashSupport !== 'yes'
-        ? ` Not supported on Turing (RTX 20xx) or older NVIDIA GPUs — this setting may have no effect or cause errors.`
-        : ` Gains are modest below 8k context.`;
-      document.getElementById('scorePrecision').dataset.tip =
-        `${kvLabel} · ${kvInfo.summary}${flashNote}`;
-    }
 
     const muted      = s => `<span class="cmd-muted">${s}</span>`;
     const variantIdx = getSelectedVariantIdx(model);
@@ -491,6 +552,10 @@ function render() {
     document.getElementById(id).textContent = val;
   });
 
+  // ── Quantization section (model tab)
+  document.getElementById('quantType').textContent    = quantization;
+  document.getElementById('quantSummary').textContent = quantInfo?.summary || '—';
+
   // Single variant-specific link at the bottom of the details table
   const [library] = model.ollama_tag.split(':');
   const variantTag    = variant ? variant.tag : model.ollama_tag.split(':')[1];
@@ -503,24 +568,28 @@ function render() {
 
   document.getElementById('provenanceAlert').hidden = true;
 
+  // ── GPU tab
+  populateGpuTab(vramGB, speedEsts);
+
   // ── formula breakdown
   const formulaBox  = document.getElementById('formulaBox');
   formulaBox.hidden = noFit;
+  document.getElementById('formulaNoFit').hidden = !noFit;
   if (!noFit) {
     const valueDim = model.value_length ?? model.key_length;
-    document.getElementById('formulaHeader').textContent     = `Max context: ${fmtCtx(ctxResult.maxCtx)} tokens`;
-    document.getElementById('formulaBlockCount').textContent = model.block_count;
-    document.getElementById('formulaKvHeads').textContent    = model.head_count_kv;
-    document.getElementById('formulaBpeLabel').textContent   = `${bytesPerElement}(${kvLabel})`;
+    document.getElementById('formulaHeader').textContent      = `Context window: ${fmtCtx(ctxResult.maxCtx)}`;
+    document.getElementById('formulaBlockCount').textContent  = model.block_count;
+    document.getElementById('formulaKvHeads').textContent     = model.head_count_kv;
+    document.getElementById('formulaBpeLabel').textContent    = `${bytesPerElement}(${kvLabel})`;
     document.getElementById('formulaValueLength').textContent = valueDim;
-    document.getElementById('formulaKeyLength').textContent  = model.key_length;
-    document.getElementById('formulaPerToken').textContent   = `${ctxResult.perToken.toLocaleString()} bytes`;
-    document.getElementById('formulaPerTokenKB').textContent = `(${(ctxResult.perToken / 1024).toFixed(1)} KB)`;
-    document.getElementById('formulaAvailLabel').textContent = `available_vram = ${fmtGB(vramGB)} − ${fmtGB(OVERHEAD_GB)} overhead − ${fmtGB(weightsGB)} weights`;
-    document.getElementById('formulaAvailGB').textContent    = fmtGB(vramGB - OVERHEAD_GB - weightsGB);
-    document.getElementById('formulaAvailBytes').textContent = `${Math.round((vramGB - OVERHEAD_GB - weightsGB) * 1024 ** 3).toLocaleString()} bytes`;
-    document.getElementById('formulaRawTokens').textContent  = Math.round(ctxResult.rawTokens).toLocaleString();
-    document.getElementById('formulaMaxCtx').textContent     = `${ctxResult.maxCtx.toLocaleString()} tokens (${fmtCtx(ctxResult.maxCtx)})`;
+    document.getElementById('formulaKeyLength').textContent   = model.key_length;
+    document.getElementById('formulaPerToken').textContent    = `${ctxResult.perToken.toLocaleString()} bytes`;
+    document.getElementById('formulaPerTokenKB').textContent  = `(${(ctxResult.perToken / 1024).toFixed(1)} KB)`;
+    document.getElementById('formulaAvailLabel').textContent  = `available_vram = ${fmtGB(vramGB)} − ${fmtGB(OVERHEAD_GB)} overhead − ${fmtGB(weightsGB)} weights`;
+    document.getElementById('formulaAvailGB').textContent     = fmtGB(vramGB - OVERHEAD_GB - weightsGB);
+    document.getElementById('formulaAvailBytes').textContent  = `${Math.round((vramGB - OVERHEAD_GB - weightsGB) * 1024 ** 3).toLocaleString()} bytes`;
+    document.getElementById('formulaRawTokens').textContent   = Math.round(ctxResult.rawTokens).toLocaleString();
+    document.getElementById('formulaMaxCtx').textContent      = `${ctxResult.maxCtx.toLocaleString()} tokens (${fmtCtx(ctxResult.maxCtx)})`;
     const archCapNote = document.getElementById('formulaArchCapNote');
     if (ctxResult.limitedByArch) {
       document.getElementById('formulaArchLimit').textContent = ctxResult.archLimit.toLocaleString();
@@ -528,6 +597,33 @@ function render() {
     } else {
       archCapNote.hidden = true;
     }
+  }
+
+  // ── speed formula
+  const speedSection = document.getElementById('formulaSpeedSection');
+  const speedBody    = document.getElementById('formulaSpeedBody');
+  if (speedEsts) {
+    const gpuSpecs   = getGpuSpecs(vramGB);
+    const fmtRange   = (lo, hi) => lo === hi ? String(lo) : `${lo}–${hi}`;
+    const activeFrac = (model.params_b_active && model.params_b) ? model.params_b_active / model.params_b : 1.0;
+    const activeWeightsGB = (variant ? variant.weights_gb : 0) * activeFrac;
+    const [genLo, genHi]       = quantInfo ? quantInfo.gen_eff     : [0, 0];
+    const [preLo, preHi]       = quantInfo ? quantInfo.prefill_eff : [0, 0];
+    const paramsB = model.params_b_active || model.params_b;
+
+    document.getElementById('formulaGenBw').textContent         = gpuSpecs ? fmtRange(gpuSpecs.bwLo, gpuSpecs.bwHi) : '?';
+    document.getElementById('formulaGenEff').textContent        = `[${genLo}–${genHi}]`;
+    document.getElementById('formulaGenWeights').textContent    = activeWeightsGB.toFixed(2);
+    document.getElementById('formulaGenResult').textContent     = fmtSpeed(speedEsts.genLo, speedEsts.genHi);
+    document.getElementById('formulaPrefillTflops').textContent = gpuSpecs ? fmtRange(gpuSpecs.tflopsLo, gpuSpecs.tflopsHi) : '?';
+    document.getElementById('formulaPrefillEff').textContent    = `[${preLo}–${preHi}]`;
+    document.getElementById('formulaPrefillParams').textContent = paramsB;
+    document.getElementById('formulaPrefillResult').textContent = fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi);
+    speedSection.hidden = false;
+    speedBody.hidden    = false;
+  } else {
+    speedSection.hidden = true;
+    speedBody.hidden    = true;
   }
 }
 
@@ -564,6 +660,14 @@ function init() {
   // Build GPU dropdown from gpus.js data
   const vramSel = document.getElementById('vramInput');
 
+  // Placeholder
+  const vramPlaceholder = document.createElement('option');
+  vramPlaceholder.value    = '';
+  vramPlaceholder.disabled = true;
+  vramPlaceholder.selected = true;
+  vramPlaceholder.textContent = 'Select your GPU...';
+  vramSel.appendChild(vramPlaceholder);
+
   // Generic entries — one per unique VRAM size
   const sizes = [...new Set(GPUS.map(g => g.vram))];
   sizes.forEach(vram => {
@@ -574,7 +678,6 @@ function init() {
     opt.value         = vram;
     opt.dataset.flash = flash;
     opt.textContent   = `Generic ${vram} GB`;
-    if (entries.some(g => g.default)) opt.selected = true;
     vramSel.appendChild(opt);
   });
 
@@ -599,11 +702,40 @@ function init() {
   MODELS.sort((a, b) => a.ollama_tag.localeCompare(b.ollama_tag));
 
   const sel = document.getElementById('modelSelect');
+
+  // Placeholder
+  const modelPlaceholder = document.createElement('option');
+  modelPlaceholder.value    = '';
+  modelPlaceholder.disabled = true;
+  modelPlaceholder.selected = true;
+  modelPlaceholder.textContent = 'Select a model...';
+  sel.appendChild(modelPlaceholder);
+
+  // Group by organization, with flag in the optgroup label
+  const groups = new Map(); // org label → [{ m, i }]
   MODELS.forEach((m, i) => {
-    const opt       = document.createElement('option');
-    opt.value       = i;
-    opt.textContent = formatModelOption(m);
-    sel.appendChild(opt);
+    const [library] = m.ollama_tag.split(':');
+    const info = LIB_META[library];
+    const org  = info?.organization || 'Other';
+    const flag = info?.origin ? (FLAGS[info.origin] || '🌍') : '👥';
+    const key  = `${org}||${flag}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ m, i });
+  });
+
+  // Sort groups alphabetically by org name
+  const sortedGroups = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+  sortedGroups.forEach(([key, items]) => {
+    const [org, flag] = key.split('||');
+    const grp = document.createElement('optgroup');
+    grp.label = `${org}  ${flag}`;
+    items.forEach(({ m, i }) => {
+      const opt       = document.createElement('option');
+      opt.value       = i;
+      opt.textContent = m.ollama_tag;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
   });
 
   sel.addEventListener('change', () => {
@@ -611,10 +743,7 @@ function init() {
     render();
   });
 
-  const initialIdx = parseInt(sel.value) || 0;
-  if (MODELS[initialIdx]) populateVariants(MODELS[initialIdx]);
-
-  document.getElementById('vramInput').addEventListener('change', render);
+  document.getElementById('vramInput').addEventListener('change', () => { updateKvOptions(); render(); });
   document.getElementById('kvCacheType').addEventListener('change', render);
   document.getElementById('variantSelect').addEventListener('change', render);
 
@@ -631,6 +760,15 @@ function init() {
 
   document.getElementById('tabLinux').addEventListener('click',   () => setOsTab('linux'));
   document.getElementById('tabWindows').addEventListener('click', () => setOsTab('windows'));
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
 
   // Tooltip
   const tip = document.getElementById('tooltip');

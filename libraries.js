@@ -30,6 +30,7 @@ const LIBRARIES = [
   { "library": "wizardlm2",       "organization": "Microsoft",             "origin": "USA",         "source": null },
   { "library": "solar",           "organization": "Upstage",               "origin": "South Korea", "source": null },
   { "library": "stablelm2",       "organization": "Stability AI",          "origin": "UK",          "source": null },
+  { "library": "smollm2",         "organization": "HuggingFace",           "origin": "France",      "source": null },
   { "library": "mistral-nemo",    "organization": "Mistral AI",            "origin": "France",      "source": null },
   { "library": "llama3.3",        "organization": "Meta",                  "origin": "USA",         "source": null },
   { "library": "gemma2",          "organization": "Google DeepMind",       "origin": "USA",         "source": null },
@@ -42,4 +43,7 @@ const LIBRARIES = [
   { "library": "mistral-large",  "organization": "Mistral AI",            "origin": "France",      "source": null },
   { "library": "mathstral",      "organization": "Mistral AI",            "origin": "France",      "source": null },
   { "library": "ministral-3",    "organization": "Mistral AI",            "origin": "France",      "source": null,        "multimodal": true },
+  { "library": "magistral",      "organization": "Mistral AI",            "origin": "France",      "source": null },
+  { "library": "notus",          "organization": "Argilla",               "origin": "Spain",       "source": null },
+  { "library": "nuextract",      "organization": "NuMind",                "origin": "France",      "source": null },
 ];
