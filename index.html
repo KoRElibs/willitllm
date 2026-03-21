@@ -79,6 +79,19 @@
         <div id="selectionKv"><span id="selectionKvText"></span><span id="kvFlashTip" class="info-tip" hidden>ⓘ</span></div>
         <div id="ctxHint" hidden></div>
       </div>
+      <div class="speed-estimates" id="speedEstimates" hidden>
+        <div class="speed-row">
+          <span class="speed-label">Processing speed</span>
+          <span class="speed-val" id="speedPrefill"></span>
+          <span class="speed-unit">tokens/sec into context</span>
+        </div>
+        <div class="speed-row">
+          <span class="speed-label">Generation speed</span>
+          <span class="speed-val" id="speedGen"></span>
+          <span class="speed-unit">tokens/sec output</span>
+        </div>
+        <div class="speed-note" id="speedNote">⤷ Select your exact GPU above for a tighter estimate</div>
+      </div>
       <span class="result-label" id="resultLabelOom" hidden></span>
       <pre class="ollama-cmd" id="ollamaCmd" hidden></pre>
       <div class="os-tabs" id="osTabs" hidden>
@@ -111,39 +124,33 @@
       <div class="detail-row">
         <div class="detail-key" data-tip="The maximum context length the model was trained on. Think of it as the model's memory limit — it cannot meaningfully process more tokens than this at once. Do not set num_ctx above this value.">context_length</div>
         <div class="detail-val" id="detailMaxCtx"></div>
-        <div class="detail-src src-config-json"></div>
       </div>
       <div class="details-header">Architecture</div>
       <div class="detail-row">
         <div class="detail-key" data-tip="The number of transformer layers (blocks) stacked in the model. Every token in your context window needs KV cache memory for each layer — more layers means more VRAM per token of context.">block_count</div>
         <div class="detail-val" id="detailLayers"></div>
-        <div class="detail-src src-config-json"></div>
       </div>
       <div class="detail-row">
         <div class="detail-key" data-tip="With Grouped Query Attention (GQA), multiple attention heads share one KV head pair, cutting memory without much quality loss. This number — not the total query heads — is what drives the VRAM calculation.">head_count_kv</div>
         <div class="detail-val"><span id="detailKvHeads"></span> <span class="gqa-note">← used (GQA)</span></div>
-        <div class="detail-src src-config-json"></div>
       </div>
       <div class="detail-row">
         <div class="detail-key" data-tip="Size of each key vector per attention head. Together with value_length, block_count and head_count_kv, this determines how many bytes each token of context costs.">key_length</div>
         <div class="detail-val" id="detailHeadDim"></div>
-        <div class="detail-src src-config-json" id="srcHeadDim"></div>
       </div>
       <div class="detail-row">
         <div class="detail-key" data-tip="Size of each value vector per attention head. Equal to key_length for standard architectures. Differs in models with MLA (e.g. DeepSeek V2/V3) where KV is compressed into a latent space.">value_length</div>
         <div class="detail-val" id="detailValueLength"></div>
-        <div class="detail-src src-config-json"></div>
       </div>
       <div class="detail-row">
         <div class="detail-key" data-tip="Precision of each number stored in the KV cache. f16 = 2 bytes, works everywhere. q8_0 = 1 byte (half the cache). q4_0 = 0.5 bytes (quarter the cache). Lower precision = more context for the same VRAM, but requires Flash Attention support on your GPU.">bytes_per_element</div>
         <div class="detail-val"><span id="detailBpe"></span> <span class="derived-note">(<span id="detailBpeLabel"></span>)</span></div>
-        <div class="detail-src">kv cache selector</div>
       </div>
       <div class="detail-row">
         <div class="detail-key" data-tip="How much VRAM the model's parameters occupy. This is the fixed baseline cost — it must fit before any context window can be allocated. Quantization (e.g. Q4_K_M) compresses the weights to reduce this at a small quality cost.">model weights</div>
         <div class="detail-val"><span id="detailWeights"></span> <span class="derived-note">(<span id="detailQuantization"></span>)</span></div>
-        <div class="detail-src" id="detailSource"></div>
       </div>
+      <div class="details-source"><a id="detailOllamaLink" href="#" target="_blank" rel="noopener noreferrer">ollama.com ↗</a></div>
     </div>
 
     <div class="formula-box" id="formulaBox" hidden>

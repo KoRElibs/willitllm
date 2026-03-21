@@ -62,6 +62,61 @@ function calcMaxContext(model, vramGB, bytesPerElement, weightsGB) {
 }
 
 function fmtGB(n) { return n.toFixed(2) + ' GB'; }
+function fmtSpeed(lo, hi) {
+  const fmt = n => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
+  return lo === hi ? `~${fmt(lo)} t/s` : `~${fmt(lo)}–${fmt(hi)} t/s`;
+}
+
+// Returns { bwLo, bwHi, tflopsLo, tflopsHi, isExact } or null if no data available.
+// For a named card option (dataset.gpuIdx set), returns exact values (lo === hi).
+// For a generic VRAM-tier option, returns [min, max] across all named entries at that tier.
+function getGpuSpecs(vramGB) {
+  const sel = document.getElementById('vramInput');
+  const opt = sel.selectedOptions[0];
+  const gpuIdx = opt ? parseInt(opt.dataset.gpuIdx) : NaN;
+
+  if (!isNaN(gpuIdx) && GPUS[gpuIdx] && GPUS[gpuIdx].bandwidth) {
+    const gpu = GPUS[gpuIdx];
+    return { bwLo: gpu.bandwidth, bwHi: gpu.bandwidth,
+             tflopsLo: gpu.tflops_fp16, tflopsHi: gpu.tflops_fp16, isExact: true };
+  }
+
+  // Generic entry — range from all named entries at this VRAM tier
+  const entries = GPUS.filter(g => g.vram === vramGB && g.bandwidth);
+  if (entries.length === 0) return null;
+  return {
+    bwLo:     Math.min(...entries.map(g => g.bandwidth)),
+    bwHi:     Math.max(...entries.map(g => g.bandwidth)),
+    tflopsLo: Math.min(...entries.map(g => g.tflops_fp16)),
+    tflopsHi: Math.max(...entries.map(g => g.tflops_fp16)),
+    isExact:  false,
+  };
+}
+
+function calcSpeedEstimates(model, variant, vramGB, quantInfo) {
+  if (!quantInfo || !quantInfo.gen_eff || !quantInfo.prefill_eff) return null;
+  const gpuSpecs = getGpuSpecs(vramGB);
+  if (!gpuSpecs) return null;
+
+  // MoE: only active experts load per token — scale weights proportionally
+  const activeFraction = (model.params_b_active && model.params_b)
+    ? model.params_b_active / model.params_b : 1.0;
+  const activeWeightsGB = variant.weights_gb * activeFraction;
+
+  const [genEffLo,     genEffHi]     = quantInfo.gen_eff;
+  const [prefillEffLo, prefillEffHi] = quantInfo.prefill_eff;
+
+  // Generation speed: bandwidth-bound. tokens/sec = bandwidth × efficiency / active_weights
+  const genLo = Math.round((gpuSpecs.bwLo * genEffLo) / activeWeightsGB);
+  const genHi = Math.round((gpuSpecs.bwHi * genEffHi) / activeWeightsGB);
+
+  // Processing speed: compute-bound. tokens/sec = tflops × 1e12 × efficiency / (2 × params × 1e9)
+  const paramsActive = (model.params_b_active || model.params_b) * 1e9;
+  const prefillLo = Math.round((gpuSpecs.tflopsLo * 1e12 * prefillEffLo) / (2 * paramsActive));
+  const prefillHi = Math.round((gpuSpecs.tflopsHi * 1e12 * prefillEffHi) / (2 * paramsActive));
+
+  return { genLo, genHi, prefillLo, prefillHi, isExact: gpuSpecs.isExact };
+}
 function fmtTokensHuman(n) {
   // ~0.75 words per token; ~250 words per page
   const words = Math.round(n * 0.75 / 500) * 500;
@@ -348,6 +403,7 @@ function render() {
     document.getElementById('ctxHint').hidden = true;
     document.getElementById('osTabs').hidden = true;
     document.getElementById('ollamaSetup').hidden = true;
+    document.getElementById('speedEstimates').hidden = true;
   } else {
     labelOom.hidden = true;
 
@@ -359,6 +415,18 @@ function render() {
     const mmPart = libInfo.multimodal ? ' · images use tokens' : '';
     ctxHint.textContent = `${fmtCtx(ctxResult.maxCtx)} · ${pctPart} · ~${pages} pages of typical English text${mmPart}`;
     ctxHint.hidden = false;
+
+    // ── speed estimates
+    const speedEl   = document.getElementById('speedEstimates');
+    const speedEsts = calcSpeedEstimates(model, variant, vramGB, quantInfo);
+    if (speedEsts) {
+      document.getElementById('speedGen').textContent     = fmtSpeed(speedEsts.genLo,     speedEsts.genHi);
+      document.getElementById('speedPrefill').textContent = fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi);
+      document.getElementById('speedNote').hidden         = speedEsts.isExact;
+      speedEl.hidden = false;
+    } else {
+      speedEl.hidden = true;
+    }
 
     const flashSel     = document.getElementById('vramInput').selectedOptions[0];
     const flashSupport = flashSel ? flashSel.dataset.flash : 'yes';
@@ -426,19 +494,15 @@ function render() {
     document.getElementById(id).textContent = val;
   });
 
-  // Architecture source cells → link to ollama library page
+  // Single variant-specific link at the bottom of the details table
   const [library] = model.ollama_tag.split(':');
-  const ollamaLibUrl  = `https://ollama.com/library/${library}`;
-  const ollamaSrcLink = `<a href="${ollamaLibUrl}" target="_blank" rel="noopener noreferrer">ollama.com ↗</a>`;
-  document.querySelectorAll('.src-config-json').forEach(el => { el.innerHTML = ollamaSrcLink; });
-
-  // Model weights source
-  const modelName     = model.ollama_tag.split(':')[0];
-  const ollamaPageUrl = modelName.includes('/')
-    ? `https://ollama.com/${modelName}`
-    : `https://ollama.com/library/${modelName}`;
-  document.getElementById('detailSource').innerHTML =
-    `<a href="${ollamaPageUrl}" target="_blank" rel="noopener noreferrer">ollama.com ↗</a>`;
+  const variantTag    = variant ? variant.tag : model.ollama_tag.split(':')[1];
+  const ollamaVariantUrl = library.includes('/')
+    ? `https://ollama.com/${library}:${variantTag}`
+    : `https://ollama.com/library/${library}:${variantTag}`;
+  const linkEl = document.getElementById('detailOllamaLink');
+  linkEl.href        = ollamaVariantUrl;
+  linkEl.textContent = `ollama.com/library/${library}:${variantTag} ↗`;
 
   document.getElementById('provenanceAlert').hidden = true;
 
@@ -524,13 +588,14 @@ function init() {
   vramSel.appendChild(sep);
 
   // Individual card entries sorted alphabetically
-  const cards = GPUS.flatMap(gpu => gpu.names.map(name => ({ name, vram: gpu.vram, flash: gpu.flash })));
+  const cards = GPUS.flatMap((gpu, gpuIdx) => gpu.names.map(name => ({ name, vram: gpu.vram, flash: gpu.flash, gpuIdx })));
   cards.sort((a, b) => a.name.localeCompare(b.name));
-  cards.forEach(({ name, vram, flash }) => {
-    const opt         = document.createElement('option');
-    opt.value         = vram;
-    opt.dataset.flash = flash;
-    opt.textContent   = name;
+  cards.forEach(({ name, vram, flash, gpuIdx }) => {
+    const opt            = document.createElement('option');
+    opt.value            = vram;
+    opt.dataset.flash    = flash;
+    opt.dataset.gpuIdx   = gpuIdx;
+    opt.textContent      = name;
     vramSel.appendChild(opt);
   });
 

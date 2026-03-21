@@ -53,10 +53,14 @@ manually on each deploy to bust CDN caches. No build step, no bundler, no framew
 ```js
 const GPUS = [
   {
-    vram:    24,        // VRAM in GB (number)
-    flash:   'yes',    // Flash Attention support: 'yes' | 'no' | 'mixed'
-    names:   ['RTX 4090'],  // GPU model names shown in dropdown
-    default: true,     // optional — pre-selected on load
+    vram:        24,        // VRAM in GB (number)
+    flash:       'yes',    // Flash Attention support: 'yes' | 'no' | 'mixed'
+    bandwidth:   1008,     // Memory bandwidth in GB/s — primary input for generation speed
+    tflops_fp16: 165.2,    // FP16 tensor TFLOPS, dense/no-sparsity — input for processing speed.
+                           // For GPUs without tensor cores (Pascal, GTX 16xx) this equals
+                           // the shader FP32 throughput. All values are approximate.
+    names:       ['RTX 4090'],  // GPU model names shown in dropdown
+    default:     true,     // optional — pre-selected on load
   },
   ...
 ]
@@ -67,9 +71,17 @@ const GPUS = [
 - `'no'`  — NVIDIA Turing (sm_75) or older, NOT supported
 - `'mixed'` — AMD / other — support varies by build and driver
 
+Each entry in `GPUS` has exactly one name (or a "series" name covering near-identical SKUs).
+Entries that previously grouped very different GPUs (e.g. RTX 3070 and RTX 3070 Ti) are split
+so each named card gets accurate bandwidth and TFLOPS values.
+
 The GPU dropdown shows two sections: "Generic X GB" entries (one per unique VRAM size, with `flash`
 set to `'mixed'` if GPUs of the same VRAM differ in flash support), followed by a disabled separator,
 followed by individual named GPU entries sorted alphabetically.
+
+Generic entries do not store bandwidth/tflops — these are derived at runtime as `[min, max]`
+across all named entries at that VRAM tier, producing a wide speed estimate. A note prompts
+the user to select their exact card for a tighter estimate.
 
 ### 3.2 `LIBRARIES` — `libraries.js`
 
@@ -124,6 +136,7 @@ One entry per canonical ollama tag (e.g. `llama3.1:8b`):
 
 `variants[0]` is the default. Each variant has a `tag` (the full ollama sub-tag after the colon),
 a `quantization` key that must match a key in `QUANT_INFO`, and `weights_gb`.
+a `quantization` key that must match a key in `QUANT_INFO`, and `weights_gb`.
 
 The full runnable ollama tag is: `library:variant.tag`, e.g. `llama3.1:8b-q8_0`.
 
@@ -132,8 +145,10 @@ The full runnable ollama tag is: `library:variant.tag`, e.g. `llama3.1:8b-q8_0`.
 ```js
 const QUANT_INFO = {
   'Q4_K_M': {
-    speed:   7,    // 1 (slowest) → 10 (fastest)
-    quality: 6,    // 1 (worst)  → 10 (best / lossless)
+    speed:       7,             // 1 (slowest) → 10 (fastest)
+    quality:     6,             // 1 (worst)  → 10 (best / lossless)
+    gen_eff:     [0.43, 0.58], // fraction of GPU bandwidth achieved during token generation
+    prefill_eff: [0.07, 0.22], // fraction of GPU fp16 TFLOPS achieved during prompt processing
     summary: 'The most popular choice — best size-to-quality ratio at 4-bit.'
   },
   ...
@@ -141,6 +156,12 @@ const QUANT_INFO = {
 ```
 
 Covers all quantization formats used in ollama: IQ1_S through Q8_0, F16, FP16, BF16, F32.
+
+`gen_eff` and `prefill_eff` are `[lo, hi]` efficiency ranges:
+- Lower for heavily-quantised types due to dequantisation overhead
+- `prefill_eff` is intentionally narrow and low (0.04–0.30) because single-user batch-1
+  inference rarely saturates tensor cores — real efficiency varies widely with context length
+- `gen_eff` is higher (0.35–0.70) because generation is a simpler memory streaming pattern
 
 ---
 
@@ -213,7 +234,71 @@ overhead in its display.
 
 ---
 
-## 5. Scoring system
+## 5. Speed estimation
+
+Two speed estimates are shown whenever the model fits: **processing speed** (prompt ingestion)
+and **generation speed** (token output). Both are displayed as ranges when there is uncertainty.
+
+### 5.1 GPU specs lookup — `getGpuSpecs(vramGB)`
+
+The `vramInput` select stores `opt.dataset.gpuIdx` for named card entries. Generic entries
+have no `gpuIdx`. The function returns:
+
+```js
+{ bwLo, bwHi, tflopsLo, tflopsHi, isExact }
+```
+
+- **Named card**: `bwLo === bwHi` and `tflopsLo === tflopsHi` (exact values from the GPUS entry).
+  `isExact = true`.
+- **Generic tier**: `[min, max]` across all `GPUS` entries at that `vramGB`. `isExact = false`.
+  A note "Select your exact GPU for a tighter estimate" is shown.
+
+### 5.2 Generation speed (decode) — memory-bandwidth bound
+
+At batch size 1 (standard for ollama), every generated token requires loading all active model
+weights from VRAM once. This makes generation almost entirely memory-bandwidth bound.
+
+```
+active_weights_gb = variant.weights_gb × (params_b_active / params_b)   // MoE only; 1.0 for dense
+gen_lo = bandwidth_lo × gen_eff[0] / active_weights_gb   (tokens/sec)
+gen_hi = bandwidth_hi × gen_eff[1] / active_weights_gb
+```
+
+`gen_eff` is taken from `QUANT_INFO[quantization].gen_eff`. Range: 0.35–0.70 depending on quant.
+
+### 5.3 Processing speed (prefill) — compute bound
+
+Prompt ingestion is dominated by large matrix multiplications (GEMM), making it compute-bound.
+Only `tflops_fp16` is used (one field per GPU, not per-precision) because llama.cpp typically
+dequantises to fp16 before GEMM regardless of weight quantisation. Per-quant efficiency factors
+fold in any dequantisation overhead difference.
+
+```
+params_active = (model.params_b_active || model.params_b) × 1e9
+prefill_lo = tflops_lo × 1e12 × prefill_eff[0] / (2 × params_active)   (tokens/sec)
+prefill_hi = tflops_hi × 1e12 × prefill_eff[1] / (2 × params_active)
+```
+
+`prefill_eff` range: 0.04–0.30 (intentionally wide — single-user batch-1 rarely saturates tensor
+cores; shorter prompts give lower utilisation than longer ones).
+
+### 5.4 Display format
+
+```
+Processing speed    ~800–2,400 t/s    tokens/sec into context
+Generation speed    ~45–90 t/s        tokens/sec output
+⤷ Select your exact GPU above for a tighter estimate   ← hidden when exact card selected
+```
+
+`fmtSpeed(lo, hi)` formats as `~X–Y t/s` when lo ≠ hi, `~X t/s` when lo === hi.
+Values ≥ 1000 are abbreviated: `~1.2k t/s`.
+
+Both sections are hidden when the model does not fit (OOM state).
+
+---
+
+## 6. Scoring system
+
 
 Four dimensions, each scored 1–5 stars:
 

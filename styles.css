@@ -246,6 +246,34 @@ header p {
 
 .result-label { color: var(--muted); font-size: 13px; }
 
+/* ── Speed estimates ── */
+.speed-estimates {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.speed-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.speed-label {
+  min-width: 10em;
+  color: var(--muted);
+}
+.speed-val  { color: var(--text); font-weight: 500; }
+.speed-unit { color: var(--muted); font-size: 11px; }
+.speed-note {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  opacity: 0.7;
+}
+
 /* ── Details table ── */
 .details {
   background: var(--bg2);
@@ -266,10 +294,17 @@ header p {
 }
 .detail-row {
   display: grid;
-  grid-template-columns: 180px 1fr 1fr;
+  grid-template-columns: 180px 1fr;
   border-bottom: 1px solid var(--border);
   font-family: var(--mono);
   font-size: 12px;
+}
+.details-source {
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-align: right;
+  border-top: 1px solid var(--border);
 }
 .detail-row:last-child { border-bottom: none; }
 .detail-row > div { padding: 9px 16px; }
