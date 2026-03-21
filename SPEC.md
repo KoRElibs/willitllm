@@ -531,6 +531,13 @@ reasonable floor.
 **Scores are heuristic** — the four-star ratings are opinionated approximations to guide
 non-expert users. They are not benchmarks.
 
+**Context window ≠ quality throughout** — the calculator shows how much text *fits in VRAM*,
+not how well the model attends to all of it. Most models degrade in the middle of long contexts
+(the "lost in the middle" effect) — like human memory, recall is better at the start and end
+than in the middle. A `ⓘ` caveat is shown in the aside and formula breakdown when `maxCtx`
+exceeds 50% of the model's trained `context_length`, as degradation becomes practically
+significant at that point.
+
 **AI notice** — the page includes a prominent disclaimer that model metadata was compiled using AI
 and has not been manually verified. Users are directed to `ollama show <model>` and
 `ollama.com/library` for authoritative data.

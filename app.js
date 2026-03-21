@@ -73,6 +73,16 @@ function fmtSpeedHuman(lo, hi) {
   return loS === hiS ? `${loS} words/s` : `${loS}–${hiS} words/s`;
 }
 
+// Returns a human-relatable speech pace label, e.g. "3× speech pace"
+// Reference: average speech ~2.5 words/s (150 wpm)
+function fmtSpeechPace(lo, hi) {
+  const SPEECH_WPS = 2.5;
+  const avgWps = ((lo + hi) / 2) * 0.75;
+  const mult = Math.round(avgWps / SPEECH_WPS);
+  if (mult <= 1) return 'speech pace';
+  return `${mult}× speech pace`;
+}
+
 // Returns { bwLo, bwHi, tflopsLo, tflopsHi, isExact } or null if no data available.
 // For a named card option (dataset.gpuIdx set), returns exact values (lo === hi).
 // For a generic VRAM-tier option, returns [min, max] across all named entries at that tier.
@@ -258,19 +268,21 @@ function populateVariants(model) {
       const quantInfo  = QUANT_INFO[variant.quantization];
       const quant      = variant.quantization || '?';
       const gb         = variant.weights_gb.toFixed(1);
+      const defMark    = i === 0 ? ' ← default' : '';
       if (window.innerWidth <= 600) {
         const s = quantInfo ? quantInfo.speed   : '?';
         const q = quantInfo ? quantInfo.quality : '?';
-        opt.textContent = `${s}S ${q}Q  ${quant}`;
+        opt.textContent = `${s}S ${q}Q  ${quant}${defMark}`;
       } else {
         const speedRating   = quantInfo ? buildRatingBar(quantInfo.speed,   '▶', '▷') : '▷▷▷▷▷';
         const qualityRating = quantInfo ? buildRatingBar(quantInfo.quality, '★', '☆') : '☆☆☆☆☆';
-        opt.textContent = `${speedRating} ${qualityRating}  ${gb} GB  ${quant}`;
+        opt.textContent = `${speedRating} ${qualityRating}  ${gb} GB  ${quant}${defMark}`;
       }
       container.appendChild(opt);
     });
   });
 
+  sel.value = '0';  // always start on the default variant
   updateSelectionSummary(model);
 }
 
@@ -391,7 +403,7 @@ function render() {
     return n5 >= 4 ? 'var(--green)' : n5 === 3 ? 'var(--amber)' : n5 === 2 ? 'var(--orange)' : 'var(--red)';
   }
 
-  const ctxTradeoff = 'Quality vs size: better KV precision = more VRAM per token = smaller context window.';
+  const ctxTradeoff = 'Memory clarity vs. attention span: crisper recall (f16) costs more VRAM per token, leaving less room for a long conversation.';
   const scoreSpeed     = quantInfo ? Math.max(1, Math.round((quantInfo.speed   / 10) * 5)) : 0;
   const scoreQuality   = quantInfo ? Math.max(1, Math.round((quantInfo.quality / 10) * 5)) : 0;
   const contextFitPct  = (!noFit && model.context_length) ? Math.round((ctxResult.maxCtx / model.context_length) * 100) : null;
@@ -422,7 +434,7 @@ function render() {
 
     const quantInfoFull = variant ? QUANT_INFO[variant.quantization] : null;
     if (quantInfoFull) {
-      const tradeoff = 'Speed and quality trade off — higher quantization means faster generation but lower quality. You cannot have both at maximum.';
+      const tradeoff = 'Thinking speed and sharpness trade off — a lighter quantization means faster responses but a duller mind. You cannot have both at maximum. (Technical: quantization level)';
       document.getElementById('scoreQuality').dataset.tip =
         `${variant.quantization} · ${quantInfoFull.summary} · ${tradeoff}`;
       document.getElementById('scoreSpeed').dataset.tip =
@@ -484,9 +496,11 @@ function render() {
     const prefEl   = document.getElementById('asidePrefillSpeed');
     if (speedEsts) {
       genEl.textContent    = fmtSpeedHuman(speedEsts.genLo, speedEsts.genHi);
-      genEl.dataset.tip    = `Generation: ${fmtSpeed(speedEsts.genLo, speedEsts.genHi)} — output tokens per second`;
+      genEl.dataset.tip    = `Writing its response · ${fmtSpeechPace(speedEsts.genLo, speedEsts.genHi)} · ${fmtSpeed(speedEsts.genLo, speedEsts.genHi)} (generation — output tokens/s, bandwidth-bound)`;
       prefEl.textContent   = fmtSpeedHuman(speedEsts.prefillLo, speedEsts.prefillHi);
-      prefEl.dataset.tip   = `Processing: ${fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi)} — prompt tokens ingested per second`;
+      prefEl.dataset.tip   = `Reading your prompt · ${fmtSpeechPace(speedEsts.prefillLo, speedEsts.prefillHi)} · ${fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi)} (prefill — input tokens/s, compute-bound)`;
+      document.getElementById('asideGenStat').dataset.tip    = '';
+      document.getElementById('asidePrefillStat').dataset.tip = '';
     } else {
       genEl.textContent  = '—';
       prefEl.textContent = '—';
@@ -495,8 +509,12 @@ function render() {
     const [pagePart] = humanCtx.split(' · ').reverse();
     const ctxPagesEl = document.getElementById('asideCtxPages');
     ctxPagesEl.textContent  = pagePart;
-    ctxPagesEl.dataset.tip  = `${fmtCtx(ctxResult.maxCtx)} tokens · ${humanCtx}`;
-    document.getElementById('asideCtxLabel').textContent = `${fmtCtx(ctxResult.maxCtx)} context`;
+    ctxPagesEl.dataset.tip  = `${fmtCtx(ctxResult.maxCtx)} tokens · ${humanCtx} (attention span — how much text fits in VRAM at once)`;
+    document.getElementById('asideCtxLabel').textContent = 'in one go';
+    // Show caveat when using >50% of the model's trained context — degradation becomes
+    // practically significant at that point (lost-in-the-middle effect).
+    const ctxCaveat = document.getElementById('ctxCaveat');
+    if (ctxCaveat) ctxCaveat.hidden = !contextFitPct || contextFitPct <= 50;
     asideEl.hidden = false;
 
 
@@ -596,6 +614,8 @@ function render() {
     } else {
       archCapNote.hidden = true;
     }
+    const fCtxCaveat = document.getElementById('formulaCtxCaveatNote');
+    if (fCtxCaveat) fCtxCaveat.hidden = !contextFitPct || contextFitPct <= 50;
   }
 
   // ── speed formula
@@ -625,20 +645,21 @@ function render() {
     speedBody.hidden    = true;
   }
 
-  updateNudgeButtons();
+  updateNudgeButtons(ctxResult ? ctxResult.limitedByArch : false, vramGB);
 }
 
 // Returns variants in the same group as variantIdx, sorted by quality ascending (fastest first).
 function groupVariantsSorted(model, variantIdx) {
   const v = model.variants[variantIdx];
   const group = getVariantGroup(v.tag, v.quantization);
-  return model.variants
-    .map((v, i) => ({ v, i, qi: QUANT_INFO[v.quantization] }))
-    .filter(({ v }) => getVariantGroup(v.tag, v.quantization) === group)
-    .sort((a, b) => {
-      const qa = a.qi ? a.qi.quality : 5, qb = b.qi ? b.qi.quality : 5;
-      return qa !== qb ? qa - qb : a.v.weights_gb - b.v.weights_gb;
-    });
+  const all = model.variants.map((v, i) => ({ v, i, qi: QUANT_INFO[v.quantization] }));
+  const inGroup = all.filter(({ v }) => getVariantGroup(v.tag, v.quantization) === group);
+  // Fall back to all variants when the current group has only one member (e.g. the bare default tag)
+  const candidates = inGroup.length > 1 ? inGroup : all;
+  return candidates.sort((a, b) => {
+    const qa = a.qi ? a.qi.quality : 5, qb = b.qi ? b.qi.quality : 5;
+    return qa !== qb ? qa - qb : a.v.weights_gb - b.v.weights_gb;
+  });
 }
 
 function nudgeVariant(direction) {
@@ -656,13 +677,15 @@ function nudgeVariant(direction) {
 
 function nudgeKv(direction) {
   const sel = document.getElementById('kvCacheType');
-  const target = direction === 'quality' ? sel.selectedIndex - 1 : sel.selectedIndex + 1;
-  if (target < 0 || target >= sel.options.length) return;
-  sel.selectedIndex = target;
+  const visible = Array.from(sel.options).filter(o => !o.hidden && !o.disabled);
+  const curIdx = visible.findIndex(o => o.value === sel.value);
+  const target = direction === 'quality' ? curIdx - 1 : curIdx + 1;
+  if (target < 0 || target >= visible.length) return;
+  sel.value = visible[target].value;
   render();
 }
 
-function updateNudgeButtons() {
+function updateNudgeButtons(ctxAtMax, vramGB) {
   const modelIdx = parseInt(document.getElementById('modelSelect').value);
   const model = MODELS[modelIdx];
   const kvSel = document.getElementById('kvCacheType');
@@ -676,10 +699,13 @@ function updateNudgeButtons() {
   const sorted = groupVariantsSorted(model, idx);
   const pos = sorted.findIndex(({ i }) => i === idx);
 
-  show('nudge-speed',       pos > 0);
-  show('nudge-quality',     pos < sorted.length - 1);
-  show('nudge-ctx-quality', kvSel.selectedIndex > 0);
-  show('nudge-ctx-size',    kvSel.selectedIndex < kvSel.options.length - 1);
+  const fits = v => !vramGB || v.weights_gb < vramGB - OVERHEAD_GB;
+  show('nudge-speed',   pos > 0                    && fits(sorted[pos - 1].v));
+  show('nudge-quality', pos < sorted.length - 1    && fits(sorted[pos + 1].v));
+  const kvVisible = Array.from(kvSel.options).filter(o => !o.hidden && !o.disabled);
+  const kvCurIdx  = kvVisible.findIndex(o => o.value === kvSel.value);
+  show('nudge-ctx-quality', kvCurIdx > 0);
+  show('nudge-ctx-size',    !ctxAtMax && kvCurIdx < kvVisible.length - 1);
 }
 
 function setOsTab(os) {

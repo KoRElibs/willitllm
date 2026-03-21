@@ -70,10 +70,10 @@
       <div class="result-main">
         <div class="verdict" id="verdict"></div>
         <div class="scorecard" id="scorecard" hidden>
-          <div class="score-row"><span class="score-icon">▶</span><span class="score-label" data-tip="How fast this model runs relative to its fastest possible configuration. Heavier quantization increases speed but reduces quality.">Speed</span><span class="score-stars" id="scoreSpeed"></span><button class="score-nudge" id="nudge-speed" hidden>faster</button></div>
-          <div class="score-row"><span class="score-icon">★</span><span class="score-label" data-tip="How much of this model's output quality is preserved compared to running it at full precision. Lower quantization = closer to the model's true capability.">Quality</span><span class="score-stars" id="scoreQuality"></span><button class="score-nudge" id="nudge-quality" hidden>better</button></div>
-          <div class="score-row"><span class="score-icon">■</span><span class="score-label" data-tip="How faithfully the context is stored in memory. Lower KV cache precision reduces how well the model can attend over its context window, regardless of how large that window is.">Context quality</span><span class="score-stars" id="scorePrecision"></span><button class="score-nudge" id="nudge-ctx-quality" hidden>higher</button></div>
-          <div class="score-row"><span class="score-icon">◎</span><span class="score-label" data-tip="How much of this model's maximum context window fits in your available VRAM. 5 stars means you can use 90%+ of what the model was trained to handle.">Context size</span><span class="score-stars" id="scoreContext"></span><button class="score-nudge" id="nudge-ctx-size" hidden>more</button></div>
+          <div class="score-row"><span class="score-icon">▶</span><span class="score-label" data-tip="How fast the model thinks — like reaction time. Lighter quantization = faster responses but less sharp thinking. Trade-off: speed vs. sharpness (quantization level).">Thinking speed</span><span class="score-stars" id="scoreSpeed"></span><button class="score-nudge" id="nudge-speed" hidden>faster</button></div>
+          <div class="score-row"><span class="score-icon">★</span><span class="score-label" data-tip="How sharp and accurate the model's answers are — like IQ relative to its full potential. Higher quantization = closer to the model's true capability but slower. Trade-off: sharpness vs. speed (quantization level).">Sharpness</span><span class="score-stars" id="scoreQuality"></span><button class="score-nudge" id="nudge-quality" hidden>better</button></div>
+          <div class="score-row"><span class="score-icon">■</span><span class="score-label" data-tip="How crisply the model recalls what was said earlier — like the difference between a vivid and a fuzzy memory. Lower KV cache precision = fuzzier recall but fits more context in VRAM. Trade-off: clarity vs. attention span (KV cache: f16 / q8_0 / q4_0).">Memory clarity</span><span class="score-stars" id="scorePrecision"></span><button class="score-nudge" id="nudge-ctx-quality" hidden>higher</button></div>
+          <div class="score-row"><span class="score-icon">◎</span><span class="score-label" data-tip="How much of the conversation the model can hold in mind at once — like attention span. Limited by available VRAM. 10/10 means it can handle 90%+ of its maximum trained context window (technical: maxCtx / context_length).">Attention span</span><span class="score-stars" id="scoreContext"></span><button class="score-nudge" id="nudge-ctx-size" hidden>more</button></div>
         </div>
         <span class="result-label" id="resultLabelOom" hidden></span>
       </div>
@@ -86,17 +86,17 @@
         <pre class="ollama-cmd ollama-setup" id="ollamaSetup" hidden></pre>
       </div>
       <div class="result-aside" id="resultAside" hidden>
-        <div class="aside-stat" data-tip="Output tokens per second — how fast the model generates its response. Bandwidth-bound at batch size 1.">
+        <div class="aside-stat" id="asideGenStat">
           <div class="aside-val" id="asideGenSpeed">—</div>
-          <div class="aside-label">generation</div>
+          <div class="aside-label">writing</div>
         </div>
-        <div class="aside-stat" data-tip="Input tokens per second — how fast the model processes your prompt before generating. Compute-bound.">
+        <div class="aside-stat" id="asidePrefillStat">
           <div class="aside-val" id="asidePrefillSpeed">—</div>
-          <div class="aside-label">processing</div>
+          <div class="aside-label">reading</div>
         </div>
         <div class="aside-divider"></div>
         <div class="aside-stat" data-tip="Approximate amount of English text that fits in the available context window.">
-          <div class="aside-val" id="asideCtxPages">—</div>
+          <div class="aside-val" id="asideCtxPages">— <span id="ctxCaveat" hidden data-tip="Like human memory — most models recall the start and end of a long text better than the middle." style="font-size:0.75em;opacity:0.5;cursor:help;">ⓘ</span></div>
           <div class="aside-label" id="asideCtxLabel">—</div>
         </div>
       </div>
@@ -216,6 +216,9 @@
           <div class="formula-line">&nbsp;&nbsp;= <span class="hl-a" id="formulaAvailGB"></span> = <span class="hl-a" id="formulaAvailBytes"></span> &nbsp;→ raw: <span class="hl-a" id="formulaRawTokens"></span> tokens &nbsp;→ <span class="hl-g" id="formulaMaxCtx"></span></div>
           <div id="formulaArchCapNote" hidden>
             <div class="formula-muted formula-spacer">↑ capped at architectural context_length = <span id="formulaArchLimit"></span> tokens</div>
+          </div>
+          <div id="formulaCtxCaveatNote" hidden>
+            <div class="formula-muted formula-spacer">ⓘ using &gt;50% of trained context — like human memory, most models recall the start and end of a long text better than the middle.</div>
           </div>
 
           <div class="formula-header formula-spacer" id="formulaSpeedSection" hidden>Speed estimates</div>
