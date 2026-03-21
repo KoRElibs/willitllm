@@ -211,9 +211,17 @@ function populateVariants(model) {
       const opt        = document.createElement('option');
       opt.value        = i;
       const quantInfo  = QUANT_INFO[variant.quantization];
-      const speedRating   = quantInfo ? buildRatingBar(quantInfo.speed,   '▶', '▷') : '▷▷▷▷▷';
-      const qualityRating = quantInfo ? buildRatingBar(quantInfo.quality, '★', '☆') : '☆☆☆☆☆';
-      opt.textContent  = `${speedRating} ${qualityRating}  ${variant.weights_gb.toFixed(1)} GB`;
+      const quant      = variant.quantization || '?';
+      const gb         = variant.weights_gb.toFixed(1);
+      if (window.innerWidth <= 600) {
+        const s = quantInfo ? quantInfo.speed   : '?';
+        const q = quantInfo ? quantInfo.quality : '?';
+        opt.textContent = `${s}S ${q}Q  ${quant}`;
+      } else {
+        const speedRating   = quantInfo ? buildRatingBar(quantInfo.speed,   '▶', '▷') : '▷▷▷▷▷';
+        const qualityRating = quantInfo ? buildRatingBar(quantInfo.quality, '★', '☆') : '☆☆☆☆☆';
+        opt.textContent = `${speedRating} ${qualityRating}  ${gb} GB  ${quant}`;
+      }
       container.appendChild(opt);
     });
   });
@@ -627,6 +635,18 @@ function init() {
   document.getElementById('vramInput').addEventListener('change', () => { updateGpuLabel(); render(); });
   document.getElementById('kvCacheType').addEventListener('change', () => { updateKvLabel(); render(); });
   document.getElementById('variantSelect').addEventListener('change', render);
+
+  // Re-build variant options on resize (mobile vs desktop format differs)
+  let lastMobile = window.innerWidth <= 600;
+  window.addEventListener('resize', () => {
+    const isMobile = window.innerWidth <= 600;
+    if (isMobile !== lastMobile) {
+      lastMobile = isMobile;
+      const modelIdx = parseInt(document.getElementById('modelSelect').value);
+      if (MODELS[modelIdx]) populateVariants(MODELS[modelIdx]);
+    }
+  });
+
   document.getElementById('tabLinux').addEventListener('click',   () => setOsTab('linux'));
   document.getElementById('tabWindows').addEventListener('click', () => setOsTab('windows'));
 
