@@ -58,7 +58,7 @@ function calcMaxContext(model, vramGB, bytesPerElement, weightsGB) {
   return { maxCtx, kvCacheGB, freeGB, perToken, rawTokens, availableBytes, usedGB, archLimit, limitedByArch };
 }
 
-function fmtGB(n) { return n.toFixed(2) + ' GB'; }
+function fmtGB(n) { return parseFloat(n.toFixed(1)) + ' GB'; }
 function fmtSpeed(lo, hi) {
   const fmt = n => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
   return lo === hi ? `~${fmt(lo)} t/s` : `~${fmt(lo)}–${fmt(hi)} t/s`;
@@ -365,9 +365,7 @@ function render() {
   const segContext = document.getElementById('segContext');
   segContext.className   = 'membar-seg ' + (noFit ? 'seg-overflow' : 'seg-context');
   segContext.style.width = contextPct.toFixed(1) + '%';
-  segContext.textContent = contextPct > 20
-    ? `${fmtCtx(ctxResult.maxCtx)} · ${fmtGB(ctxResult.kvCacheGB)}`
-    : contextPct > 8 ? fmtCtx(ctxResult.maxCtx) : '';
+  segContext.textContent = contextPct > 8 ? fmtGB(ctxResult.kvCacheGB) : '';
 
   const segFree = document.getElementById('segFree');
   segFree.style.width  = freePct.toFixed(1) + '%';
@@ -375,7 +373,7 @@ function render() {
   segFree.textContent  = freePct > 8 ? fmtGB(ctxResult.freeGB) : '';
 
   document.getElementById('legendModel').textContent   = `Model weights (${fmtGB(weightsGB)})`;
-  document.getElementById('legendContext').textContent = `KV cache @ ${fmtCtx(ctxResult.maxCtx)} ctx (${fmtGB(ctxResult.kvCacheGB)})`;
+  document.getElementById('legendContext').textContent = `KV cache (${fmtGB(ctxResult.kvCacheGB)}) · ${fmtCtx(ctxResult.maxCtx)} ctx`;
   document.getElementById('legendFree').textContent    = `Free (${fmtGB(Math.max(0, ctxResult.freeGB))})`;
 
   // ── result headline
@@ -398,6 +396,7 @@ function render() {
   const scoreQuality   = quantInfo ? Math.max(1, Math.round((quantInfo.quality / 10) * 5)) : 0;
   const contextFitPct  = (!noFit && model.context_length) ? Math.round((ctxResult.maxCtx / model.context_length) * 100) : null;
   const scoreContext   = contextFitPct === null ? 0 : contextFitPct >= 90 ? 5 : contextFitPct >= 66 ? 4 : contextFitPct >= 40 ? 3 : contextFitPct >= 15 ? 2 : 1;
+  const scoreContext10 = contextFitPct === null ? 0 : Math.min(10, Math.max(1, Math.ceil(contextFitPct / 10)));
   const scorePrecision = bytesPerElement === 2 ? 5 : bytesPerElement === 1 ? 3 : 2;
   const scoreAvg       = (scoreSpeed + scoreQuality + scoreContext + scorePrecision) / 4;
   const scoreClass     = noFit ? 'error' : scoreAvg >= 4 ? 'score-high' : scoreAvg >= 3 ? 'score-mid' : scoreAvg >= 2 ? 'score-low' : 'score-poor';
@@ -411,7 +410,7 @@ function render() {
       ['scoreSpeed',     quantInfo ? quantInfo.speed   : 0, scoreSpeed],
       ['scoreQuality',   quantInfo ? quantInfo.quality : 0, scoreQuality],
       ['scorePrecision', scorePrecision * 2,                scorePrecision],
-      ['scoreContext',   scoreContext   * 2,                scoreContext],
+      ['scoreContext',   scoreContext10,                    scoreContext],
     ];
     bars.forEach(([id, n10, n5]) => {
       const el = document.getElementById(id);
@@ -625,6 +624,62 @@ function render() {
     speedSection.hidden = true;
     speedBody.hidden    = true;
   }
+
+  updateNudgeButtons();
+}
+
+// Returns variants in the same group as variantIdx, sorted by quality ascending (fastest first).
+function groupVariantsSorted(model, variantIdx) {
+  const v = model.variants[variantIdx];
+  const group = getVariantGroup(v.tag, v.quantization);
+  return model.variants
+    .map((v, i) => ({ v, i, qi: QUANT_INFO[v.quantization] }))
+    .filter(({ v }) => getVariantGroup(v.tag, v.quantization) === group)
+    .sort((a, b) => {
+      const qa = a.qi ? a.qi.quality : 5, qb = b.qi ? b.qi.quality : 5;
+      return qa !== qb ? qa - qb : a.v.weights_gb - b.v.weights_gb;
+    });
+}
+
+function nudgeVariant(direction) {
+  const modelIdx = parseInt(document.getElementById('modelSelect').value);
+  const model = MODELS[modelIdx];
+  if (!model || !model.variants) return;
+  const idx = getSelectedVariantIdx(model);
+  const sorted = groupVariantsSorted(model, idx);
+  const pos = sorted.findIndex(({ i }) => i === idx);
+  const target = direction === 'quality' ? pos + 1 : pos - 1;
+  if (target < 0 || target >= sorted.length) return;
+  document.getElementById('variantSelect').value = sorted[target].i;
+  render();
+}
+
+function nudgeKv(direction) {
+  const sel = document.getElementById('kvCacheType');
+  const target = direction === 'quality' ? sel.selectedIndex - 1 : sel.selectedIndex + 1;
+  if (target < 0 || target >= sel.options.length) return;
+  sel.selectedIndex = target;
+  render();
+}
+
+function updateNudgeButtons() {
+  const modelIdx = parseInt(document.getElementById('modelSelect').value);
+  const model = MODELS[modelIdx];
+  const kvSel = document.getElementById('kvCacheType');
+  const show = (id, visible) => { const el = document.getElementById(id); if (el) el.hidden = !visible; };
+
+  if (!model || !model.variants) {
+    ['nudge-speed','nudge-quality','nudge-ctx-quality','nudge-ctx-size'].forEach(id => show(id, false));
+    return;
+  }
+  const idx = getSelectedVariantIdx(model);
+  const sorted = groupVariantsSorted(model, idx);
+  const pos = sorted.findIndex(({ i }) => i === idx);
+
+  show('nudge-speed',       pos > 0);
+  show('nudge-quality',     pos < sorted.length - 1);
+  show('nudge-ctx-quality', kvSel.selectedIndex > 0);
+  show('nudge-ctx-size',    kvSel.selectedIndex < kvSel.options.length - 1);
 }
 
 function setOsTab(os) {
@@ -760,6 +815,11 @@ function init() {
 
   document.getElementById('tabLinux').addEventListener('click',   () => setOsTab('linux'));
   document.getElementById('tabWindows').addEventListener('click', () => setOsTab('windows'));
+
+  document.getElementById('nudge-speed').addEventListener('click',       () => nudgeVariant('speed'));
+  document.getElementById('nudge-quality').addEventListener('click',     () => nudgeVariant('quality'));
+  document.getElementById('nudge-ctx-quality').addEventListener('click', () => nudgeKv('quality'));
+  document.getElementById('nudge-ctx-size').addEventListener('click',    () => nudgeKv('size'));
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {

@@ -244,6 +244,19 @@ header p {
 .score-icon  { width: 1.2em; text-align: center; color: var(--text); }
 .score-label { min-width: 9em; color: var(--muted); cursor: help; }
 .score-stars { letter-spacing: 0.05em; cursor: help; }
+.score-nudge {
+  margin-left: auto;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1.6;
+}
+.score-nudge:hover { background: var(--accent); color: var(--bg); }
 
 
 .result-label { color: var(--muted); font-size: 13px; }
