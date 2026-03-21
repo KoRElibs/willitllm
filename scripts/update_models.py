@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 scripts/update_models.py
-Discover and verify model entries in models.js using ollama.com only.
+Discover and verify model entries in data.models.js using ollama.com only.
 No local tooling, no model downloads, no HuggingFace dependency.
 
 DATA FLOW
-  libraries.json  — input: list of ollama library slugs to track
-  models.js       — output: MODELS array, one entry per canonical size tag
+  data.libraries.js  — input: list of ollama library slugs to track
+  data.models.js     — output: MODELS array, one entry per canonical size tag
 
   Each MODELS entry has:
     - Architecture fields (block_count, heads, etc.) from the canonical tag blob page
@@ -39,12 +39,12 @@ USAGE
     python scripts/update_models.py --tag llama3.2:3b    # one entry only
 
 TODO (next steps)
-    1. Run --discover --apply to scaffold entries for the ~60 libraries not yet in models.js
+    1. Run --discover --apply to scaffold entries for the ~60 libraries not yet in data.models.js
     2. Add a --variants mode (or extend --discover) to fetch all quant variants for
        existing entries — currently each entry has only 1 variant (default quant).
        For each existing ollama_tag, call fetch_tags() to get variants_map[canonical],
        then fetch_variant_weights() for each, and patch the variants array in the entry.
-    3. After models.js is complete, update app.js:
+    3. After data.models.js is complete, update app.js:
        - Dropdown 1: library+size from ollama_tag (no name field)
        - Dropdown 2: weight quantization from variants array
        - Separate KV cache quantization selector (f16/q8_0/q4_0)
@@ -59,9 +59,20 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-MODELS_JS      = Path(__file__).parent.parent / "models.js"
-LIBRARIES_JS = Path(__file__).parent.parent / "libraries.js"
-OLLAMA_BASE    = "https://ollama.com"
+MODELS_JS    = Path(__file__).parent.parent / "data.models.js"
+LIBRARIES_JS = Path(__file__).parent.parent / "data.libraries.js"
+OLLAMA_BASE  = "https://ollama.com"
+
+
+def _get_group(tag: str, quantization: str) -> str:
+    """Derive the variant group from tag + quantization (matches app.ui.js getVariantGroup)."""
+    if re.match(r"^\d+(\.\d+)?b$", tag, re.IGNORECASE):
+        return "(default)"
+    rest = re.sub(r"^\d+(\.\d+)?b-", "", tag, flags=re.IGNORECASE)
+    q_suffix = "-" + quantization.lower()
+    if rest.lower().endswith(q_suffix):
+        return rest[: -len(q_suffix)] or "(default)"
+    return rest
 GB_TOLERANCE   = 0.15
 
 # Version tags like v0.1 are not canonical size tags.
@@ -194,7 +205,7 @@ def fetch_variant_weights(library: str, tag: str) -> dict | None:
     d = _parse_detail(html)
     if "weights_gb" not in d:
         return None
-    return {"tag": tag, "quantization": quant, "weights_gb": d["weights_gb"]}
+    return {"tag": tag, "quantization": quant, "weights_gb": d["weights_gb"], "group": _get_group(tag, quant)}
 
 
 def _parse_detail(html: str) -> dict:
@@ -267,7 +278,7 @@ def _parse_blob(html: str) -> dict:
     return r
 
 
-# ── models.js parsing ──────────────────────────────────────────────────────────
+# ── data.models.js parsing ──────────────────────────────────────────────────────────
 
 def parse_models_js(path: Path) -> list[dict]:
     text = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
@@ -283,7 +294,7 @@ def parse_models_js(path: Path) -> list[dict]:
 
 
 def load_libraries() -> list[dict]:
-    """Parse libraries.js — the single source of truth for tracked libraries.
+    """Parse data.libraries.js — the single source of truth for tracked libraries.
     The file uses JSON-compatible syntax so we can strip the const wrapper and parse directly."""
     text = LIBRARIES_JS.read_text(encoding="utf-8")
     # Strip JS comments and const wrapper; file may start with // comment lines
@@ -296,20 +307,22 @@ def load_libraries() -> list[dict]:
 
 
 def write_libraries_js(libs: list[dict]) -> None:
-    """Write libraries.js with JSON-compatible quoted keys so the scraper can parse it back."""
+    """Write data.libraries.js with JSON-compatible quoted keys so the scraper can parse it back."""
     def jv(v): return "null" if v is None else f'"{v}"'
     header = (
         "// Two consumers:\n"
-        "//   1. Browser — loaded as <script src=\"libraries.js\">, exposes LIBRARIES global\n"
+        "//   1. Browser — loaded as <script src=\"data.libraries.js\">, exposes LIBRARIES global\n"
         "//   2. Python scraper (scripts/update_models.py) — strips \"const LIBRARIES =\" wrapper and parses as JSON\n"
         "// Keys must therefore be quoted (valid JSON). Do not change to unquoted JS shorthand.\n"
     )
     lines = [header + "const LIBRARIES = ["]
     for lib in libs:
+        flag_val = lib.get("flag")
         lines.append(
             f'  {{ "library": {jv(lib["library"]):<22} '
             f'"organization": {jv(lib.get("organization")):<26} '
             f'"origin": {jv(lib.get("origin")):<20} '
+            f'"flag": {jv(flag_val):<8} '
             f'"source": {jv(lib.get("source")):<50} '
             + ('"multimodal": true ' if lib.get("multimodal") else "")
             + "},"
@@ -337,8 +350,9 @@ def _format_entry(entry: dict) -> str:
             variants = entry[f]
             for j, v in enumerate(variants):
                 vc = "," if j < len(variants) - 1 else ""
-                tag_part = f'"tag": "{v["tag"]}", ' if "tag" in v else ""
-                lines.append(f'      {{{tag_part}"quantization": "{v["quantization"]}", "weights_gb": {v["weights_gb"]}}}{vc}')
+                tag_part   = f'"tag": "{v["tag"]}", ' if "tag" in v else ""
+                group_part = f', "group": "{v["group"]}"' if "group" in v else ""
+                lines.append(f'      {{{tag_part}"quantization": "{v["quantization"]}", "weights_gb": {v["weights_gb"]}{group_part}}}{vc}')
             lines.append(f'    ]{comma}')
         else:
             lines.append(f'    "{f}": {_js_val(entry[f])}{comma}')
@@ -432,7 +446,7 @@ def discover(libraries: list[dict], existing: set[str], apply: bool, path: Path)
             default_weights = data.pop("weights_gb", None)
             variants = []
             if default_quant and default_weights is not None:
-                variants.append({"tag": tag, "quantization": default_quant, "weights_gb": default_weights})
+                variants.append({"tag": tag, "quantization": default_quant, "weights_gb": default_weights, "group": _get_group(tag, default_quant)})
 
             for vtag in variants_map.get(tag, []):
                 vdata = fetch_variant_weights(library, vtag)
@@ -462,7 +476,7 @@ def discover(libraries: list[dict], existing: set[str], apply: bool, path: Path)
     print(f"\n{'-' * 60}")
     if apply:
         print(f"  {added} entr{'y' if added == 1 else 'ies'} inserted.")
-        print("  Review:  git diff models.js")
+        print("  Review:  git diff data.models.js")
     else:
         print("  Dry run.  To apply:  python scripts/update_models.py --discover --apply")
 
@@ -503,7 +517,7 @@ def verify(targets: list[tuple[str, dict]], apply: bool, path: Path) -> None:
     print(f"  {len(all_changes)} model(s) with changes")
 
     if not all_changes:
-        print("\n  models.js is up to date.")
+        print("\n  data.models.js is up to date.")
         return
 
     if not apply:
@@ -513,7 +527,7 @@ def verify(targets: list[tuple[str, dict]], apply: bool, path: Path) -> None:
     for tag, changes in all_changes.items():
         patch_entry(path, tag, changes)
         print(f"    OK  {tag}")
-    print("\n  Done.  Review:  git diff models.js")
+    print("\n  Done.  Review:  git diff data.models.js")
 
 
 # ── migrate ────────────────────────────────────────────────────────────────────
@@ -562,7 +576,7 @@ def migrate(models: list[dict], apply: bool, path: Path) -> None:
     new_block  = "[\n\n" + ",\n".join(_format_entry(e) for e in migrated) + "\n];"
     path.write_text(text[:m.start(1)] + "const MODELS = " + new_block + text[m.end():],
                     encoding="utf-8")
-    print(f"\n  Migrated {len(migrated)} entries.  Review:  git diff models.js")
+    print(f"\n  Migrated {len(migrated)} entries.  Review:  git diff data.models.js")
 
 
 # ── fetch variants ─────────────────────────────────────────────────────────────
@@ -610,13 +624,13 @@ def fetch_variants(targets: list[tuple[str, dict]], apply: bool, path: Path) -> 
 
     print(f"\n{'-' * 60}")
     if apply:
-        print(f"  {updated} entr{'y' if updated == 1 else 'ies'} updated.  Review:  git diff models.js")
+        print(f"  {updated} entr{'y' if updated == 1 else 'ies'} updated.  Review:  git diff data.models.js")
     else:
         print("  Dry run.  To apply:  python scripts/update_models.py --variants --apply")
 
 
 def _patch_variants(path: Path, tag: str, variants: list) -> None:
-    """Replace the variants array for the given ollama_tag in models.js."""
+    """Replace the variants array for the given ollama_tag in data.models.js."""
     text = path.read_text(encoding="utf-8")
     m = re.search(rf'"ollama_tag"\s*:\s*"{re.escape(tag)}"', text)
     if not m:

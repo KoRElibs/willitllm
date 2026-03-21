@@ -1,7 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // GPU DATABASE
 //
-// Each entry represents one selectable GPU in the dropdown.
+// One entry per distinct GPU model. Generic tier entries (one per VRAM size)
+// are generated automatically in app.js from these entries.
 //
 // ── DATA SOURCES ─────────────────────────────────────────────────────────────
 //
@@ -11,35 +12,28 @@
 //
 //   bandwidth   — "Memory Bandwidth" on TechPowerUp spec page (GB/s)
 //   tflops_fp16 — "FP16 (half)" on TechPowerUp, dense/non-sparse figure.
-//                 For Pascal and GTX 16xx (no tensor cores): use FP32 shader
-//                 throughput, which equals their effective FP16 rate in llama.cpp.
-//                 Blackwell (RTX 50xx) values marked as approximate pending
-//                 accurate TechPowerUp entries.
+//                 For Pascal and GTX 16xx (no tensor cores): FP32 shader throughput
+//                 is used, which equals effective FP16 rate in llama.cpp.
+//                 Blackwell (RTX 50xx): approximate pending accurate TechPowerUp entries.
 //
 // ── FIELDS ───────────────────────────────────────────────────────────────────
 //
-//   vram        {number}  — VRAM in GB
-//   flash       {string}  — Flash Attention support: 'yes' | 'no' | 'mixed'
-//                           'yes'   = NVIDIA Ampere (sm_80+) or newer — fully supported
-//                           'no'    = NVIDIA Turing (sm_75) or older   — not supported
-//                           'mixed' = AMD / other — support uncertain, varies by build
-//   bandwidth   {number}  — Memory bandwidth in GB/s (used for generation speed estimates)
-//   tflops_fp16 {number}  — FP16 TFLOPS, dense/no-sparsity (used for processing
-//                           speed estimates). All values are approximate — efficiency
-//                           ranges in quantizations.js account for the gap between
-//                           peak and real-world performance.
-//   names       {string[]}— GPU model names shown in the dropdown
-//   vendor      {string?} — Optional vendor tag, e.g. 'AMD'
-//   default     {bool?}   — Pre-selected entry on page load
+// vram         VRAM in GB.
 //
-// Flash Attention in ollama requires NVIDIA Ampere (compute capability ≥ 8.0).
-// Turing (RTX 20xx, GTX 16xx) is sm_75 and does NOT support it.
-// AMD support varies by ollama build and ROCm version — mark as 'mixed'.
+// flash        Flash Attention support: 'yes' | 'no' | 'mixed'
+//              'yes'   — NVIDIA Ampere (sm_80+) or newer, fully supported.
+//              'no'    — NVIDIA Turing (sm_75) or older, not supported.
+//              'mixed' — AMD / other, support varies by ollama build and ROCm version.
 //
-// Generic dropdown entries (one per unique VRAM tier) are built automatically in app.js
-// from these entries; bandwidth/tflops ranges are derived as [min, max] across all
-// named entries at that VRAM tier, giving a wide estimate with a prompt to pick the
-// exact card for tighter numbers.
+// bandwidth    Memory bandwidth in GB/s. Used for generation speed estimates.
+//
+// tflops_fp16  FP16 TFLOPS, dense (no sparsity). Used for prefill speed estimates.
+//              Efficiency ranges in data.quantizations.js bridge peak → real-world.
+//
+// names        GPU model name(s) shown in the dropdown.
+//
+// vendor       Optional vendor tag, e.g. 'AMD'. Omit for NVIDIA.
+//
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GPUS = [

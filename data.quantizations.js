@@ -1,10 +1,33 @@
-// speed    1 (slowest) → 10 (fastest)
-// quality  1 (worst)  → 10 (best / lossless)
-// gen_eff     [lo, hi] — fraction of GPU memory bandwidth actually used during token generation.
-//                        Lower for heavily-quantized types due to dequantisation overhead.
-// prefill_eff [lo, hi] — fraction of GPU fp16 tensor TFLOPS actually used during prompt processing.
-//                        Single-user batch-1 inference rarely saturates tensor cores; ranges are
-//                        intentionally wide to reflect real-world variation with context length.
+// ─────────────────────────────────────────────────────────────────────────────
+// QUANTIZATION DATABASE
+//
+// GGUF quantization types supported by llama.cpp / ollama.
+// Ratings and efficiency ranges are empirically derived from community benchmarks
+// (llama.cpp perplexity tests, real-world throughput measurements).
+//
+// ── DATA SOURCES ─────────────────────────────────────────────────────────────
+//
+//   Perplexity / quality rankings: https://github.com/ggml-org/llama.cpp (wiki)
+//   Efficiency ranges: llama.cpp community benchmarks, various GPU/model combos
+//
+// ── FIELDS ───────────────────────────────────────────────────────────────────
+//
+// speed        1 (slowest) → 10 (fastest). Inversely correlated with bits-per-weight.
+//
+// quality      1 (worst) → 10 (best / lossless). Based on perplexity relative to F16.
+//
+// gen_eff      [lo, hi] — fraction of peak GPU memory bandwidth used during token
+//              generation (bandwidth-bound). Lower for heavily quantized types due to
+//              dequantization overhead.
+//
+// prefill_eff  [lo, hi] — fraction of peak GPU fp16 TFLOPS used during prompt prefill
+//              (compute-bound). Single-user batch-1 inference rarely saturates tensor
+//              cores; ranges are intentionally wide to reflect real-world variation
+//              with context length and GPU architecture.
+//
+// summary      One-line recommendation shown in the UI tooltip.
+//
+// ─────────────────────────────────────────────────────────────────────────────
 const QUANT_INFO = {
   // IQ — importance-matrix quantization
   'IQ1_S':   { speed: 10, quality:  1, gen_eff: [0.35, 0.48], prefill_eff: [0.04, 0.15], summary: 'Last resort — model barely fits; expect obvious quality loss.' },

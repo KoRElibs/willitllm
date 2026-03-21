@@ -134,9 +134,9 @@ One entry per canonical ollama tag (e.g. `llama3.1:8b`):
 }
 ```
 
-`variants[0]` is the default. Each variant has a `tag` (the full ollama sub-tag after the colon),
-a `quantization` key that must match a key in `QUANT_INFO`, and `weights_gb`.
-a `quantization` key that must match a key in `QUANT_INFO`, and `weights_gb`.
+`variants[0]` is the default (marked `← default` in the dropdown). Each variant has a `tag`
+(the full ollama sub-tag after the colon), a `quantization` key that must match a key in
+`QUANT_INFO`, and `weights_gb`.
 
 The full runnable ollama tag is: `library:variant.tag`, e.g. `llama3.1:8b-q8_0`.
 
@@ -284,16 +284,21 @@ cores; shorter prompts give lower utilisation than longer ones).
 
 ### 5.4 Display format
 
+Speed is shown in the right aside panel using human-friendly units:
+
 ```
-Processing speed    ~800–2,400 t/s    tokens/sec into context
-Generation speed    ~45–90 t/s        tokens/sec output
-⤷ Select your exact GPU above for a tighter estimate   ← hidden when exact card selected
+writing     ~45 words/s   ← fmtSpeedHuman() converts tokens/s × 0.75
+reading    ~800 words/s
+in one go    ~80 pages    ← context window as pages of text
 ```
 
-`fmtSpeed(lo, hi)` formats as `~X–Y t/s` when lo ≠ hi, `~X t/s` when lo === hi.
-Values ≥ 1000 are abbreviated: `~1.2k t/s`.
+Tooltips show the speech-pace comparison (`~18× speech pace`) and raw technical values (`~60 t/s`).
+`fmtSpeechPace(lo, hi)` computes `round((avg_wps) / 2.5)` where 2.5 words/s is average speech pace.
 
-Both sections are hidden when the model does not fit (OOM state).
+The GPU tab and Details tab also show raw `t/s` ranges via `fmtSpeed(lo, hi)`:
+`~X–Y t/s` when lo ≠ hi, `~X t/s` when lo === hi. Values ≥ 1000 abbreviated: `~1.2k t/s`.
+
+Both speed sections are hidden when the model does not fit (OOM state).
 
 ---
 
@@ -320,9 +325,9 @@ Headline class (drives border colour and verdict glow):
 
 ---
 
-## 6. UI layout and behaviour
+## 7. UI layout and behaviour
 
-### 6.1 Controls (2×2 grid)
+### 7.1 Controls (2×2 grid)
 
 | Position | Label | Element | Behaviour |
 |----------|-------|---------|-----------|
@@ -334,7 +339,7 @@ Headline class (drives border colour and verdict glow):
 Each label shows the selected value inline after the label text in accent colour, e.g.
 `GPU VRAM : 24 GB`. This is driven by `<span id="labelGpu" class="field-selected">`.
 
-### 6.2 Model dropdown colouring
+### 7.2 Model dropdown colouring
 
 Each model option is coloured based on context fit percentage:
 - ≥66% of max context fits → green
@@ -342,7 +347,7 @@ Each model option is coloured based on context fit percentage:
 - <33% → orange
 - Model doesn't fit (weights > usable VRAM) → red, prefixed with `✗  `
 
-### 6.3 Variant dropdown
+### 7.3 Variant dropdown
 
 Variants are grouped by `getVariantGroup()`: anything between the size prefix (e.g. `8b-`) and the
 quantization suffix (e.g. `-q4_k_m`) is the group name. If only one group exists, no `<optgroup>`
@@ -353,7 +358,7 @@ Each variant option displays: `speedRating qualityRating  X.X GB`
 where speed uses `▶▷` chars (5 filled/empty) and quality uses `★☆` chars (5 filled/empty).
 Both pairs are chosen from the same Unicode block to guarantee equal width in monospace fonts.
 
-### 6.4 Memory bar
+### 7.4 Memory bar
 
 A horizontal bar divided into three segments:
 
@@ -361,10 +366,8 @@ A horizontal bar divided into three segments:
 [  model weights  ][      KV cache @ Xk ctx      ][ free ]
 ```
 
-Segment widths are percentages of total VRAM. The KV cache segment label shows:
-- `Xk · Y.YY GB` when the segment is wide enough (>20% of total bar)
-- `Xk` when narrower (>8%)
-- nothing when very narrow
+Segment widths are percentages of total VRAM. The KV cache segment shows `fmtGB(kvCacheGB)`
+when the segment is wide enough (>8%), nothing when very narrow.
 
 Bar segment classes:
 - `seg-model` — blue (`#1e3a5f`), accent text
@@ -372,28 +375,43 @@ Bar segment classes:
 - `seg-free` — bg3, muted text
 - `seg-overflow` — dark red (`#3b1e1e`), red text (used for both model and context when OOM)
 
-The legend below shows: `Model weights (X.XX GB)` | `KV cache @ Xk ctx (X.XX GB)` | `Free (X.XX GB)`
+The legend below shows: `Model weights (X.X GB)` | `KV cache (X.X GB) · Xk ctx` | `Free (X.X GB)`
+(1 decimal place; trailing zeros dropped)
 
-### 6.5 Result headline
+### 7.5 Result headline
 
-A card with a left border whose colour reflects the score class. Contains:
+A card with a left border whose colour reflects the score class. Uses a CSS grid with two columns:
+left side (`result-main`), right aside (`result-aside`), and a full-width bottom row (`result-cmd`).
 
+**Left side (`result-main`):**
 1. **Verdict** — `IT WILL LLM!` or `IT WON'T LLM!` — large monospace, animated pop-in on every render
-2. **Scorecard** — four `score-row` lines with icon, label, and coloured star rating
-3. **Selection info** — two lines in small muted monospace:
-   - Line 1: `QUANTIZATION · summary of quantization`
-   - Line 2: `kv-type · summary of kv type` + optional `ⓘ` flash attention warning tip
-   - Line 3 (ctx hint): `Xk · Y% of max context · ~Z pages of typical English text [· images use tokens]`
-4. **OOM label** — shown instead of scorecard when model doesn't fit
-5. **Ollama command** — copy-paste ready: `ollama run library:tag\n>>> /set parameter num_ctx XXXXX`
-6. **OS tabs + setup block** — only shown when KV cache type is not f16; toggleable Linux/Mac and Windows sections showing `OLLAMA_KV_CACHE_TYPE=TYPE ollama serve` instructions
+2. **Scorecard** — four `score-row` lines, each: icon · label (hoverable) · block bar `■■■■■■□□□□` · nudge button
+   - ▶ Thinking speed — speed rating from `QUANT_INFO` (1–10 scale, full 10-step bar)
+   - ★ Sharpness — quality rating from `QUANT_INFO` (1–10 scale)
+   - ■ Memory clarity — KV precision: f16→10, q8_0→6, q4_0→4
+   - ◎ Attention span — context fit: based on `contextFitPct`, 1–10 steps
+   - Each row has a **nudge button** (`faster`/`better`/`higher`/`more`) that one-click adjusts the
+     corresponding dropdown. Buttons are hidden when already at max/min or when the target doesn't fit.
+3. **OOM label** — shown instead of scorecard when model doesn't fit
+
+**Right aside (`result-aside`):**
+- Writing speed: `~X words/s` (tooltip: speech-pace comparison + raw t/s)
+- Reading speed: `~X words/s` (tooltip: speech-pace comparison + raw t/s)
+- Divider
+- Context: `~X pages` with label `in one go` (tooltip: token count + words)
+  - `ⓘ` shown when `contextFitPct > 50%` — tooltip: "Like human memory — most models recall
+    the start and end of a long text better than the middle."
+
+**Bottom row (`result-cmd`):**
+4. **Ollama command** — copy-paste ready: `ollama run library:tag\n>>> /set parameter num_ctx XXXXX`
+5. **OS tabs + setup block** — only shown when KV cache type is not f16; toggleable Linux/Mac and Windows sections showing `OLLAMA_KV_CACHE_TYPE=TYPE ollama serve` instructions
 
 Flash attention warning (`ⓘ` tooltip) when KV cache ≠ f16:
 - GPU flash = `'no'`: warn that this GPU doesn't support it
 - GPU flash = `'mixed'`: warn that AMD support varies
 - GPU flash = `'yes'`: note that gains are modest below 8k context
 
-### 6.6 Model info table
+### 7.6 Model info table
 
 Two sections — "Model info" and "Architecture" — each a `<div class="details">`:
 
@@ -414,7 +432,7 @@ Two sections — "Model info" and "Architecture" — each a `<div class="details
 Each key cell has a `data-tip` attribute with a plain-English explanation shown on hover via a
 fixed-position tooltip div.
 
-### 6.7 Formula breakdown box
+### 7.7 Formula breakdown box
 
 Shown below the details table when the model fits. Header: `Max context: Xk tokens`.
 
@@ -427,7 +445,7 @@ Displays the full calculation step by step:
 6. Final result: `→ largest power-of-2 that fits: NNNNN tokens (Xk)`
 7. If arch-limited: muted note `↑ capped at model's architectural limit (context_length = N tokens)`
 
-### 6.8 Tooltip system
+### 7.8 Tooltip system
 
 A single `<div id="tooltip">` positioned fixed. On `mouseover`, any element with `data-tip` shows
 the tooltip below the element. Position is clamped to `window.innerWidth - 276px` to keep it
@@ -435,9 +453,9 @@ on-screen.
 
 ---
 
-## 7. Visual design
+## 8. Visual design
 
-### 7.1 Colour palette (CSS variables)
+### 8.1 Colour palette (CSS variables)
 
 ```css
 --bg:      #0d0f12   /* page background */
@@ -454,7 +472,7 @@ on-screen.
 --purple:  #a78bfa   /* MoE badge */
 ```
 
-### 7.2 Typography
+### 8.2 Typography
 
 - **Monospace** (`--mono`): Cascadia Code, Fira Code, JetBrains Mono, ui-monospace, Consolas
 - **Sans** (`--sans`): system-ui, -apple-system, Segoe UI
@@ -462,12 +480,12 @@ on-screen.
 - Body text: 14px sans
 - Verdict: 32px monospace bold, letter-spacing 0.06em
 
-### 7.3 Page structure
+### 8.3 Page structure
 
 Max-width 720px, centred. Padding 40px top/bottom on desktop. No sidebar. Single-column flow:
 header → controls → bar → result headline → details → formula → disclaimer.
 
-### 7.4 Mobile (≤600px)
+### 8.4 Mobile (≤600px)
 
 - Body padding reduced to 20px/12px
 - Header font size reduced
@@ -478,7 +496,7 @@ header → controls → bar → result headline → details → formula → disc
 
 ---
 
-## 8. Interactivity rules
+## 9. Interactivity rules
 
 - Every control change (`vramInput`, `modelSelect`, `variantSelect`, `kvCacheType`) immediately
   calls `render()` — no submit button
@@ -490,7 +508,7 @@ header → controls → bar → result headline → details → formula → disc
 
 ---
 
-## 9. Data maintenance (model scraper)
+## 10. Data maintenance (model scraper)
 
 `scripts/update_models.py` maintains `models.js` and `libraries.js`. It is never run
 automatically — it is run manually by the developer (or by an AI following
@@ -505,12 +523,9 @@ Architecture data (`block_count`, `head_count_kv`, `key_length`, etc.) is read f
 pages. When not available via scraping, it must be filled in manually from HuggingFace
 `config.json` files.
 
-`libraries.js` is dual-use: loaded as a browser `<script>` (exposes `LIBRARIES` global) and parsed
-as JSON by the scraper (hence all keys must be quoted strings).
-
 ---
 
-## 10. Key design decisions
+## 11. Key design decisions
 
 **No framework, no build step** — the entire tool is vanilla HTML/CSS/JS. This keeps deployment
 trivially simple (upload files to any static host) and eliminates dependency management.
