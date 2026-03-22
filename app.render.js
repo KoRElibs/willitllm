@@ -91,16 +91,19 @@ function renderOom(vramGB, weightsGB) {
 function renderAside(speedEsts, ctxResult, contextFitPct) {
   const genEl  = document.getElementById('asideGenSpeed');
   const prefEl = document.getElementById('asidePrefillSpeed');
+  const speedCaveat = document.getElementById('speedCaveat');
   if (speedEsts) {
     genEl.textContent  = fmtSpeedHuman(speedEsts.genLo, speedEsts.genHi);
-    genEl.dataset.tip  = `Writing its response · ${fmtSpeechPace(speedEsts.genLo, speedEsts.genHi)} · ${fmtSpeed(speedEsts.genLo, speedEsts.genHi)} (generation — output tokens/s, bandwidth-bound)`;
+    genEl.dataset.tip  = `Writing its response · ${fmtSpeechPace(speedEsts.genLo, speedEsts.genHi)} · ${fmtSpeed(speedEsts.genLo, speedEsts.genHi)} (generation — output tokens/s, bandwidth-bound) · rough estimate, ±2×`;
     prefEl.textContent = fmtSpeedHuman(speedEsts.prefillLo, speedEsts.prefillHi);
-    prefEl.dataset.tip = `Reading your prompt · ${fmtSpeechPace(speedEsts.prefillLo, speedEsts.prefillHi)} · ${fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi)} (prefill — input tokens/s, compute-bound)`;
+    prefEl.dataset.tip = `Reading your prompt · ${fmtSpeechPace(speedEsts.prefillLo, speedEsts.prefillHi)} · ${fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi)} (prefill — input tokens/s, compute-bound) · rough estimate, ±2×`;
     document.getElementById('asideGenStat').dataset.tip     = '';
     document.getElementById('asidePrefillStat').dataset.tip = '';
+    if (speedCaveat) speedCaveat.hidden = false;
   } else {
     genEl.textContent  = '—';
     prefEl.textContent = '—';
+    if (speedCaveat) speedCaveat.hidden = true;
   }
 
   const humanCtx   = fmtTokensHuman(ctxResult.maxCtx);

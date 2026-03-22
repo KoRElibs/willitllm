@@ -12,8 +12,9 @@
 //
 //   bandwidth   — "Memory Bandwidth" on TechPowerUp spec page (GB/s)
 //   tflops_fp16 — "FP16 (half)" on TechPowerUp, dense/non-sparse figure.
-//                 For Pascal and GTX 16xx (no tensor cores): FP32 shader throughput
-//                 is used, which equals effective FP16 rate in llama.cpp.
+//                 Pascal GTX 10xx: no native FP16, runs at FP32 rate (1:1).
+//                 Turing GTX 16xx: no tensor cores, but CUDA cores do FP16 at 2×FP32.
+//                 Use TechPowerUp "FP16 (half)" column directly for these.
 //                 Blackwell (RTX 50xx): approximate pending accurate TechPowerUp entries.
 //
 // ── FIELDS ───────────────────────────────────────────────────────────────────
@@ -39,13 +40,13 @@
 const GPUS = [
   // ── 4 GB ──────────────────────────────────────────────────────────────────
   { vram: 4,   flash: 'no',    bandwidth:  112, tflops_fp16:   1.9, names: ['GTX 1050 Ti'] },
-  { vram: 4,   flash: 'no',    bandwidth:  128, tflops_fp16:   2.8, names: ['GTX 1650'] },
+  { vram: 4,   flash: 'no',    bandwidth:  128, tflops_fp16:   5.9, names: ['GTX 1650'] },
 
   // ── 6 GB ──────────────────────────────────────────────────────────────────
   { vram: 6,   flash: 'no',    bandwidth:  192, tflops_fp16:   3.9, names: ['GTX 1060'] },
-  { vram: 6,   flash: 'no',    bandwidth:  192, tflops_fp16:   5.0, names: ['GTX 1660'] },
-  { vram: 6,   flash: 'no',    bandwidth:  336, tflops_fp16:   5.0, names: ['GTX 1660 Super'] },
-  { vram: 6,   flash: 'no',    bandwidth:  288, tflops_fp16:   5.4, names: ['GTX 1660 Ti'] },
+  { vram: 6,   flash: 'no',    bandwidth:  192, tflops_fp16:  10.1, names: ['GTX 1660'] },
+  { vram: 6,   flash: 'no',    bandwidth:  336, tflops_fp16:  10.1, names: ['GTX 1660 Super'] },
+  { vram: 6,   flash: 'no',    bandwidth:  288, tflops_fp16:  10.9, names: ['GTX 1660 Ti'] },
   { vram: 6,   flash: 'no',    bandwidth:  336, tflops_fp16:  26.9, names: ['RTX 2060'] },
 
   // ── 8 GB ──────────────────────────────────────────────────────────────────
