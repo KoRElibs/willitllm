@@ -63,6 +63,7 @@ const LIBRARIES = [
   { "library": "codestral",        "organization": "Mistral AI",            "origin": "France",      "flag": "🇫🇷",  "source": null },
   { "library": "mistral-small",    "organization": "Mistral AI",            "origin": "France",      "flag": "🇫🇷",  "source": null },
   { "library": "devstral",         "organization": "Mistral AI",            "origin": "France",      "flag": "🇫🇷",  "source": null },
+  { "library": "devstral-small-2", "organization": "Mistral AI",            "origin": "France",      "flag": "🇫🇷",  "source": null },
   { "library": "mistral-small3.1", "organization": "Mistral AI",            "origin": "France",      "flag": "🇫🇷",  "source": null,        "multimodal": true },
   { "library": "mistral-small3.2", "organization": "Mistral AI",            "origin": "France",      "flag": "🇫🇷",  "source": null,        "multimodal": true },
   { "library": "mistral-large",    "organization": "Mistral AI",            "origin": "France",      "flag": "🇫🇷",  "source": null },

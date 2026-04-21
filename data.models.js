@@ -2658,5 +2658,20 @@ const MODELS = [
       {"tag": "3.8b-q6_K", "quantization": "Q6_K", "weights_gb": 3.1, "group": "q6_K"},
       {"tag": "3.8b-q8_0", "quantization": "Q8_0", "weights_gb": 4.1, "group": "q8_0"}
     ]
+  },
+  {
+    "ollama_tag": "devstral-small-2:24b",
+    "context_length": 393216,
+    "params_b": 24.0,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 5120,
+    "key_length": 128,
+    "value_length": 128,
+    "variants": [
+      {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 15.0, "group": "(default)"},
+      {"tag": "24b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 26.0, "group": "instruct-2512"}
+    ]
   }
 ];

@@ -31,11 +31,11 @@ Pure static HTML/CSS/JS — no build step, no dependencies, no server.
 | `index.html` | Page structure and UI |
 | `app.js` | Calculation logic and rendering |
 | `styles.css` | Dark theme styling |
-| `models.js` | Model database (architecture params, variants) |
-| `libraries.js` | Library metadata (organization, origin, multimodal flag) |
-| `gpus.js` | GPU database (VRAM tiers, Flash Attention support) |
-| `quantizations.js` | Quantization info (speed/quality ratings, summaries) |
-| `scripts/update_models.py` | Maintenance script — scrapes and updates `models.js` |
+| `data.models.js` | Model database (architecture params, variants) |
+| `data.libraries.js` | Library metadata (organization, origin, multimodal flag) |
+| `data.gpus.js` | GPU database (VRAM tiers, Flash Attention support) |
+| `data.quantizations.js` | Quantization info (speed/quality ratings, summaries) |
+| `scripts/update_models.py` | Maintenance script — scrapes and updates `data.models.js` |
 
 ## Running locally
 
@@ -72,7 +72,7 @@ All architecture parameters (`block_count`, `head_count_kv`, `key_length`, `valu
 
 ## Contributing
 
-To add a model or library, update `libraries.js` and run `scripts/update_models.py --discover --apply`. See `update_models_prompt.md` for step-by-step instructions.
+To add a model or library, update `data.libraries.js` and run `scripts/update_models.py --discover --apply`. See `update_models_prompt.md` for step-by-step instructions.
 
 ## License
 
