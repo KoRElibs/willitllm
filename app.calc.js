@@ -124,7 +124,7 @@ function calcMaxContext(model, vramGB, bytesPerElement, weightsGB) {
   return { maxCtx, kvCacheGB, safetyGB, genuinelyFreeGB, freeGB, perToken, rawTokens, availableBytes, usedGB, archLimit, limitedByArch };
 }
 
-function calcSpeedEstimates(model, variant, vramGB, quantInfo) {
+function calcSpeedEstimates(model, variant, vramGB, quantInfo, maxCtx) {
   if (!quantInfo || !quantInfo.gen_eff || !quantInfo.prefill_eff) return null;
   const gpuSpecs = getGpuSpecs(vramGB);
   if (!gpuSpecs) return null;
@@ -141,10 +141,18 @@ function calcSpeedEstimates(model, variant, vramGB, quantInfo) {
   const genLo = Math.round((gpuSpecs.bwLo * genEffLo) / activeWeightsGB);
   const genHi = Math.round((gpuSpecs.bwHi * genEffHi) / activeWeightsGB);
 
-  // Prefill: compute-bound. tokens/s = tflops × 1e12 × efficiency / (2 × params × 1e9)
-  const paramsActive = (model.params_b_active || model.params_b) * 1e9;
-  const prefillLo = Math.round((gpuSpecs.tflopsLo * 1e12 * prefillEffLo) / (2 * paramsActive));
-  const prefillHi = Math.round((gpuSpecs.tflopsHi * 1e12 * prefillEffHi) / (2 * paramsActive));
+  // Prefill: compute-bound.
+  // FLOPs per token = linear term (MLP + projections) + quadratic attention term.
+  // Quadratic term: each token attends to maxCtx tokens across all layers —
+  // 2 × maxCtx × block_count × head_count_kv × (key_length + value_length).
+  // Uses KV head dims (same data as the KV cache formula); slightly conservative
+  // for MHA models but correct for GQA and internally consistent.
+  const paramsActive   = (model.params_b_active || model.params_b) * 1e9;
+  const valueDim       = model.value_length ?? model.key_length;
+  const kvDimsPerToken = model.block_count * model.head_count_kv * (model.key_length + valueDim);
+  const flopsPerToken  = 2 * paramsActive + 2 * (maxCtx || 0) * kvDimsPerToken;
+  const prefillLo = Math.round((gpuSpecs.tflopsLo * 1e12 * prefillEffLo) / flopsPerToken);
+  const prefillHi = Math.round((gpuSpecs.tflopsHi * 1e12 * prefillEffHi) / flopsPerToken);
 
   return { genLo, genHi, prefillLo, prefillHi, isExact: gpuSpecs.isExact };
 }

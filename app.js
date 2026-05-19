@@ -74,7 +74,7 @@ function render() {
   if (noFit) {
     renderOom(vramGB, weightsGB);
   } else {
-    speedEsts = calcSpeedEstimates(model, variant, vramGB, quantInfo);
+    speedEsts = calcSpeedEstimates(model, variant, vramGB, quantInfo, ctxResult.maxCtx);
     renderAside(speedEsts, ctxResult, contextFitPct);
     renderCmd(model, ctxResult, kvLabel, bytesPerElement);
   }
