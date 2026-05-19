@@ -83,6 +83,35 @@ Generic entries do not store bandwidth/tflops — these are derived at runtime a
 across all named entries at that VRAM tier, producing a wide speed estimate. A note prompts
 the user to select their exact card for a tighter estimate.
 
+#### Adding or updating GPU specs (procedure for AI assistant)
+
+NVIDIA GeForce specs are maintained in `sources/nvidia-geforce-compare.md`, built from
+screenshots of the official NVIDIA compare pages (`https://www.nvidia.com/nb-no/geforce/graphics-cards/compare/`).
+The NVIDIA compare pages require JavaScript and cannot be fetched directly — the user provides
+screenshots and the AI reads them, then updates both the source file and `data.gpus.js`.
+
+**Deriving `tflops_fp16` from AI TOPS (shown on NVIDIA compare pages):**
+The compare page shows AI TOPS (tensor core, sparse), not FP16 dense. Convert:
+- NVIDIA Ada (RTX 40xx):       `FP16 dense = AI TOPS ÷ 8`   (Gen 4 tensor, INT8 sparse)
+- NVIDIA Blackwell (RTX 50xx): `FP16 dense = AI TOPS ÷ 16`  (Gen 5 tensor, FP4 sparse)
+- Cross-check: `FP16 dense ≈ CUDA cores × boost GHz × 4`
+
+For older series (RTX 30/20, GTX 16/10), no AI TOPS is shown — use TechPowerUp "FP16 (half)".
+
+**Deriving `bandwidth` (not shown on compare pages — separate source required):**
+Read from TechPowerUp "Memory Bandwidth" or the NVIDIA nb-no compare page bandwidth row.
+Record the source and date in `sources/nvidia-geforce-compare.md`.
+
+**Laptop variants always get a separate entry:**
+Laptop GPUs have lower bandwidth (narrower bus, lower TDP) than desktop — never share an entry.
+Use `names: ['RTX XXXX Laptop']`. Laptop specs are not on the desktop compare page; source
+from Notebookcheck or NVIDIA's laptop GPU compare page separately.
+
+**Back-calculate from a real ollama benchmark when available:**
+`bandwidth_implied = eval_rate_tps × weights_gb / gen_eff`
+Use `gen_eff ≈ 0.5` for models between 3–8 GB weights. If implied bandwidth differs by >20%,
+prefer the benchmark-derived value and note it in a comment.
+
 ### 3.2 `LIBRARIES` — `libraries.js`
 
 ```js
