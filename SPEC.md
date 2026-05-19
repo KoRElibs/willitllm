@@ -282,10 +282,21 @@ Only `tflops_fp16` is used (one field per GPU, not per-precision) because llama.
 dequantises to fp16 before GEMM regardless of weight quantisation. Per-quant efficiency factors
 fold in any dequantisation overhead difference.
 
+FLOPs per token has two components:
+
+- **Linear** (`2 × params_active`): MLP and projection layers — constant regardless of context.
+- **Quadratic** (`2 × context × block_count × head_count_kv × (key_length + value_length)`):
+  attention QK^T and AV operations — grows with context length, dominates at 100k+ tokens.
+  Uses KV head dimensions (same fields as the KV cache formula); slightly conservative for
+  full MHA models, correct for GQA.
+
 ```
-params_active = (model.params_b_active || model.params_b) × 1e9
-prefill_lo = tflops_lo × 1e12 × prefill_eff[0] / (2 × params_active)   (tokens/sec)
-prefill_hi = tflops_hi × 1e12 × prefill_eff[1] / (2 × params_active)
+params_active    = (model.params_b_active || model.params_b) × 1e9
+kv_dims_per_tok  = block_count × head_count_kv × (key_length + value_length)
+flops_per_token  = 2 × params_active  +  2 × maxCtx × kv_dims_per_tok
+
+prefill_lo = tflops_lo × 1e12 × prefill_eff[0] / flops_per_token   (tokens/sec)
+prefill_hi = tflops_hi × 1e12 × prefill_eff[1] / flops_per_token
 ```
 
 `prefill_eff` range: 0.04–0.30 (intentionally wide — single-user batch-1 rarely saturates tensor

@@ -344,9 +344,14 @@ function renderFormula(model, variant, ctxResult, speedEsts, vramGB, weightsGB, 
     document.getElementById('formulaGenEff').textContent        = `[${genLo}–${genHi}]`;
     document.getElementById('formulaGenWeights').textContent    = activeWeightsGB.toFixed(2);
     document.getElementById('formulaGenResult').textContent     = fmtSpeed(speedEsts.genLo, speedEsts.genHi);
+    const valueDimF      = model.value_length ?? model.key_length;
+    const linearFlops    = 2 * (model.params_b_active || model.params_b) * 1e9;
+    const attnFlops      = 2 * ctxResult.maxCtx * model.block_count * model.head_count_kv * (model.key_length + valueDimF);
+    const totalFlops     = linearFlops + attnFlops;
+    const fmtGF          = n => `${(n / 1e9).toFixed(0)} GF/tok`;
     document.getElementById('formulaPrefillTflops').textContent = gpuSpecs ? fmtRange(gpuSpecs.tflopsLo, gpuSpecs.tflopsHi) : '?';
     document.getElementById('formulaPrefillEff').textContent    = `[${preLo}–${preHi}]`;
-    document.getElementById('formulaPrefillParams').textContent = model.params_b_active || model.params_b;
+    document.getElementById('formulaPrefillFlops').textContent  = `${fmtGF(totalFlops)} (${fmtGF(linearFlops)} linear + ${fmtGF(attnFlops)} attn)`;
     document.getElementById('formulaPrefillResult').textContent = fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi);
     speedSection.hidden = false;
     speedBody.hidden    = false;

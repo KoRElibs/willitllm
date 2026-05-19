@@ -231,7 +231,7 @@
             <div class="detail-val" id="gpuGenSpeedDetail"></div>
           </div>
           <div class="detail-row">
-            <div class="detail-key" data-tip="Est. prompt processing speed (prefill). Formula: tflops_fp16 × 1e12 × prefill_eff / (2 × active_params × 1e9). Efficiency is lower than theoretical due to poor tensor core utilization at batch size 1.">processing</div>
+            <div class="detail-key" data-tip="Est. prompt processing speed (prefill). Formula: tflops_fp16 × 1e12 × prefill_eff / flops_per_token, where flops_per_token = 2×active_params (linear) + 2×context×block_count×head_count_kv×(key_length+value_length) (quadratic attention). The attention term grows with context length and dominates at 100k+ tokens.">processing</div>
             <div class="detail-val" id="gpuPrefillSpeedDetail"></div>
           </div>
         </div>
@@ -255,8 +255,9 @@
           <div id="formulaSpeedBody" hidden>
             <div class="formula-muted">generation (t/s) = bandwidth × gen_eff / active_weights_gb</div>
             <div class="formula-line">&nbsp;&nbsp;= <span class="hl" id="formulaGenBw"></span> GB/s × <span class="hl" id="formulaGenEff"></span> / <span class="hl" id="formulaGenWeights"></span> GB = <span class="hl-g" id="formulaGenResult"></span></div>
-            <div class="formula-muted formula-spacer">processing (t/s) = tflops_fp16 × 1e12 × prefill_eff / (2 × active_params × 1e9)</div>
-            <div class="formula-line">&nbsp;&nbsp;= <span class="hl" id="formulaPrefillTflops"></span> TFLOPS × 1e12 × <span class="hl" id="formulaPrefillEff"></span> / (2 × <span class="hl" id="formulaPrefillParams"></span>B × 1e9) = <span class="hl-g" id="formulaPrefillResult"></span></div>
+            <div class="formula-muted formula-spacer">processing (t/s) = tflops_fp16 × 1e12 × prefill_eff / flops_per_token</div>
+            <div class="formula-muted">&nbsp;&nbsp;flops_per_token = 2 × active_params &nbsp;+&nbsp; 2 × context × block_count × head_count_kv × (key_length + value_length)</div>
+            <div class="formula-line">&nbsp;&nbsp;= <span class="hl" id="formulaPrefillTflops"></span> TFLOPS × 1e12 × <span class="hl" id="formulaPrefillEff"></span> / <span class="hl-a" id="formulaPrefillFlops"></span> = <span class="hl-g" id="formulaPrefillResult"></span></div>
           </div>
         </div>
         <div id="formulaNoFit" class="formula-nofit" hidden>Model does not fit in available VRAM — no context window to calculate.</div>
