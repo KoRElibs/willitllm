@@ -17,10 +17,14 @@ Given a GPU's VRAM and an LLM model, will-it-llm calculates:
 bytes_per_element = KV cache precision (2 = f16, 1 = q8_0, 0.5 = q4_0)
 bytes_per_token   = block_count × head_count_kv × (key_length + value_length) × bytes_per_element
 available_vram    = total_vram − model_weights − 0.5 GB overhead
-max_context       = largest power-of-2 that fits in available_vram
+raw_max_tokens    = available_vram / bytes_per_token
+max_context       = floor(raw_max_tokens × 0.9 / 128) × 128
 ```
 
-The result is capped at the model's architectural `context_length` limit.
+A 10% safety factor is applied before rounding down to the nearest 128 tokens. This accounts for
+overhead estimation uncertainty — the 0.5 GB reservation is a rough floor; actual driver and
+runtime overhead can reach 0.7–1.0 GB. The result is capped at the model's architectural
+`context_length` limit.
 
 ## Stack
 

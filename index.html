@@ -55,14 +55,18 @@
         <span class="total" id="barTotal"></span>
       </div>
       <div class="membar">
-        <div class="membar-seg seg-model" id="segModel"></div>
-        <div class="membar-seg seg-context" id="segContext"></div>
-        <div class="membar-seg seg-free" id="segFree"></div>
+        <div class="membar-seg seg-model"    id="segModel"></div>
+        <div class="membar-seg seg-context"  id="segContext"></div>
+        <div class="membar-seg seg-overhead" id="segOverhead"></div>
+        <div class="membar-seg seg-safety"   id="segSafety"></div>
+        <div class="membar-seg seg-free"     id="segFree"></div>
       </div>
       <div class="bar-legend">
         <div class="legend-item"><div class="legend-dot dot-model"></div><span id="legendModel"></span></div>
         <div class="legend-item"><div class="legend-dot dot-context"></div><span id="legendContext"></span></div>
-        <div class="legend-item"><div class="legend-dot dot-free"></div><span id="legendFree"></span></div>
+        <div class="legend-item"><div class="legend-dot dot-overhead"></div><span id="legendOverhead"></span></div>
+        <div class="legend-item" id="legendSafetyItem"><div class="legend-dot dot-safety"></div><span id="legendSafety"></span></div>
+        <div class="legend-item" id="legendFreeItem"><div class="legend-dot dot-free"></div><span id="legendFree"></span></div>
       </div>
     </div>
 
@@ -88,16 +92,16 @@
       <div class="result-aside" id="resultAside" hidden>
         <div class="aside-stat" id="asideGenStat">
           <div class="aside-val" id="asideGenSpeed">—</div>
-          <div class="aside-label">writing</div>
+          <div class="aside-label" id="asideGenLabel">writing</div>
         </div>
         <div class="aside-stat" id="asidePrefillStat">
           <div class="aside-val" id="asidePrefillSpeed">—</div>
-          <div class="aside-label">reading</div>
+          <div class="aside-label" id="asidePrefillLabel">reading</div>
         </div>
         <div id="speedCaveat" hidden class="aside-label" style="opacity:0.45;cursor:help;" data-tip="Speed is a rough estimate — real results typically fall within ½× to 2× of this range, depending on GPU drivers, system load, and model size. Context window size is always accurate.">rough estimate</div>
         <div class="aside-divider"></div>
-        <div class="aside-stat" data-tip="Approximate amount of English text that fits in the available context window.">
-          <div class="aside-val" id="asideCtxPages">— <span id="ctxCaveat" hidden data-tip="Like human memory — most models recall the start and end of a long text better than the middle." style="font-size:0.75em;opacity:0.5;cursor:help;">ⓘ</span></div>
+        <div class="aside-stat">
+          <div class="aside-val" id="asideCtxPages">—</div>
           <div class="aside-label" id="asideCtxLabel">—</div>
         </div>
       </div>
@@ -169,6 +173,31 @@
             <div class="detail-key">description</div>
             <div class="detail-val" id="quantSummary"></div>
           </div>
+          <div class="details-header" id="budgetHeader" hidden>VRAM budget</div>
+          <div class="detail-row" id="budgetSection" hidden>
+            <div class="detail-key" data-tip="Compressed model weights loaded into VRAM. Exact — read directly from ollama.">model weights</div>
+            <div class="detail-val" id="budgetWeights"></div>
+          </div>
+          <div class="detail-row" id="budgetKvRow" hidden>
+            <div class="detail-key" data-tip="KV cache for the recommended context window. Exact — calculated from model architecture and KV cache precision.">KV cache</div>
+            <div class="detail-val" id="budgetKv"></div>
+          </div>
+          <div class="detail-row" id="budgetOverheadRow" hidden>
+            <div class="detail-key" data-tip="Estimated fixed cost: CUDA driver (~200–400 MB) + ollama server + llama.cpp compute buffers (~100–300 MB at batch size 1). Actual value varies by GPU and system — typically 0.3–0.7 GB. This uncertainty is why the safety buffer exists.">overhead (est.)</div>
+            <div class="detail-val" id="budgetOverhead"></div>
+          </div>
+          <div class="detail-row" id="budgetSafetyRow" hidden>
+            <div class="detail-key" data-tip="Intentional OOM guard: 10% of theoretical context capacity held back. Overhead can reach ~1 GB on some systems — setting num_ctx to the raw maximum risks a crash. This buffer keeps the recommendation safe.">safety buffer</div>
+            <div class="detail-val" id="budgetSafety"></div>
+          </div>
+          <div class="detail-row" id="budgetFreeRow" hidden>
+            <div class="detail-key" data-tip="Genuinely unused VRAM — available because the model's architectural context limit is reached before VRAM runs out.">free</div>
+            <div class="detail-val" id="budgetFree"></div>
+          </div>
+          <div class="detail-row" id="budgetTotalRow" hidden>
+            <div class="detail-key">total</div>
+            <div class="detail-val" id="budgetTotal"></div>
+          </div>
           <div class="details-source"><a id="detailOllamaLink" href="#" target="_blank" rel="noopener noreferrer">ollama.com ↗</a></div>
         </div>
       </div>
@@ -214,7 +243,7 @@
           <div class="formula-muted">bytes_per_token = block_count × head_count_kv × (key_length + value_length) × bytes_per_element</div>
           <div class="formula-line">&nbsp;&nbsp;= <span class="hl" id="formulaBlockCount"></span> × <span class="hl" id="formulaKvHeads"></span> × (<span class="hl" id="formulaKeyLength"></span> + <span class="hl" id="formulaValueLength"></span>) × <span class="hl" id="formulaBpeLabel"></span> = <span class="hl-a" id="formulaPerToken"></span>/token <span class="formula-muted" id="formulaPerTokenKB"></span></div>
           <div class="formula-spacer formula-muted" id="formulaAvailLabel"></div>
-          <div class="formula-line">&nbsp;&nbsp;= <span class="hl-a" id="formulaAvailGB"></span> = <span class="hl-a" id="formulaAvailBytes"></span> &nbsp;→ raw: <span class="hl-a" id="formulaRawTokens"></span> tokens &nbsp;→ <span class="hl-g" id="formulaMaxCtx"></span></div>
+          <div class="formula-line">&nbsp;&nbsp;= <span class="hl-a" id="formulaAvailGB"></span> = <span class="hl-a" id="formulaAvailBytes"></span> &nbsp;→ raw: <span class="hl-a" id="formulaRawTokens"></span> tokens &nbsp;→ <span class="formula-muted" id="formulaSafetyStep"></span> &nbsp;→ <span class="hl-g" id="formulaMaxCtx"></span></div>
           <div id="formulaArchCapNote" hidden>
             <div class="formula-muted formula-spacer">↑ capped at architectural context_length = <span id="formulaArchLimit"></span> tokens</div>
           </div>
@@ -256,14 +285,14 @@
 
 </div>
 <div id="tooltip" class="tooltip" hidden></div>
-<script src="data.gpus.js?v=3"></script>
-<script src="data.libraries.js?v=3"></script>
-<script src="data.quantizations.js?v=3"></script>
-<script src="data.kv-cache.js?v=3"></script>
-<script src="data.models.js?v=3"></script>
-<script src="app.calc.js?v=3"></script>
-<script src="app.render.js?v=3"></script>
-<script src="app.ui.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="data.gpus.js?v=5"></script>
+<script src="data.libraries.js?v=5"></script>
+<script src="data.quantizations.js?v=5"></script>
+<script src="data.kv-cache.js?v=5"></script>
+<script src="data.models.js?v=5"></script>
+<script src="app.calc.js?v=5"></script>
+<script src="app.render.js?v=5"></script>
+<script src="app.ui.js?v=5"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

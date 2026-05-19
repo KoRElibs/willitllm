@@ -48,10 +48,13 @@
 //
 // ── KV CACHE FORMULA ─────────────────────────────────────────────────────────
 //
-//   bytes_per_token = block_count × head_count_kv × key_length × 2 × bpe
+//   bytes_per_token = block_count × head_count_kv × (key_length + value_length) × bpe
 //   bpe: f16=2, q8_0=1, q4_0=0.5
 //
-//   Example — Llama 3.1 8B: 32 × 8 × 128 × 2 × 2 = 131,072 bytes/token
+//   Example — Llama 3.1 8B: 32 × 8 × (128+128) × 2 = 131,072 bytes/token
+//
+//   max_context = floor(raw_max_tokens × SAFETY_FACTOR / CTX_ROUND) × CTX_ROUND
+//   SAFETY_FACTOR=0.9, CTX_ROUND=128 — see app.calc.js for rationale.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 

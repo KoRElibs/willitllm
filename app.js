@@ -37,6 +37,10 @@ function render() {
   const model           = MODELS[modelIdx];
   updateSelectionSummary(model);
 
+  // Mark model options as soon as VRAM is known — before the model-selection guard
+  // so the dropdown is colour-coded on first GPU selection, not only after a model is picked.
+  if (!isNaN(vramGB) && vramGB > 0) markModelOptions(vramGB, bytesPerElement);
+
   const noModel = document.getElementById('noModel');
   const results = document.getElementById('results');
   if (!model || isNaN(vramGB) || vramGB <= 0) {
@@ -53,8 +57,6 @@ function render() {
   const quantInfo    = variant ? QUANT_INFO[variant.quantization] : null;
   const libInfo      = getLibMeta(model);
 
-  markModelOptions(vramGB, bytesPerElement);
-
   const ctxResult = calcMaxContext(model, vramGB, bytesPerElement, weightsGB);
   const noFit     = weightsGB >= vramGB - OVERHEAD_GB;
   const scores    = computeScores(quantInfo, bytesPerElement, ctxResult, noFit, model);
@@ -63,6 +65,7 @@ function render() {
   document.getElementById('resultHeadline').className = `result-headline ${scoreClass}`;
 
   renderMembar(vramGB, weightsGB, ctxResult, noFit);
+  renderBudget(vramGB, weightsGB, ctxResult, noFit);
   renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, ctxResult, noFit);
   renderVerdict(noFit);
   renderDetails(model, libInfo, variant, weightsGB, quantization, bytesPerElement, kvLabel);

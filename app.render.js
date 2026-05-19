@@ -10,9 +10,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 function renderMembar(vramGB, weightsGB, ctxResult, noFit) {
-  const modelPct   = Math.min(100, (weightsGB / vramGB) * 100);
-  const contextPct = noFit ? 0 : Math.min(100 - modelPct, (ctxResult.kvCacheGB / vramGB) * 100);
-  const freePct    = Math.max(0, 100 - modelPct - contextPct);
+  const pct = gb => Math.min(100, (gb / vramGB) * 100);
+
+  const modelPct    = pct(weightsGB);
+  const contextPct  = noFit ? 0 : pct(ctxResult.kvCacheGB);
+  const overheadPct = noFit ? 0 : pct(OVERHEAD_GB);
+  const safetyPct   = noFit ? 0 : pct(ctxResult.safetyGB);
+  const freePct     = noFit ? 0 : pct(ctxResult.genuinelyFreeGB);
 
   document.getElementById('barTotal').textContent = Math.round(vramGB) + ' GB';
 
@@ -26,14 +30,62 @@ function renderMembar(vramGB, weightsGB, ctxResult, noFit) {
   segContext.style.width = contextPct.toFixed(1) + '%';
   segContext.textContent = contextPct > 8 ? fmtGB(ctxResult.kvCacheGB) : '';
 
-  const segFree = document.getElementById('segFree');
-  segFree.style.width  = freePct.toFixed(1) + '%';
-  segFree.style.flex   = freePct < 1 ? `0 0 ${freePct.toFixed(1)}%` : '1';
-  segFree.textContent  = freePct > 8 ? fmtGB(ctxResult.freeGB) : '';
+  const segOverhead = document.getElementById('segOverhead');
+  segOverhead.style.width  = overheadPct.toFixed(1) + '%';
+  segOverhead.textContent  = overheadPct > 6 ? '~' + fmtGB(OVERHEAD_GB) : '';
 
-  document.getElementById('legendModel').textContent   = `Model weights (${fmtGB(weightsGB)})`;
-  document.getElementById('legendContext').textContent = `KV cache (${fmtGB(ctxResult.kvCacheGB)}) · ${fmtCtx(ctxResult.maxCtx)} ctx`;
-  document.getElementById('legendFree').textContent    = `Free (${fmtGB(Math.max(0, ctxResult.freeGB))})`;
+  const segSafety = document.getElementById('segSafety');
+  segSafety.style.width  = safetyPct.toFixed(1) + '%';
+  segSafety.textContent  = safetyPct > 6 ? fmtGB(ctxResult.safetyGB) : '';
+
+  const segFree = document.getElementById('segFree');
+  if (freePct > 0.5) {
+    // flex: 1 fills any remaining space after the other fixed-width segments
+    segFree.style.flex  = '1';
+    segFree.style.width = '';
+    segFree.textContent = freePct > 6 ? fmtGB(ctxResult.genuinelyFreeGB) : '';
+  } else {
+    segFree.style.flex  = '';
+    segFree.style.width = '0%';
+    segFree.textContent = '';
+  }
+
+  document.getElementById('legendModel').textContent    = `Model weights · ${fmtGB(weightsGB)}`;
+  document.getElementById('legendContext').textContent  = noFit ? '' : `${fmtCtx(ctxResult.maxCtx)} context · KV cache ${fmtGB(ctxResult.kvCacheGB)}`;
+  document.getElementById('legendOverhead').textContent = noFit ? '' : `Overhead ~${fmtGB(OVERHEAD_GB)}`;
+  const legendSafetyItem = document.getElementById('legendSafetyItem');
+  legendSafetyItem.hidden = noFit || ctxResult.safetyGB < 0.05;
+  if (!noFit) document.getElementById('legendSafety').textContent = `Safety ${fmtGB(ctxResult.safetyGB)}`;
+  const legendFreeItem = document.getElementById('legendFreeItem');
+  legendFreeItem.hidden = noFit || ctxResult.genuinelyFreeGB < 0.05;
+  if (!noFit) document.getElementById('legendFree').textContent = `Free ${fmtGB(ctxResult.genuinelyFreeGB)}`;
+}
+
+function renderBudget(vramGB, weightsGB, ctxResult, noFit) {
+  const show = id => { document.getElementById(id).hidden = false; };
+  const hide = id => { document.getElementById(id).hidden = true; };
+
+  if (noFit) {
+    ['budgetHeader','budgetSection','budgetKvRow','budgetOverheadRow','budgetSafetyRow','budgetFreeRow','budgetTotalRow'].forEach(hide);
+    return;
+  }
+
+  ['budgetHeader','budgetSection','budgetKvRow','budgetOverheadRow','budgetSafetyRow','budgetTotalRow'].forEach(show);
+
+  document.getElementById('budgetWeights').textContent  = fmtGB(weightsGB);
+  document.getElementById('budgetKv').textContent       = `${fmtGB(ctxResult.kvCacheGB)} (${fmtCtx(ctxResult.maxCtx)} tokens)`;
+  document.getElementById('budgetOverhead').textContent = `~${fmtGB(OVERHEAD_GB)}`;
+  document.getElementById('budgetSafety').textContent   = fmtGB(ctxResult.safetyGB);
+
+  if (ctxResult.genuinelyFreeGB > 0.05) {
+    show('budgetFreeRow');
+    document.getElementById('budgetFree').textContent = fmtGB(ctxResult.genuinelyFreeGB);
+  } else {
+    hide('budgetFreeRow');
+  }
+
+  const totalUsed = weightsGB + ctxResult.kvCacheGB + OVERHEAD_GB + ctxResult.safetyGB;
+  document.getElementById('budgetTotal').textContent = `${fmtGB(totalUsed)} of ${fmtGB(vramGB)}`;
 }
 
 function renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, ctxResult, noFit) {
@@ -93,29 +145,38 @@ function renderAside(speedEsts, ctxResult, contextFitPct) {
   const prefEl = document.getElementById('asidePrefillSpeed');
   const speedCaveat = document.getElementById('speedCaveat');
   if (speedEsts) {
-    genEl.textContent  = fmtSpeedHuman(speedEsts.genLo, speedEsts.genHi);
-    genEl.dataset.tip  = `Writing its response · ${fmtSpeechPace(speedEsts.genLo, speedEsts.genHi)} · ${fmtSpeed(speedEsts.genLo, speedEsts.genHi)} (generation — output tokens/s, bandwidth-bound) · rough estimate, ±2×`;
-    prefEl.textContent = fmtSpeedHuman(speedEsts.prefillLo, speedEsts.prefillHi);
-    prefEl.dataset.tip = `Reading your prompt · ${fmtSpeechPace(speedEsts.prefillLo, speedEsts.prefillHi)} · ${fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi)} (prefill — input tokens/s, compute-bound) · rough estimate, ±2×`;
+    genEl.textContent  = fmtSpeechPace(speedEsts.genLo, speedEsts.genHi);
+    genEl.dataset.tip  = `Writing its response · ${fmtSpeedHuman(speedEsts.genLo, speedEsts.genHi)} · ${fmtSpeed(speedEsts.genLo, speedEsts.genHi)} (generation — output tokens/s, bandwidth-bound) · rough estimate, ±2×`;
+    prefEl.textContent = fmtSpeechPace(speedEsts.prefillLo, speedEsts.prefillHi);
+    prefEl.dataset.tip = `Reading your prompt · ${fmtSpeedHuman(speedEsts.prefillLo, speedEsts.prefillHi)} · ${fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi)} (prefill — input tokens/s, compute-bound) · rough estimate, ±2×`;
+    const genLabelEl  = document.getElementById('asideGenLabel');
+    const prefLabelEl = document.getElementById('asidePrefillLabel');
+    genLabelEl.textContent  = `writing · ${fmtSpeedHuman(speedEsts.genLo, speedEsts.genHi)}`;
+    prefLabelEl.textContent = `reading · ${fmtSpeedHuman(speedEsts.prefillLo, speedEsts.prefillHi)}`;
+    genLabelEl.dataset.tip  = `${fmtSpeed(speedEsts.genLo, speedEsts.genHi)} · output tokens/s · bandwidth-bound (model weights stream from VRAM every token)`;
+    prefLabelEl.dataset.tip = `${fmtSpeed(speedEsts.prefillLo, speedEsts.prefillHi)} · input tokens/s · compute-bound (all prompt tokens processed in parallel)`;
     document.getElementById('asideGenStat').dataset.tip     = '';
     document.getElementById('asidePrefillStat').dataset.tip = '';
     if (speedCaveat) speedCaveat.hidden = false;
   } else {
     genEl.textContent  = '—';
     prefEl.textContent = '—';
+    document.getElementById('asideGenLabel').textContent  = 'writing';
+    document.getElementById('asidePrefillLabel').textContent = 'reading';
+    document.getElementById('asideGenLabel').dataset.tip  = '';
+    document.getElementById('asidePrefillLabel').dataset.tip = '';
     if (speedCaveat) speedCaveat.hidden = true;
   }
 
-  const humanCtx   = fmtTokensHuman(ctxResult.maxCtx);
-  const [pagePart] = humanCtx.split(' · ').reverse();
-  const ctxPagesEl = document.getElementById('asideCtxPages');
-  ctxPagesEl.textContent = pagePart;
-  ctxPagesEl.dataset.tip = `${fmtCtx(ctxResult.maxCtx)} tokens · ${humanCtx} (attention span — how much text fits in VRAM at once)`;
-  document.getElementById('asideCtxLabel').textContent = 'in one go';
-
-  // Caveat when >50% of trained context is used — "lost in the middle" degradation becomes significant
-  const ctxCaveat = document.getElementById('ctxCaveat');
-  if (ctxCaveat) ctxCaveat.hidden = !contextFitPct || contextFitPct <= 50;
+  const ctxPagesEl  = document.getElementById('asideCtxPages');
+  const ctxLabelEl  = document.getElementById('asideCtxLabel');
+  const caveatMark = contextFitPct && contextFitPct > 50
+    ? ' <span data-tip="Like human memory — most models recall the start and end of a long text better than the middle." style="font-size:0.75em;opacity:0.5;cursor:help;">ⓘ</span>'
+    : '';
+  ctxPagesEl.innerHTML   = fmtCtxPages(ctxResult.maxCtx) + caveatMark;
+  ctxPagesEl.dataset.tip = `${fmtCtx(ctxResult.maxCtx)} tokens · ${fmtTokensHuman(ctxResult.maxCtx)} (attention span — how much text fits in VRAM at once)`;
+  ctxLabelEl.textContent = `context · ${fmtCtxWords(ctxResult.maxCtx)}`;
+  ctxLabelEl.dataset.tip = `${fmtCtx(ctxResult.maxCtx)} tokens · ~0.75 words per token`;
 
   document.getElementById('resultAside').hidden = false;
 }
@@ -257,6 +318,7 @@ function renderFormula(model, variant, ctxResult, speedEsts, vramGB, weightsGB, 
   document.getElementById('formulaAvailGB').textContent     = fmtGB(vramGB - OVERHEAD_GB - weightsGB);
   document.getElementById('formulaAvailBytes').textContent  = `${Math.round((vramGB - OVERHEAD_GB - weightsGB) * 1024 ** 3).toLocaleString()} bytes`;
   document.getElementById('formulaRawTokens').textContent   = Math.round(ctxResult.rawTokens).toLocaleString();
+  document.getElementById('formulaSafetyStep').textContent  = `×${SAFETY_FACTOR} safety, ÷${CTX_ROUND}`;
   document.getElementById('formulaMaxCtx').textContent      = `${ctxResult.maxCtx.toLocaleString()} tokens (${fmtCtx(ctxResult.maxCtx)})`;
 
   const archCapNote = document.getElementById('formulaArchCapNote');

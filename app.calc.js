@@ -7,12 +7,9 @@
 // Globals:     GPUS, QUANT_INFO                             (data files)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const OVERHEAD_GB  = 0.5;    // fixed reservation: CUDA context, driver, ollama
-const POWERS_OF_2  = [131072, 65536, 32768, 16384, 8192, 4096, 2048, 1024];
-const CTX_LABELS   = [
-  [131072,'128k'],[65536,'64k'],[32768,'32k'],[16384,'16k'],
-  [8192,'8k'],[4096,'4k'],[2048,'2k'],[1024,'1k'],
-];
+const OVERHEAD_GB    = 0.5;  // fixed reservation: CUDA context, driver, ollama
+const SAFETY_FACTOR  = 0.9;  // 10% margin — overhead estimate is imprecise (0.5–1.0 GB in practice)
+const CTX_ROUND      = 128;  // round down to nearest 128 (natural head-dimension granularity)
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -39,20 +36,29 @@ function fmtSpeechPace(lo, hi) {
   const SPEECH_WPS = 2.5;
   const avgWps = ((lo + hi) / 2) * 0.75;
   const mult = Math.round(avgWps / SPEECH_WPS);
-  if (mult <= 1) return 'speech pace';
+  if (!isFinite(mult) || mult <= 1) return 'speech pace';
   return `${mult}× speech pace`;
 }
 
 // ~0.75 words per token; ~250 words per page (333 tokens/page)
-function fmtTokensHuman(n) {
+function fmtCtxWords(n) {
   const words = Math.round(n * 0.75 / 500) * 500;
+  const w = words >= 1000 ? `${(words / 1000).toFixed(0)}k` : String(words);
+  return `≈${w} words`;
+}
+
+function fmtCtxPages(n) {
   const pages = Math.round(n / 333 / 5) * 5;
-  const w = words >= 1000 ? `${(words / 1000).toFixed(0)}k` : words;
-  return `≈${w} words · ~${pages} pages`;
+  return `~${pages} pages`;
+}
+
+function fmtTokensHuman(n) {
+  return `${fmtCtxWords(n)} · ${fmtCtxPages(n)}`;
 }
 
 function fmtCtx(n) {
-  return (CTX_LABELS.find(([t]) => n >= t) || [0, '0'])[1];
+  if (n >= 1000) return Math.round(n / 1000) + 'k';
+  return String(n);
 }
 
 function bar10(n10) { return '■'.repeat(n10) + '□'.repeat(10 - n10); }
@@ -92,20 +98,30 @@ function getGpuSpecs(vramGB) {
 
 function calcMaxContext(model, vramGB, bytesPerElement, weightsGB) {
   const availableBytes = (vramGB - OVERHEAD_GB - weightsGB) * 1024 ** 3;
-  if (availableBytes <= 0) return { maxCtx: 0, kvCacheGB: 0, freeGB: 0, availableBytes };
+  if (availableBytes <= 0) return { maxCtx: 0, kvCacheGB: 0, safetyGB: 0, genuinelyFreeGB: 0, freeGB: 0, availableBytes };
 
   const valueDim  = model.value_length ?? model.key_length;
   const perToken  = model.block_count * model.head_count_kv * (model.key_length + valueDim) * bytesPerElement;
   const rawTokens = availableBytes / perToken;
   const archLimit = model.context_length || Infinity;
   const archMaxRaw    = Math.min(rawTokens, archLimit);
-  const maxCtx        = POWERS_OF_2.find(p => p <= archMaxRaw) || 0;
+  const maxCtx        = Math.floor(archMaxRaw * SAFETY_FACTOR / CTX_ROUND) * CTX_ROUND;
   const limitedByArch = isFinite(archLimit) && rawTokens > archLimit;
-  const kvCacheGB = (maxCtx * perToken) / 1024 ** 3;
-  const usedGB    = weightsGB + kvCacheGB;
-  const freeGB    = vramGB - usedGB;
+  // IMPORTANT: kvCacheGB is ≈ constant when VRAM-limited — halving bytesPerElement
+  // doubles maxCtx, so their product stays flat. What changes for the user is maxCtx
+  // (the context window size), not memory. kvCacheGB only shrinks when maxCtx hits
+  // archLimit. Always surface maxCtx as the primary metric, not kvCacheGB.
+  const kvCacheGB       = (maxCtx * perToken) / 1024 ** 3;
+  // Split the non-weights, non-KV remainder into three honest components:
+  //   overheadGB      — fixed driver/runtime reservation (OVERHEAD_GB)
+  //   safetyGB        — tokens we could fit after safety factor but held back by SAFETY_FACTOR + CTX_ROUND rounding
+  //   genuinelyFreeGB — only >0 when arch-limited (more VRAM than the model can ever use)
+  const safetyGB        = (archMaxRaw - maxCtx) * perToken / 1024 ** 3;
+  const genuinelyFreeGB = Math.max(0, rawTokens - archMaxRaw) * perToken / 1024 ** 3;
+  const usedGB          = weightsGB + kvCacheGB;
+  const freeGB          = vramGB - usedGB;   // = OVERHEAD_GB + safetyGB + genuinelyFreeGB
 
-  return { maxCtx, kvCacheGB, freeGB, perToken, rawTokens, availableBytes, usedGB, archLimit, limitedByArch };
+  return { maxCtx, kvCacheGB, safetyGB, genuinelyFreeGB, freeGB, perToken, rawTokens, availableBytes, usedGB, archLimit, limitedByArch };
 }
 
 function calcSpeedEstimates(model, variant, vramGB, quantInfo) {

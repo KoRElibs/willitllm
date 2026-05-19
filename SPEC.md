@@ -172,7 +172,9 @@ This is the heart of the tool. Implemented in `calcMaxContext()`.
 ### 4.1 Constants
 
 ```js
-const OVERHEAD_GB = 0.5;  // fixed reservation for CUDA context, driver, ollama runtime
+const OVERHEAD_GB   = 0.5;  // fixed reservation for CUDA context, driver, ollama runtime
+const SAFETY_FACTOR = 0.9;  // 10% margin for overhead estimation uncertainty (0.5–1.0 GB in practice)
+const CTX_ROUND     = 128;  // round down to nearest 128 (natural head-dimension granularity)
 ```
 
 ### 4.2 KV cache encoding
@@ -207,11 +209,18 @@ If `available_bytes ≤ 0`, the model does not fit. Show OOM state.
 ```
 raw_max_tokens = available_bytes / bytes_per_token
 arch_max_raw   = min(raw_max_tokens, model.context_length)
-max_ctx        = largest power of 2 ≤ arch_max_raw
+max_ctx        = floor(arch_max_raw × SAFETY_FACTOR / CTX_ROUND) × CTX_ROUND
 ```
 
-Powers of 2 considered (largest first): 131072, 65536, 32768, 16384, 8192, 4096, 2048, 1024.
-Context window labels: 128k, 64k, 32k, 16k, 8k, 4k, 2k, 1k.
+`SAFETY_FACTOR = 0.9` applies a 10% reduction before rounding. `CTX_ROUND = 128` keeps
+`num_ctx` a clean multiple of 128 while wasting less than 1% of available context.
+
+The safety factor exists because `OVERHEAD_GB` is a rough estimate — actual GPU driver and
+ollama runtime overhead can reach 0.7–1.0 GB. Setting `num_ctx` to the raw theoretical
+maximum risks OOM; the 10% margin keeps users safely within budget.
+
+Context is displayed via `fmtCtx(n)` which formats any integer: `n ÷ 1000`, rounded, with `k`
+suffix (e.g. `55k`, `128k`). No fixed label set — the value is always exact.
 
 If `raw_max_tokens > model.context_length`, the context is architecture-limited (not VRAM-limited)
 and a note is shown in the formula breakdown.
@@ -366,8 +375,10 @@ A horizontal bar divided into three segments:
 [  model weights  ][      KV cache @ Xk ctx      ][ free ]
 ```
 
-Segment widths are percentages of total VRAM. The KV cache segment shows `fmtGB(kvCacheGB)`
-when the segment is wide enough (>8%), nothing when very narrow.
+Segment widths are percentages of total VRAM. The KV cache segment shows `fmtCtx(maxCtx)`
+(e.g. `55k`) when the segment is wide enough (>8%), nothing when very narrow. The token count
+is shown — not the GB figure — because kvCacheGB is approximately constant when VRAM-limited;
+the token count is what actually changes and is the metric users care about.
 
 Bar segment classes:
 - `seg-model` — blue (`#1e3a5f`), accent text
@@ -375,7 +386,7 @@ Bar segment classes:
 - `seg-free` — bg3, muted text
 - `seg-overflow` — dark red (`#3b1e1e`), red text (used for both model and context when OOM)
 
-The legend below shows: `Model weights (X.X GB)` | `KV cache (X.X GB) · Xk ctx` | `Free (X.X GB)`
+The legend below shows: `Model weights (X.X GB)` | `Xk context · KV cache X.X GB` | `Free (X.X GB)`
 (1 decimal place; trailing zeros dropped)
 
 ### 7.5 Result headline
@@ -442,8 +453,9 @@ Displays the full calculation step by step:
 3. `available_vram = total − overhead − weights` (with GB values)
 4. Available in bytes
 5. `raw_max_tokens = available_vram ÷ bytes_per_token`
-6. Final result: `→ largest power-of-2 that fits: NNNNN tokens (Xk)`
-7. If arch-limited: muted note `↑ capped at model's architectural limit (context_length = N tokens)`
+6. Inline safety step: `×0.9 safety, ÷128` (muted, between raw tokens and final result)
+7. Final result: `→ NNNNN tokens (Xk)` — exact integer, formatted as `Xk`
+8. If arch-limited: muted note `↑ capped at model's architectural limit (context_length = N tokens)`
 
 ### 7.8 Tooltip system
 
@@ -530,9 +542,12 @@ pages. When not available via scraping, it must be filled in manually from Huggi
 **No framework, no build step** — the entire tool is vanilla HTML/CSS/JS. This keeps deployment
 trivially simple (upload files to any static host) and eliminates dependency management.
 
-**Powers of 2 for context** — ollama's `num_ctx` parameter must be set by the user; the tool
-recommends the largest power-of-2 that fits because these are the conventional values and they
-align with attention mask implementations.
+**10% safety factor for context** — ollama's `num_ctx` accepts any integer; powers-of-2 are
+not required. We apply `SAFETY_FACTOR = 0.9` before rounding down to the nearest `CTX_ROUND = 128`
+tokens. The margin exists because `OVERHEAD_GB = 0.5` is a rough estimate; actual driver and
+runtime overhead can reach 0.7–1.0 GB. Setting `num_ctx` to the raw theoretical maximum risks
+OOM — the 10% margin keeps the recommended value safely within budget. Rounding to 128 keeps
+`num_ctx` clean while wasting less than 1% of available context.
 
 **KV cache auto-maximises context** — when the user selects a more efficient KV encoding (e.g.
 q4_0), the context window scales up to use the freed VRAM, up to the model's architectural limit.
