@@ -25,6 +25,60 @@ function getLibMeta(m) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// URL STATE — encode/restore selections in the URL hash for shareability
+// ─────────────────────────────────────────────────────────────────────────────
+
+function pushHashState() {
+  const gpuSel   = document.getElementById('vramInput');
+  const modelSel = document.getElementById('modelSelect');
+  const kvSel    = document.getElementById('kvCacheType');
+  const gpuOpt   = gpuSel.selectedOptions[0];
+  const modelIdx = parseInt(modelSel.value);
+  const model    = MODELS[modelIdx];
+  const variant  = model ? getSelectedVariant(model) : null;
+  if (!gpuOpt || gpuOpt.disabled || !model) return;
+  const p = new URLSearchParams();
+  p.set('g', gpuOpt.textContent.trim());
+  p.set('m', model.ollama_tag);
+  if (variant) p.set('v', variant.tag);
+  p.set('k', kvSel.value);
+  history.replaceState(null, '', '#' + p.toString());
+}
+
+function applyHashState() {
+  const hash = window.location.hash.slice(1);
+  if (!hash) return;
+  const p = new URLSearchParams(hash);
+  const gpuName  = p.get('g');
+  const modelTag = p.get('m');
+  const varTag   = p.get('v');
+  const kv       = p.get('k');
+
+  if (gpuName) {
+    const gpuSel = document.getElementById('vramInput');
+    const opt = Array.from(gpuSel.options).find(o => o.textContent.trim() === gpuName);
+    if (opt) { opt.selected = true; updateKvOptions(); }
+  }
+  if (kv) {
+    const kvSel = document.getElementById('kvCacheType');
+    if (Array.from(kvSel.options).some(o => o.value === kv && !o.hidden && !o.disabled)) kvSel.value = kv;
+  }
+  if (modelTag) {
+    const modelSel = document.getElementById('modelSelect');
+    const modelIdx = MODELS.findIndex(m => m.ollama_tag === modelTag);
+    if (modelIdx !== -1) {
+      modelSel.value = modelIdx;
+      const model = MODELS[modelIdx];
+      populateVariants(model);
+      if (varTag) {
+        const varIdx = model.variants ? model.variants.findIndex(v => v.tag === varTag) : -1;
+        if (varIdx !== -1) document.getElementById('variantSelect').value = varIdx;
+      }
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RENDER — orchestrator
 // ─────────────────────────────────────────────────────────────────────────────
 function render() {
@@ -82,6 +136,7 @@ function render() {
   populateGpuTab(vramGB, speedEsts);
   renderFormula(model, variant, ctxResult, speedEsts, vramGB, weightsGB, bytesPerElement, kvLabel, quantInfo, noFit, contextFitPct);
   updateNudgeButtons(ctxResult ? ctxResult.limitedByArch : false, vramGB);
+  pushHashState();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -216,6 +271,9 @@ function init() {
     tip.style.top  = (rect.bottom + 8) + 'px';
     tip.style.left = Math.min(rect.left, window.innerWidth - 276) + 'px';
   });
+
+  applyHashState();
+  window.addEventListener('hashchange', () => { applyHashState(); render(); });
 
   render();
 }
