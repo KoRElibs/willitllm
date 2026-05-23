@@ -124,6 +124,153 @@ function markModelOptions(vramGB, bytesPerElement) {
     opt.textContent = m.ollama_tag;
     opt.style.color = contextFitPct >= 66 ? '#56d88a' : contextFitPct >= 33 ? '#f5a623' : '#f07418';
   });
+  markComboboxItems(vramGB, bytesPerElement);
+}
+
+// ── Model combobox ────────────────────────────────────────────────────────────
+
+let _comboOpen = false;
+let _comboHighlight = null;
+
+function openCombobox() {
+  const panel = document.getElementById('modelPanel');
+  const face  = document.getElementById('modelFace');
+  const input = document.getElementById('modelSearch');
+  _comboOpen = true;
+  face.classList.add('open');
+  panel.hidden = false;
+  input.value = '';
+  filterModelList('');
+  const selectedItem = document.querySelector('#modelList .combobox-item.selected');
+  if (selectedItem) selectedItem.scrollIntoView({ block: 'nearest' });
+  if (!window.matchMedia('(pointer: coarse)').matches) input.focus();
+}
+
+function closeCombobox() {
+  _comboOpen = false;
+  _comboHighlight = null;
+  document.getElementById('modelFace').classList.remove('open');
+  document.getElementById('modelPanel').hidden = true;
+}
+
+function comboHighlight(el) {
+  if (_comboHighlight) _comboHighlight.classList.remove('highlighted');
+  _comboHighlight = el || null;
+  if (_comboHighlight) {
+    _comboHighlight.classList.add('highlighted');
+    _comboHighlight.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function filterModelList(query) {
+  const list = document.getElementById('modelList');
+  const q    = query.toLowerCase().trim();
+  const sections = [];
+  let cur = null;
+  Array.from(list.children).forEach(el => {
+    if (el.classList.contains('combobox-group-label')) { cur = { label: el, items: [] }; sections.push(cur); }
+    else if (cur) cur.items.push(el);
+  });
+  let firstVisible = null;
+  sections.forEach(({ label, items }) => {
+    let anyVisible = false;
+    items.forEach(item => {
+      const match = !q || item.dataset.tag.includes(q);
+      item.hidden = !match;
+      if (match) { anyVisible = true; if (!firstVisible) firstVisible = item; }
+    });
+    label.hidden = !anyVisible;
+  });
+  comboHighlight(firstVisible);
+}
+
+function selectComboboxModel(idx) {
+  const sel = document.getElementById('modelSelect');
+  sel.value = idx;
+  closeCombobox();
+  syncComboboxFace();
+  sel.dispatchEvent(new Event('change'));
+}
+
+function syncComboboxFace() {
+  const sel      = document.getElementById('modelSelect');
+  const faceText = document.getElementById('modelFaceText');
+  const list     = document.getElementById('modelList');
+  const modelIdx = parseInt(sel.value);
+  const model    = MODELS[modelIdx];
+  list && list.querySelectorAll('.combobox-item.selected').forEach(el => el.classList.remove('selected'));
+  if (!model) {
+    faceText.textContent = 'Select a model...';
+    faceText.style.color = '';
+    return;
+  }
+  faceText.textContent = model.ollama_tag;
+  const item = list && list.querySelector(`.combobox-item[data-idx="${modelIdx}"]`);
+  if (item) { item.classList.add('selected'); faceText.style.color = item.style.color || ''; }
+}
+
+function markComboboxItems(vramGB, bytesPerElement) {
+  const list = document.getElementById('modelList');
+  if (!list) return;
+  list.querySelectorAll('.combobox-item').forEach(item => {
+    const m = MODELS[parseInt(item.dataset.idx)];
+    if (!m) return;
+    const weightsGB = m.variants && m.variants.length ? m.variants[0].weights_gb : 0;
+    const fits      = weightsGB < vramGB - OVERHEAD_GB;
+    if (!fits) { item.textContent = '✗  ' + m.ollama_tag; item.style.color = '#f06464'; return; }
+    item.textContent = m.ollama_tag;
+    const ctxResult = calcMaxContext(m, vramGB, bytesPerElement, weightsGB);
+    const pct = m.context_length ? Math.round((ctxResult.maxCtx / m.context_length) * 100) : 100;
+    item.style.color = pct >= 66 ? '#56d88a' : pct >= 33 ? '#f5a623' : '#f07418';
+  });
+  syncComboboxFace();
+}
+
+function buildModelCombobox(groups) {
+  const list = document.getElementById('modelList');
+  list.innerHTML = '';
+  [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .forEach(([key, items]) => {
+      const [org, flag] = key.split('||');
+      const label = document.createElement('div');
+      label.className = 'combobox-group-label';
+      label.textContent = `${org}  ${flag}`;
+      list.appendChild(label);
+      items.forEach(({ m, i }) => {
+        const item = document.createElement('div');
+        item.className   = 'combobox-item';
+        item.dataset.idx = i;
+        item.dataset.tag = m.ollama_tag.toLowerCase();
+        item.textContent = m.ollama_tag;
+        item.addEventListener('mousedown', e => { e.preventDefault(); selectComboboxModel(i); });
+        list.appendChild(item);
+      });
+    });
+
+  const face  = document.getElementById('modelFace');
+  const input = document.getElementById('modelSearch');
+  const wrap  = document.getElementById('modelComboWrap');
+
+  face.addEventListener('click', () => { _comboOpen ? closeCombobox() : openCombobox(); });
+  face.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') { e.preventDefault(); openCombobox(); }
+  });
+  input.addEventListener('input', () => filterModelList(input.value));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); closeCombobox(); face.focus(); return; }
+    const items = Array.from(list.querySelectorAll('.combobox-item:not([hidden])'));
+    if (!items.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const cur = _comboHighlight ? items.indexOf(_comboHighlight) : -1;
+      comboHighlight(e.key === 'ArrowDown' ? items[Math.min(cur + 1, items.length - 1)] : items[Math.max(cur - 1, 0)]);
+    }
+    if (e.key === 'Enter' && _comboHighlight) selectComboboxModel(parseInt(_comboHighlight.dataset.idx));
+  });
+  document.addEventListener('click', e => {
+    if (_comboOpen && !wrap.contains(e.target)) closeCombobox();
+  });
 }
 
 // ── KV cache dropdown ─────────────────────────────────────────────────────────

@@ -223,6 +223,8 @@ function init() {
       sel.appendChild(grp);
     });
 
+  buildModelCombobox(groups);
+
   // Event listeners
   sel.addEventListener('change', () => {
     populateVariants(MODELS[parseInt(sel.value)]);
@@ -273,7 +275,8 @@ function init() {
   });
 
   applyHashState();
-  window.addEventListener('hashchange', () => { applyHashState(); render(); });
+  syncComboboxFace();
+  window.addEventListener('hashchange', () => { applyHashState(); syncComboboxFace(); render(); });
 
   render();
 }

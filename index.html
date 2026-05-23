@@ -23,9 +23,17 @@
     </div>
     <div class="field">
       <label>Model</label>
-      <div class="select-wrap">
-        <select id="modelSelect"></select>
+      <div id="modelComboWrap" class="combobox-wrap">
+        <div id="modelFace" class="combobox-face" tabindex="0">
+          <span id="modelFaceText" class="combobox-face-text">Select a model...</span>
+          <span class="combobox-caret">▾</span>
+        </div>
+        <div id="modelPanel" class="combobox-panel" hidden>
+          <input id="modelSearch" class="combobox-search" type="text" placeholder="filter models..." autocomplete="off" spellcheck="false">
+          <div id="modelList" class="combobox-list"></div>
+        </div>
       </div>
+      <select id="modelSelect" hidden></select>
     </div>
     <div class="field">
       <label>Variant</label>
