@@ -33,13 +33,17 @@ Pure static HTML/CSS/JS — no build step, no dependencies, no server.
 | File | Purpose |
 |---|---|
 | `index.html` | Page structure and UI |
-| `app.js` | Calculation logic and rendering |
 | `styles.css` | Dark theme styling |
-| `data.models.js` | Model database (architecture params, variants) |
+| `app.calc.js` | Pure calculation and formatting helpers |
+| `app.render.js` | DOM render functions |
+| `app.ui.js` | Dropdown population, nudge buttons, OS tab toggle |
+| `app.js` | Entry point — shared state, render orchestrator, init |
+| `data.gpus.js` | GPU database (VRAM, bandwidth, TFLOPS, Flash Attention) |
 | `data.libraries.js` | Library metadata (organization, origin, multimodal flag) |
-| `data.gpus.js` | GPU database (VRAM tiers, Flash Attention support) |
 | `data.quantizations.js` | Quantization info (speed/quality ratings, summaries) |
-| `scripts/update_models.py` | Maintenance script — scrapes and updates `data.models.js` |
+| `data.kv-cache.js` | KV cache precision options (f16, q8\_0, q4\_0) |
+| `data.models.js` | Model database (architecture params, variants) |
+| `dev/scripts/update_models.py` | Maintenance script — scrapes and updates `data.models.js` |
 
 ## Running locally
 
@@ -59,16 +63,16 @@ python -m http.server
 
 ## Updating model data
 
-`scripts/update_models.py` reads architecture parameters and weight sizes directly from the Ollama registry — no model weights are downloaded.
+`dev/scripts/update_models.py` reads architecture parameters and weight sizes directly from the Ollama registry — no model weights are downloaded.
 
 ```bash
-python scripts/update_models.py                        # dry run — show what would change
-python scripts/update_models.py --apply                # write changes to models.js
-python scripts/update_models.py --discover --apply     # find and add new model sizes
-python scripts/update_models.py --tag llama3.2:3b      # one model only
+python dev/scripts/update_models.py --verify               # read-only status check
+python dev/scripts/update_models.py --discover --apply     # find and add new model sizes
+python dev/scripts/update_models.py --variants --apply     # refresh quantization variants
+python dev/scripts/update_models.py --tag llama3.2:3b      # one model only
 ```
 
-See `update_models_prompt.md` for full workflow documentation.
+See `dev/update_models_prompt.md` for full workflow documentation.
 
 ## Data provenance
 
@@ -76,7 +80,7 @@ All architecture parameters (`block_count`, `head_count_kv`, `key_length`, `valu
 
 ## Contributing
 
-To add a model or library, update `data.libraries.js` and run `scripts/update_models.py --discover --apply`. See `update_models_prompt.md` for step-by-step instructions.
+To add a model or library, update `data.libraries.js` and run `dev/scripts/update_models.py --discover --apply`. See `dev/update_models_prompt.md` for step-by-step instructions.
 
 ## License
 
