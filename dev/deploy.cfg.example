@@ -1,0 +1,4 @@
+HOST=ftp.domeneshop.no
+USER=willitllm
+PASS=yourpasswordhere
+REMOTE_DIR=/var/www/willitllm

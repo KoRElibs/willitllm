@@ -10,3 +10,6 @@ env/
 # Python cache
 __pycache__/
 *.pyc
+
+# Deploy credentials (never commit)
+dev/deploy.cfg
