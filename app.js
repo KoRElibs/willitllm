@@ -268,8 +268,7 @@ function init() {
   });
 
   applyHashState();
-  syncComboboxFace();
-  window.addEventListener('hashchange', () => { applyHashState(); syncComboboxFace(); render(); });
+  window.addEventListener('hashchange', () => { applyHashState(); render(); });
 
   render();
 }

@@ -11,8 +11,8 @@ Keep this file updated on every change — see `SPEC.md §12`.
 **BUG-05 — TARGET CONTEXT label and fit count truncate on narrow mobile (375px)** `open`
 On very narrow phones the "TARGET CONTEXT" label competes with the "24 FIT" badge for horizontal space, and the select option text ("a document · ~100 pages") gets clipped by the native select element. Native select truncation is hard to fix; the label fit-count clash can be addressed with a media query.
 
-**BUG-06 — Model face briefly shows plain tag without flag on URL hash restore** `open`
-On page load from a URL hash, `syncComboboxFace` is called before `markComboboxItems` has set item colours — so the face shows the model tag without the colour that would distinguish it. `dataset.label` (including flag) is set at build time and should be present, but the no-colour flash is visible for a frame.
+**BUG-06 — Model face briefly shows plain tag without flag on URL hash restore** `fixed`
+On page load from a URL hash, `syncComboboxFace` was called before `markComboboxItems` had set item colours — so the face showed the model tag without colour. Fixed by removing the premature standalone `syncComboboxFace()` calls from `init()` and the `hashchange` handler; `render()` → `markComboboxItems` → `syncComboboxFace()` now handles both in one pass with colours already set.
 
 **BUG-07 — Ollama command block wraps awkwardly on narrow mobile** `fixed`
 `>>> /set parameter num_ctx 33152` broke mid-line at 375px because `.ollama-cmd` used `white-space: pre-wrap; word-break: break-all`. Fixed: `white-space: pre; overflow-x: auto` — command now scrolls horizontally rather than wrapping.
