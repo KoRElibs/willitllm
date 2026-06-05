@@ -125,12 +125,13 @@ prefer the benchmark-derived value and note it in a comment.
 ```js
 const LIBRARIES = [
   {
-    "library":      "llama3.2",       // ollama library name (prefix before the colon)
-    "organization": "Meta",           // company/group that made it
-    "origin":       "USA",            // country/region — human-readable label
-    "flag":         "🇺🇸",            // flag emoji — used directly in UI (model group headers)
-    "source":       null,             // optional URL to announcement/docs
-    "multimodal":   true,             // optional — shows vision badge if true
+    "library":      "llama3.2",            // ollama library name (prefix before the colon)
+    "organization": "Meta",                // company/group that made it
+    "origin":       "USA",                 // country/region — human-readable label
+    "flag":         "🇺🇸",                 // flag emoji — used directly in UI (model group headers)
+    "source":       null,                  // optional URL to announcement/docs
+    "capabilities": ["tools"],             // optional — capability badges from ollama.com/library
+    "pulls":        "71.6M",              // optional — download count from ollama.com/library
   },
   ...
 ]
@@ -140,6 +141,13 @@ Keys are quoted (valid JSON) because this file is also parsed by the Python scra
 `flag` is an explicit emoji field used directly in model dropdown group headers and the detail
 panel. `origin` is a human-readable label shown in the model info table. If `origin` is null,
 the model is shown as "community project" in the detail panel and gets a 👥 group header.
+
+`capabilities` is sourced exclusively from the `x-test-capability` elements on `ollama.com/library`.
+Possible values: `tools` | `vision` | `thinking` | `embedding` | `audio`. Omit the field when empty.
+Do **not** set manually — run `python scripts/update_models.py --capabilities --apply` to refresh.
+
+`pulls` is sourced from the `x-test-pull-count` element on `ollama.com/library`. Omit when not
+available. Do **not** set manually — refreshed by `--capabilities`.
 
 ### 3.3 `MODELS` — `data.models.js`
 
@@ -403,21 +411,36 @@ Headline class (drives border colour and verdict glow):
 | Position | Label | Element | Behaviour |
 |----------|-------|---------|-----------|
 | top-left | GPU VRAM | `<select id="vramInput">` | Two sections: generic sizes, then named GPUs |
-| top-right | Model | Custom combobox (`#modelComboWrap`) | Searchable: face button (`#modelFace`) opens a panel (`#modelPanel`) with a text filter (`#modelSearch`) and a scrollable list (`#modelList`). Models grouped by organization with flag emoji. A hidden `<select id="modelSelect">` is kept in sync for form compatibility. |
-| bottom-left | Variant | `<select id="variantSelect">` | Repopulated when model changes |
-| bottom-right | KV Cache | `<select id="kvCacheType">` | Fixed: f16/q8_0/q4_0 with square-block visual indicators |
+| top-right | Model | Custom combobox (`#modelComboWrap`) | Searchable: face button (`#modelFace`) opens a panel (`#modelPanel`) with a text filter (`#modelSearch`) and a scrollable list (`#modelList`). Models grouped by organization with flag emoji. A hidden `<select id="modelSelect">` is kept in sync for form compatibility. Embedding models are hidden from the list entirely. |
+| bottom-left | Capability | `<div id="capFilter">` pill row | Four pills: `all` · `tools` · `vision` · `thinking`. Filters the model combobox list to models whose library has the matching capability badge (sourced from `data.libraries.js`). `all` is the default (no filter). Active pill is highlighted in accent colour. |
+| bottom-right | Target context | `<select id="targetCtx">` | Presets for common context sizes; drives model colour coding |
+
+Variant (`<select id="variantSelect">`) and KV Cache are auto-managed and shown in geek mode only (see §7.3).
 
 A `<span id="selectionSummary">` above the memory bar shows the current selection summary (e.g. `VRAM allocation`).
 
 ### 7.2 Model dropdown colouring
 
-Each model option is coloured based on context fit percentage:
-- ≥66% of max context fits → green
-- ≥33% → amber
-- <33% → orange
-- Model doesn't fit (weights > usable VRAM) → red, prefixed with `✗  `
+Each model option is coloured based on how well it serves the current target context.
 
-### 7.3 Variant dropdown
+**No target selected (`targetCtx = null`, i.e. "max"):** percentage of the model's architectural context limit that fits in VRAM:
+- `maxCtx / context_length ≥ 66%` → green
+- ≥ 33% → amber
+- < 33% → orange
+
+**Target context selected:** whether `maxCtx` (already bounded by VRAM and arch limit) meets the target:
+- `maxCtx ≥ targetCtx` → green
+- `maxCtx ≥ targetCtx × 0.5` → amber
+- otherwise → orange
+
+**OOM (weights don't fit):** red, prefixed with `✗  `
+
+The arch limit is not used to cap the target — a model that can only do 32k tokens shows amber/orange when the user wants 200k, even if 32k is all that model can ever do.
+
+### 7.3 Variant dropdown (geek mode only)
+
+The variant selector (`<select id="variantSelect">`) lives in the geek section, shown only when
+geek mode is enabled. In normal mode the default variant (index 0, always Q4_K_M) is used automatically.
 
 Variants are grouped by the `group` field on each variant entry in `data.models.js` (e.g.
 `"(default)"`, `"instruct"`, `"tools"`). If only one group exists, no `<optgroup>` is rendered.
@@ -593,9 +616,10 @@ automatically — it is run manually by the developer (or by an AI following
 `dev/scripts/update-models.md`) when new models need to be added.
 
 Workflow:
-1. `--discover --apply` — reads `data.libraries.js`, scrapes ollama.com for new models, inserts entries
-2. `--variants --apply` — refreshes quantization variant lists and weights
-3. `--verify` — read-only verification pass, all entries should report `OK`
+1. `--capabilities --apply` — scrapes `ollama.com/library` once for capability badges and pull counts, writes to `data.libraries.js`. Run whenever new libraries are added or capability data may have changed.
+2. `--discover --apply` — reads `data.libraries.js`, scrapes ollama.com for new models, inserts entries
+3. `--variants --apply` — refreshes quantization variant lists and weights
+4. `--verify` — read-only verification pass, all entries should report `OK`
 
 Architecture data (`block_count`, `head_count_kv`, `key_length`, etc.) is read from ollama blob
 pages. When not available via scraping, it must be filled in manually from HuggingFace

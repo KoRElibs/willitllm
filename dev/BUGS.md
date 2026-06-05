@@ -8,6 +8,19 @@ Keep this file updated on every change — see `SPEC.md §12`.
 
 ## Open
 
+**BUG-12 — Scraper path constants pointed to dev/ instead of project root** `fixed`
+`MODELS_JS` and `LIBRARIES_JS` were defined with `.parent.parent` — correct when the script was at `scripts/update_models.py` but broken after it was moved to `dev/scripts/update_models.py`. Updated to `.parent.parent.parent`.
+
+**BUG-13 — write_libraries_js emitted entries without commas between fields** `fixed`
+The f-string format in `write_libraries_js` concatenated key-value pairs without `,` separators, producing invalid JSON. The function was never exercised in practice (the file was hand-maintained) so the bug was latent. Rewrote the function to build field lists properly and use `json.dumps()` per value.
+
+**BUG-11 — Model dropdown colours wrong when target context exceeds model's arch limit** `fixed`
+When `targetCtx` was set (user chose a target context size), `modelCtxColor` capped the target at the model's `context_length` before comparing — so a model with a 32k arch limit would always show green even when the user wanted 200k tokens, because `min(200448, 32768) = 32768` and its VRAM-capped max equals 32768.
+
+Root cause: the `Math.min(targetCtx, model.context_length)` guard in `modelCtxColor` was meant to avoid penalising a model for not exceeding its trained limit, but it also masked the case where the model can't serve the user's desired context at all.
+
+Fix: removed the arch cap from `modelCtxColor`. `ctxResult.maxCtx` is already bounded by both VRAM and arch limit (from `calcMaxContext`), so comparing it directly against the raw `targetCtx` is correct — a model whose best is 32k will show amber/orange when the user wants 200k.
+
 **BUG-05 — TARGET CONTEXT option text truncates on narrow mobile (375px)** `fixed`
 On very narrow phones the select option text ("a document · ~100 pages") was clipped by the native select control. The "fit count" badge that also competed for space was removed in a prior commit. Fixed by swapping to shorter option labels (e.g. "document", "The Hobbit") at ≤400px viewport width via JS; full labels are restored at wider viewports.
 

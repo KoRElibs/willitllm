@@ -65,6 +65,13 @@ Max  · full model context
 ```
 Colour: green = fits target, amber = within 50% of target, orange = below. `Max` restores % of architectural limit behaviour.
 
+**US-26 — Capability filter** `done`
+As an Explorer I want to filter the model list by capability (tools / vision / thinking) so I only see models relevant to my use case without scrolling through the full list.
+
+Pill row in bottom-left of the 2×2 control grid. Four pills: `all` (default) · `tools` · `vision` · `thinking`. Capabilities sourced exclusively from ollama.com/library `x-test-capability` badges — no manual guessing. Embedding models hidden from the list entirely (they are not chat/inference models). Pill state is reset when the page loads; not encoded in URL hash (it is a UI filter, not a selection).
+
+The Variant selector is moved to the geek section (shown only in geek mode). Default variant (Q4_K_M) is auto-used in normal mode.
+
 **US-11 — "What fits?" discovery mode** `backlog`
 As an Explorer I want to flip the interaction: given my GPU, show all models ranked by context fit %, with speed and quality visible, sortable by fit / speed / quality — so I can discover what to run rather than checking one model at a time.
 

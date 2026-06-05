@@ -30,13 +30,15 @@ DATA FLOW
   weights_gb for each quant variant is fetched from its detail page only (no blob needed).
 
 USAGE
-    python scripts/update_models.py              # verify existing entries (dry run)
-    python scripts/update_models.py --apply      # write verification fixes
-    python scripts/update_models.py --discover   # show missing entries
-    python scripts/update_models.py --discover --apply   # scaffold missing entries
-    python scripts/update_models.py --migrate    # show entries needing schema migration
-    python scripts/update_models.py --migrate --apply    # migrate old-format entries
-    python scripts/update_models.py --tag llama3.2:3b    # one entry only
+    python scripts/update_models.py                       # verify existing entries (dry run)
+    python scripts/update_models.py --apply               # write verification fixes
+    python scripts/update_models.py --discover            # show missing entries
+    python scripts/update_models.py --discover --apply    # scaffold missing entries
+    python scripts/update_models.py --migrate             # show entries needing schema migration
+    python scripts/update_models.py --migrate --apply     # migrate old-format entries
+    python scripts/update_models.py --capabilities        # preview capability/pulls refresh
+    python scripts/update_models.py --capabilities --apply  # write capabilities+pulls to data.libraries.js
+    python scripts/update_models.py --tag llama3.2:3b     # one entry only
 
 TODO (next steps)
     1. Run --discover --apply to scaffold entries for the ~60 libraries not yet in data.models.js
@@ -59,9 +61,50 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-MODELS_JS    = Path(__file__).parent.parent / "data.models.js"
-LIBRARIES_JS = Path(__file__).parent.parent / "data.libraries.js"
+MODELS_JS    = Path(__file__).parent.parent.parent / "data.models.js"
+LIBRARIES_JS = Path(__file__).parent.parent.parent / "data.libraries.js"
 OLLAMA_BASE  = "https://ollama.com"
+
+
+def fetch_capabilities_from_index() -> dict[str, dict]:
+    """
+    Scrape capability badges and pull counts for all libraries from ollama.com/library.
+    Capability source: <span x-test-capability>...</span> — ollama's own classification.
+    Pull source:       <span x-test-pull-count>...</span>
+    Returns {library_slug: {"capabilities": [...], "pulls": "71.6M"}}
+    Libraries with no badges get an empty capabilities list.
+    """
+    try:
+        html = http_get(f"{OLLAMA_BASE}/library").decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"  ERROR fetching {OLLAMA_BASE}/library: {e}", file=sys.stderr)
+        return {}
+
+    # Strip <script> blocks so regex doesn't match stray text inside JS
+    html = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL)
+
+    lib_caps: dict[str, set] = {}
+    for m in re.finditer(r"x-test-capability[^>]*>\s*([a-zA-Z]+)\s*<", html):
+        # The library name is in the closest preceding href="/library/<name>" link
+        segment = html[max(0, m.start() - 1500): m.start()]
+        names = re.findall(r'href="/library/([a-z0-9._-]+)"', segment)
+        if names:
+            lib_caps.setdefault(names[-1], set()).add(m.group(1).lower())
+
+    lib_pulls: dict[str, str] = {}
+    for m in re.finditer(r"x-test-pull-count[^>]*>([\d.]+[MKB]?)", html):
+        segment = html[max(0, m.start() - 2000): m.start()]
+        names = re.findall(r'href="/library/([a-z0-9._-]+)"', segment)
+        if names:
+            lib_pulls[names[-1]] = m.group(1)
+
+    result: dict[str, dict] = {}
+    for lib in set(lib_caps) | set(lib_pulls):
+        result[lib] = {
+            "capabilities": sorted(lib_caps.get(lib, set())),
+            "pulls": lib_pulls.get(lib),
+        }
+    return result
 
 
 def _get_group(tag: str, quantization: str) -> str:
@@ -307,26 +350,41 @@ def load_libraries() -> list[dict]:
 
 
 def write_libraries_js(libs: list[dict]) -> None:
-    """Write data.libraries.js with JSON-compatible quoted keys so the scraper can parse it back."""
-    def jv(v): return "null" if v is None else f'"{v}"'
+    """Write data.libraries.js with valid JSON-compatible syntax (quoted keys, proper commas)."""
     header = (
         "// Two consumers:\n"
         "//   1. Browser — loaded as <script src=\"data.libraries.js\">, exposes LIBRARIES global\n"
         "//   2. Python scraper (scripts/update_models.py) — strips \"const LIBRARIES =\" wrapper and parses as JSON\n"
         "// Keys must therefore be quoted (valid JSON). Do not change to unquoted JS shorthand.\n"
+        "//\n"
+        "// capabilities  — sourced exclusively from ollama.com/library x-test-capability badges.\n"
+        "//                  Values: tools | vision | thinking | embedding | audio\n"
+        "//                  Omitted when empty. Do NOT set manually — run --capabilities to refresh.\n"
+        "// pulls         — download count string from ollama.com/library x-test-pull-count.\n"
+        "//                  Omitted when not available. Do NOT set manually.\n"
     )
+
+    def _entry(lib: dict) -> str:
+        # Build ordered field list; only include optional fields when present.
+        fields = [
+            ("library",      lib["library"]),
+            ("organization", lib.get("organization")),
+            ("origin",       lib.get("origin")),
+            ("flag",         lib.get("flag")),
+            ("source",       lib.get("source")),
+        ]
+        caps  = lib.get("capabilities") or []
+        pulls = lib.get("pulls")
+        if caps:
+            fields.append(("capabilities", caps))
+        if pulls:
+            fields.append(("pulls", pulls))
+
+        parts = ", ".join(f'"{k}": {json.dumps(v)}' for k, v in fields)
+        return f"  {{ {parts} }},"
+
     lines = [header + "const LIBRARIES = ["]
-    for lib in libs:
-        flag_val = lib.get("flag")
-        lines.append(
-            f'  {{ "library": {jv(lib["library"]):<22} '
-            f'"organization": {jv(lib.get("organization")):<26} '
-            f'"origin": {jv(lib.get("origin")):<20} '
-            f'"flag": {jv(flag_val):<8} '
-            f'"source": {jv(lib.get("source")):<50} '
-            + ('"multimodal": true ' if lib.get("multimodal") else "")
-            + "},"
-        )
+    lines += [_entry(lib) for lib in libs]
     lines.append("];\n")
     LIBRARIES_JS.write_text("\n".join(lines), encoding="utf-8")
 
@@ -668,6 +726,57 @@ def _patch_variants(path: Path, tag: str, variants: list) -> None:
     path.write_text(text[:start] + patched + text[end + 1:], encoding="utf-8")
 
 
+# ── capabilities ───────────────────────────────────────────────────────────────
+
+def update_capabilities(libraries: list[dict], apply: bool) -> None:
+    """
+    Refresh capability badges and pull counts in data.libraries.js.
+    Source: ollama.com/library — x-test-capability and x-test-pull-count elements.
+    Only values that ollama explicitly publishes are written. Manual 'multimodal' field
+    is replaced by the 'vision' capability where applicable.
+    """
+    print("Fetching capability data from ollama.com/library ...\n")
+    cap_data = fetch_capabilities_from_index()
+    if not cap_data:
+        print("  ERROR: no data returned — aborting", file=sys.stderr)
+        return
+
+    updated = []
+    for lib in libraries:
+        slug = lib["library"]
+        data = cap_data.get(slug, {})
+        new_caps  = data.get("capabilities") or []
+        new_pulls = data.get("pulls")
+
+        # Build updated entry: drop old multimodal + stale capabilities/pulls, then re-add
+        new_lib = {k: v for k, v in lib.items()
+                   if k not in ("multimodal", "capabilities", "pulls")}
+        if new_caps:
+            new_lib["capabilities"] = new_caps
+        if new_pulls:
+            new_lib["pulls"] = new_pulls
+        updated.append(new_lib)
+
+        old_caps  = sorted(lib.get("capabilities") or
+                           (["vision"] if lib.get("multimodal") else []))
+        old_pulls = lib.get("pulls")
+        changes = []
+        if sorted(new_caps) != sorted(old_caps):
+            changes.append(f"capabilities: {old_caps or '[]'} → {new_caps or '[]'}")
+        if new_pulls and new_pulls != old_pulls:
+            changes.append(f"pulls: {old_pulls or '?'} → {new_pulls}")
+        status = ", ".join(changes) if changes else "OK"
+        print(f"  {slug:<35} {status}")
+
+    print(f"\n{'-' * 60}")
+    if apply:
+        write_libraries_js(updated)
+        print(f"  Written to {LIBRARIES_JS.name}")
+        print("  Review: git diff data.libraries.js")
+    else:
+        print("  Dry run. To apply: python scripts/update_models.py --capabilities --apply")
+
+
 # ── main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -677,9 +786,16 @@ def main() -> None:
     do_migrate   = "--migrate"  in argv
     do_variants  = "--variants" in argv
     do_verify    = "--verify"   in argv
+    do_caps      = "--capabilities" in argv
     tag_filter   = argv[argv.index("--tag") + 1] if "--tag" in argv else None
 
     print("will-it-llm — model metadata updater\n")
+
+    if do_caps:
+        libraries = load_libraries()
+        update_capabilities(libraries, apply_flag)
+        return
+
     print(f"Parsing {MODELS_JS.name} ...")
     models  = parse_models_js(MODELS_JS)
     targets = [(m["ollama_tag"], m) for m in models if m.get("ollama_tag")]

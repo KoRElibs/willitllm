@@ -114,8 +114,7 @@ function modelCtxColor(ctxResult, model, targetCtx) {
     const pct = model.context_length ? Math.round((ctxResult.maxCtx / model.context_length) * 100) : 100;
     return pct >= 66 ? '#56d88a' : pct >= 33 ? '#f5a623' : '#f07418';
   }
-  const target = model.context_length ? Math.min(targetCtx, model.context_length) : targetCtx;
-  return ctxResult.maxCtx >= target ? '#56d88a' : ctxResult.maxCtx >= target * 0.5 ? '#f5a623' : '#f07418';
+  return ctxResult.maxCtx >= targetCtx ? '#56d88a' : ctxResult.maxCtx >= targetCtx * 0.5 ? '#f5a623' : '#f07418';
 }
 
 // Marks OOM models red and colours in-VRAM models by target context fit.
@@ -138,6 +137,28 @@ function markModelOptions(vramGB, targetCtx, flashOk) {
     opt.style.color = color;
   });
   markComboboxItems(vramGB, targetCtx, flashOk);
+}
+
+// ── Capability filter ─────────────────────────────────────────────────────────
+
+let _activeCap = '';
+
+function applyCap(cap) {
+  _activeCap = cap;
+  document.querySelectorAll('.cap-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.cap === cap);
+  });
+  filterModelList(document.getElementById('modelSearch')?.value || '');
+  const sel = document.getElementById('modelSelect');
+  const idx = sel?.value;
+  if (idx !== '' && idx !== undefined) {
+    const item = document.querySelector(`.combobox-item[data-idx="${idx}"]`);
+    if (item?.hidden) {
+      sel.value = '';
+      syncComboboxFace();
+      sel.dispatchEvent(new Event('change'));
+    }
+  }
 }
 
 // ── Model combobox ────────────────────────────────────────────────────────────
@@ -180,9 +201,11 @@ function filterModelList(query) {
   const q    = query.toLowerCase().trim();
   let firstVisible = null;
   list.querySelectorAll('.combobox-item').forEach(item => {
-    const match = !q || item.dataset.tag.includes(q);
-    item.hidden = !match;
-    if (match && !firstVisible) firstVisible = item;
+    const textMatch = !q || item.dataset.tag.includes(q);
+    const capMatch  = !_activeCap || (item.dataset.caps || '').split(',').includes(_activeCap);
+    const show = textMatch && capMatch;
+    item.hidden = !show;
+    if (show && !firstVisible) firstVisible = item;
   });
   comboHighlight(firstVisible);
 }
@@ -255,14 +278,17 @@ function buildModelCombobox() {
   MODELS.forEach((m, i) => {
     const [library] = m.ollama_tag.split(':');
     const info  = LIB_META[library];
+    const caps  = info?.capabilities || [];
+    if (caps.includes('embedding')) return;   // embedding models are not for chat — hide entirely
     const flag  = info?.flag || (info?.origin ? '🌍' : '👥');
     const label = `${flag} ${m.ollama_tag}`;
     const item  = document.createElement('div');
-    item.className    = 'combobox-item';
-    item.dataset.idx  = i;
-    item.dataset.tag  = m.ollama_tag.toLowerCase();
+    item.className     = 'combobox-item';
+    item.dataset.idx   = i;
+    item.dataset.tag   = m.ollama_tag.toLowerCase();
     item.dataset.label = label;
-    item.textContent  = label;
+    item.dataset.caps  = caps.join(',');
+    item.textContent   = label;
     item.addEventListener('mousedown', e => { e.preventDefault(); selectComboboxModel(i); });
     list.appendChild(item);
   });

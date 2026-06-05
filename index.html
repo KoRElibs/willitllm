@@ -35,9 +35,12 @@
       </div>
     </div>
     <div class="field">
-      <label>Variant</label>
-      <div class="select-wrap">
-        <select id="variantSelect"></select>
+      <label>Capability</label>
+      <div class="cap-pills" id="capFilter">
+        <button class="cap-pill active" data-cap="">all</button>
+        <button class="cap-pill" data-cap="tools">tools</button>
+        <button class="cap-pill" data-cap="vision">vision</button>
+        <button class="cap-pill" data-cap="thinking">thinking</button>
       </div>
     </div>
     <div class="field">
@@ -102,6 +105,13 @@
     <button class="geek-toggle" id="geekToggle">▸ details</button>
 
     <div id="geekSection" hidden>
+
+      <div class="field geek-variant-field">
+        <label>Variant</label>
+        <div class="select-wrap">
+          <select id="variantSelect"></select>
+        </div>
+      </div>
 
       <div class="bar-section">
         <div class="bar-label-row">
@@ -281,26 +291,36 @@
 
     </div> <!-- /geekSection -->
 
-    <div class="ai-notice">Model metadata on this site was compiled using AI and has not been manually verified.</div>
+  </div> <!-- /results -->
 
-    <div class="disclaimer">
-      <strong>This page covers models as served by ollama</strong> — weights, quantization, and architecture parameters
-      are read directly from ollama.com and reflect what ollama actually runs, not the original model releases.
-      Run <code>ollama show &lt;model&gt;</code> to verify values for your specific variant.
-      <br><br>
-      <strong>No data on this page has been manually verified.</strong>
-      Architecture data is read from ollama.com, organization and origin were inferred by AI, and VRAM estimates
-      reserve <span id="overheadReserved"></span> for driver and runtime overhead. Treat results as a guide, not a guarantee —
-      always check the <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama library ↗</a> yourself.
-      <br><br>
-      <strong>Scores</strong> reflect the average of inference speed, quality, context fit, and KV cache precision.
-      <span style="color:var(--green)">Green</span> = good overall,
-      <span style="color:var(--amber)">amber</span> = acceptable,
-      <span style="color:var(--orange)">orange</span> = degraded.
-    </div>
-
+  <div class="page-footer">
+    AI-assisted data · source: <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a> · treat as a guide
+    · <button class="footer-info-btn" id="infoSheetOpen" aria-label="About this tool and data disclaimer">about &amp; disclaimer</button>
   </div>
 
+</div> <!-- /page -->
+
+<!-- Info / disclaimer sheet -->
+<div id="infoSheetBackdrop" class="info-sheet-backdrop" hidden></div>
+<div id="infoSheet" class="info-sheet" hidden role="dialog" aria-modal="true" aria-label="About & Disclaimer">
+  <div class="info-sheet-header">
+    <span>About &amp; Disclaimer</span>
+    <button class="info-sheet-close" id="infoSheetClose" aria-label="Close">✕</button>
+  </div>
+  <div class="info-sheet-body">
+    <h3>Data sources</h3>
+    <p>Architecture parameters (weights, quantization, layer count, KV heads, head dimensions, context length) are scraped directly from <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a> and reflect what ollama actually serves — not the original upstream model releases. Run <code>ollama show &lt;model&gt;</code> to verify values for your installed variant.</p>
+    <p>Model capabilities (tools, vision, thinking) are read from the capability badges on ollama.com/library. GPU specifications are sourced from publicly available manufacturer data.</p>
+
+    <h3>AI-generated content disclosure</h3>
+    <p>Organisation names, country of origin, and community/organisation classification were inferred by AI and have <strong>not been manually verified</strong>. This tool uses AI-assisted data processing in accordance with the EU AI Act transparency requirements (Article 13).</p>
+
+    <h3>VRAM estimates</h3>
+    <p>Estimates reserve <span id="overheadReservedSheet"></span> for driver and runtime overhead. Results are a guide — actual VRAM usage depends on your OS, driver version, and concurrent processes.</p>
+
+    <h3>Scores</h3>
+    <p>The overall score averages four dimensions: inference speed, sharpness (quantization quality), memory clarity (KV cache precision), and attention span (context fit). <span style="color:var(--green)">Green</span> = good, <span style="color:var(--amber)">amber</span> = acceptable, <span style="color:var(--orange)">orange</span> = degraded.</p>
+  </div>
 </div>
 <div id="tooltip" class="tooltip" hidden></div>
 <script src="data.gpus.js?v=5"></script>

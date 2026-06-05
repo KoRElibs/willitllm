@@ -118,7 +118,7 @@ function renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, c
   }
   const pctPart = contextFitPct !== null && contextFitPct < 100
     ? `${contextFitPct}% of max context` : 'full context';
-  const mmPart = libInfo.multimodal ? ' · images use tokens' : '';
+  const mmPart = (libInfo.capabilities || []).includes('vision') ? ' · images use tokens' : '';
   document.getElementById('scoreContext').dataset.tip = `${fmtCtx(ctxResult.maxCtx)} · ${pctPart}${mmPart} · ${ctxTradeoff}`;
 }
 
@@ -230,7 +230,7 @@ function renderDetails(model, libInfo, variant, weightsGB, quantization, bytesPe
   }
 
   document.getElementById('detailMoeRow').hidden        = !model.moe;
-  document.getElementById('detailMultimodalRow').hidden = !libInfo.multimodal;
+  document.getElementById('detailMultimodalRow').hidden = !(libInfo.capabilities || []).includes('vision');
   document.getElementById('detailMaxCtx').textContent   = model.context_length
     ? model.context_length.toLocaleString() + ' tokens' : '—';
 

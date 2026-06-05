@@ -148,7 +148,19 @@ function render() {
 // INIT
 // ─────────────────────────────────────────────────────────────────────────────
 function init() {
-  document.getElementById('overheadReserved').textContent = fmtGB(OVERHEAD_GB);
+  document.getElementById('overheadReservedSheet').textContent = fmtGB(OVERHEAD_GB);
+
+  // Info sheet
+  const openBtn   = document.getElementById('infoSheetOpen');
+  const closeBtn  = document.getElementById('infoSheetClose');
+  const backdrop  = document.getElementById('infoSheetBackdrop');
+  const sheet     = document.getElementById('infoSheet');
+  function openSheet()  { sheet.hidden = false; backdrop.hidden = false; }
+  function closeSheet() { sheet.hidden = true;  backdrop.hidden = true; }
+  openBtn.addEventListener('click', openSheet);
+  closeBtn.addEventListener('click', closeSheet);
+  backdrop.addEventListener('click', closeSheet);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 
   // GPU dropdown
   const vramSel = document.getElementById('vramInput');
@@ -214,6 +226,11 @@ function init() {
   document.getElementById('vramInput').addEventListener('change', render);
   document.getElementById('targetCtx').addEventListener('change', render);
   document.getElementById('variantSelect').addEventListener('change', render);
+
+  // Capability filter pills
+  document.querySelectorAll('.cap-pill').forEach(pill => {
+    pill.addEventListener('click', () => applyCap(pill.dataset.cap));
+  });
 
   // Swap target context option labels for narrow viewports (native selects truncate long text)
   const TARGET_LABELS = [
