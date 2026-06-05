@@ -8,6 +8,12 @@ Keep this file updated on every change — see `SPEC.md §12`.
 
 ## Open
 
+**BUG-15 — render() used stale model variable after auto-selection** `fixed`
+`render()` captured `modelIdx` and `model` at the top before calling `markModelOptions()`. When `markModelOptions` → `markComboboxItems` auto-selected a model and dispatched a synchronous `change` event, a second `render()` ran correctly — but the first `render()` then resumed with its stale `model = undefined`, hiding `#results` again. Fixed by moving the `modelIdx`/`model` reads to after `markModelOptions()` so they reflect any auto-selection that occurred.
+
+**BUG-14 — Selected model stayed sticky when GPU or capability filter changed** `fixed`
+Changing GPU VRAM or capability pills did not deselect the current model even when it no longer fit in VRAM or was filtered out. The result was a stale model displayed in the face button that didn't match the visible list state. Fixed: `markComboboxItems` now auto-selects the first fitting (non-✗) visible model whenever the current selection doesn't fit or is hidden; `filterModelList` does the same when called with `autoSelect = true` (from `applyCap`).
+
 **BUG-12 — Scraper path constants pointed to dev/ instead of project root** `fixed`
 `MODELS_JS` and `LIBRARIES_JS` were defined with `.parent.parent` — correct when the script was at `scripts/update_models.py` but broken after it was moved to `dev/scripts/update_models.py`. Updated to `.parent.parent.parent`.
 
