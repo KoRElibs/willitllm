@@ -125,9 +125,8 @@ function renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, c
 function renderVerdict(noFit) {
   const verdictEl = document.getElementById('verdict');
   verdictEl.classList.remove('verdict-anim');
-  void verdictEl.offsetWidth; // force reflow to restart animation
   verdictEl.textContent = noFit ? "IT WON'T LLM!" : "IT WILL LLM!";
-  verdictEl.classList.add('verdict-anim');
+  requestAnimationFrame(() => requestAnimationFrame(() => verdictEl.classList.add('verdict-anim')));
 }
 
 function renderOom(vramGB, weightsGB) {
