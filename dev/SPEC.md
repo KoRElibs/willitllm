@@ -582,7 +582,7 @@ on-screen.
 ### 8.3 Page structure
 
 Max-width 720px, centred. Padding 40px top/bottom on desktop. No sidebar. Single-column flow:
-header → controls → bar → result headline → details → formula → disclaimer.
+header → controls → result headline → details → formula → footer.
 
 ### 8.4 Mobile (≤600px)
 
@@ -658,9 +658,7 @@ than in the middle. A `ⓘ` caveat is shown in the aside and formula breakdown w
 exceeds 50% of the model's trained `context_length`, as degradation becomes practically
 significant at that point.
 
-**AI notice** — the page includes a prominent disclaimer that model metadata was compiled using AI
-and has not been manually verified. Users are directed to `ollama show <model>` and
-`ollama.com/library` for authoritative data.
+**Footer** — a single compact line at the bottom of the page: `AI-assisted data · source: ollama.com · treat as a guide · about & disclaimer`. Clicking "about & disclaimer" opens a bottom sheet (`#infoSheet`) with full EU AI Act Article 13 disclosure: data sources, AI-generated content notice, VRAM estimate methodology, and score explanation. The sheet closes on backdrop click or Escape key. The footer renders outside `#results` so it is always visible regardless of model selection state.
 
 ---
 
