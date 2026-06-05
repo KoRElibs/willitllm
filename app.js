@@ -14,6 +14,13 @@ function getKvCache(bytesPerElement) {
 let activeOsTab = null;                   // 'linux' | 'windows' | null
 const setupContent = { linux: '', windows: '' };
 
+function getTargetCtx() {
+  const active = document.querySelector('.ctx-pill.active');
+  if (!active) return 32000;
+  const v = active.dataset.ctx;
+  return v === 'max' ? null : parseInt(v);
+}
+
 const LIB_META = Object.fromEntries(LIBRARIES.map(l => [l.library, l]));
 
 function getBytesPerElement() {
@@ -93,7 +100,7 @@ function render() {
 
   // Mark model options as soon as VRAM is known — before the model-selection guard
   // so the dropdown is colour-coded on first GPU selection, not only after a model is picked.
-  if (!isNaN(vramGB) && vramGB > 0) markModelOptions(vramGB, bytesPerElement);
+  if (!isNaN(vramGB) && vramGB > 0) markModelOptions(vramGB, bytesPerElement, getTargetCtx());
 
   const noModel = document.getElementById('noModel');
   const results = document.getElementById('results');
@@ -243,6 +250,15 @@ function init() {
       const modelIdx = parseInt(document.getElementById('modelSelect').value);
       if (MODELS[modelIdx]) populateVariants(MODELS[modelIdx]);
     }
+  });
+
+  document.getElementById('ctxPills').addEventListener('click', e => {
+    const pill = e.target.closest('.ctx-pill');
+    if (!pill) return;
+    document.querySelectorAll('.ctx-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    const vramGB = parseFloat(document.getElementById('vramInput').value);
+    if (!isNaN(vramGB) && vramGB > 0) markModelOptions(vramGB, getBytesPerElement(), getTargetCtx());
   });
 
   document.getElementById('tabLinux').addEventListener('click',   () => setOsTab('linux'));

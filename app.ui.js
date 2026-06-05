@@ -106,8 +106,19 @@ function variantOllamaTag(model, variantIdx) {
 
 // ── Model dropdown ────────────────────────────────────────────────────────────
 
-// Marks OOM models red and colours in-VRAM models by context fit.
-function markModelOptions(vramGB, bytesPerElement) {
+// Returns the colour for a model that fits in VRAM, based on target context.
+// targetCtx=null means "model max" (legacy % behaviour).
+function modelCtxColor(ctxResult, model, targetCtx) {
+  if (targetCtx === null) {
+    const pct = model.context_length ? Math.round((ctxResult.maxCtx / model.context_length) * 100) : 100;
+    return pct >= 66 ? '#56d88a' : pct >= 33 ? '#f5a623' : '#f07418';
+  }
+  const target = model.context_length ? Math.min(targetCtx, model.context_length) : targetCtx;
+  return ctxResult.maxCtx >= target ? '#56d88a' : ctxResult.maxCtx >= target * 0.5 ? '#f5a623' : '#f07418';
+}
+
+// Marks OOM models red and colours in-VRAM models by target context fit.
+function markModelOptions(vramGB, bytesPerElement, targetCtx) {
   const sel = document.getElementById('modelSelect');
   Array.from(sel.options).forEach((opt) => {
     const m = MODELS[parseInt(opt.value)];
@@ -119,12 +130,11 @@ function markModelOptions(vramGB, bytesPerElement) {
       opt.style.color = '#f06464';
       return;
     }
-    const ctxResult     = calcMaxContext(m, vramGB, bytesPerElement, weightsGB);
-    const contextFitPct = m.context_length ? Math.round((ctxResult.maxCtx / m.context_length) * 100) : 100;
+    const ctxResult = calcMaxContext(m, vramGB, bytesPerElement, weightsGB);
     opt.textContent = m.ollama_tag;
-    opt.style.color = contextFitPct >= 66 ? '#56d88a' : contextFitPct >= 33 ? '#f5a623' : '#f07418';
+    opt.style.color = modelCtxColor(ctxResult, m, targetCtx);
   });
-  markComboboxItems(vramGB, bytesPerElement);
+  markComboboxItems(vramGB, bytesPerElement, targetCtx);
 }
 
 // ── Model combobox ────────────────────────────────────────────────────────────
@@ -209,7 +219,7 @@ function syncComboboxFace() {
   if (item) { item.classList.add('selected'); faceText.style.color = item.style.color || ''; }
 }
 
-function markComboboxItems(vramGB, bytesPerElement) {
+function markComboboxItems(vramGB, bytesPerElement, targetCtx) {
   const list = document.getElementById('modelList');
   if (!list) return;
   list.querySelectorAll('.combobox-item').forEach(item => {
@@ -220,8 +230,7 @@ function markComboboxItems(vramGB, bytesPerElement) {
     if (!fits) { item.textContent = '✗  ' + m.ollama_tag; item.style.color = '#f06464'; return; }
     item.textContent = m.ollama_tag;
     const ctxResult = calcMaxContext(m, vramGB, bytesPerElement, weightsGB);
-    const pct = m.context_length ? Math.round((ctxResult.maxCtx / m.context_length) * 100) : 100;
-    item.style.color = pct >= 66 ? '#56d88a' : pct >= 33 ? '#f5a623' : '#f07418';
+    item.style.color = modelCtxColor(ctxResult, m, targetCtx);
   });
   syncComboboxFace();
 }
@@ -290,18 +299,11 @@ function updateKvOptions() {
 
 // ── Nudge buttons ─────────────────────────────────────────────────────────────
 
-// Returns variants in the same group as variantIdx, sorted by quality ascending (fastest first).
-// Falls back to all variants when the current group has only one member.
-function groupVariantsSorted(model, variantIdx) {
-  const v     = model.variants[variantIdx];
-  const group   = v.group || '(default)';
-  const all     = model.variants.map((v, i) => ({ v, i, qi: QUANT_INFO[v.quantization] }));
-  const inGroup = all.filter(({ v }) => (v.group || '(default)') === group);
-  const candidates = inGroup.length > 1 ? inGroup : all;
-  return candidates.sort((a, b) => {
-    const qa = a.qi ? a.qi.quality : 5, qb = b.qi ? b.qi.quality : 5;
-    return qa !== qb ? qa - qb : a.v.weights_gb - b.v.weights_gb;
-  });
+// All variants sorted by quality ascending (lowest quality = fastest first).
+function variantsSortedByQuality(model) {
+  return model.variants
+    .map((v, i) => ({ v, i, qi: QUANT_INFO[v.quantization] }))
+    .sort((a, b) => (a.qi?.quality ?? 5) - (b.qi?.quality ?? 5) || a.v.weights_gb - b.v.weights_gb);
 }
 
 function nudgeVariant(direction) {
@@ -309,7 +311,7 @@ function nudgeVariant(direction) {
   const model    = MODELS[modelIdx];
   if (!model || !model.variants) return;
   const idx    = getSelectedVariantIdx(model);
-  const sorted = groupVariantsSorted(model, idx);
+  const sorted = variantsSortedByQuality(model);
   const pos    = sorted.findIndex(({ i }) => i === idx);
   const target = direction === 'quality' ? pos + 1 : pos - 1;
   if (target < 0 || target >= sorted.length) return;
@@ -338,7 +340,7 @@ function updateNudgeButtons(ctxAtMax, vramGB) {
     return;
   }
   const idx    = getSelectedVariantIdx(model);
-  const sorted = groupVariantsSorted(model, idx);
+  const sorted = variantsSortedByQuality(model);
   const pos    = sorted.findIndex(({ i }) => i === idx);
 
   const fits = v => !vramGB || v.weights_gb < vramGB - OVERHEAD_GB;
