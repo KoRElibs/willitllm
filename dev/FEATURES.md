@@ -65,6 +65,8 @@ Max  · full model context
 ```
 Colour: green = fits target, amber = within 50% of target, orange = below. `Max` restores % of architectural limit behaviour.
 
+**Context gap display in aside:** When the selected model cannot fully meet the target, the aside context stat shows `~X / ~Y pages` (achieved / target) colored by fit quality (green / amber / orange). The sub-label appends `· Z% of target` to make the shortfall explicit. This gives the user an immediate, specific comparison rather than an abstract score.
+
 **US-26 — Capability filter** `done`
 As an Explorer I want to filter the model list by capability (tools / vision / thinking) so I only see models relevant to my use case without scrolling through the full list.
 

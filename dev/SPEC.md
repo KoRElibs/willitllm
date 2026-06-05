@@ -485,7 +485,7 @@ left side (`result-main`), right aside (`result-aside`), and a full-width bottom
    - ▶ Thinking speed — speed rating from `QUANT_INFO` (1–10 scale, full 10-step bar)
    - ★ Sharpness — quality rating from `QUANT_INFO` (1–10 scale)
    - ■ Memory clarity — KV precision: f16→10, q8_0→6, q4_0→4
-   - ◎ Attention span — context fit: based on `contextFitPct`, 1–10 steps
+   - ◎ Context fit — how well the model meets the user's chosen context target, 1–10 steps
    - Each row has a **nudge button** (`faster`/`better`/`higher`/`more`) that one-click adjusts the
      corresponding dropdown. Buttons are hidden when already at max/min or when the target doesn't fit.
 3. **OOM label** — shown instead of scorecard when model doesn't fit
@@ -494,8 +494,10 @@ left side (`result-main`), right aside (`result-aside`), and a full-width bottom
 - Writing speed: `~X words/s` (tooltip: speech-pace comparison + raw t/s)
 - Reading speed: `~X words/s` (tooltip: speech-pace comparison + raw t/s)
 - Divider
-- Context: `~X pages` with label `in one go` (tooltip: token count + words)
-  - `ⓘ` shown when `contextFitPct > 50%` — tooltip: "Like human memory — most models recall
+- Context: `~X pages` (or `~X pages / ~Y pages` when target not fully met), colored by target fit
+  - Green when target fully met (≥95%); amber at 50–94%; orange below 50%
+  - Sub-label: `context · ≈N words · Z% of target` when a gap exists; plain `context · ≈N words` when met
+  - `ⓘ` shown when `contextFitPct > 50%` (% of arch limit) — tooltip: "Like human memory — most models recall
     the start and end of a long text better than the middle."
 
 **Bottom row (`result-cmd`):**

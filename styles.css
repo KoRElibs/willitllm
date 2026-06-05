@@ -327,6 +327,7 @@ header p {
 .aside-val   { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--text); }
 .aside-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
 .aside-divider { border-top: 1px solid var(--border); }
+.ctx-target-gap { font-size: 0.72em; font-weight: 400; color: var(--muted); }
 .result-headline.score-high { border-left-color: var(--green); }
 .result-headline.score-mid  { border-left-color: var(--amber); }
 .result-headline.score-low  { border-left-color: var(--orange); }

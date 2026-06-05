@@ -107,7 +107,7 @@ function renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, c
   });
   scorecard.hidden = false;
 
-  const ctxTradeoff = 'Memory clarity vs. attention span: crisper recall (f16) costs more VRAM per token, leaving less room for a long conversation.';
+  const ctxTradeoff = 'Memory clarity vs. context fit: crisper recall (f16) costs more VRAM per token, leaving less room for a long conversation.';
   if (quantInfo) {
     const tradeoff = 'Thinking speed and sharpness trade off — a lighter quantization means faster responses but a duller mind. You cannot have both at maximum. (Technical: quantization level)';
     document.getElementById('scoreSpeed').dataset.tip   = `${variant.quantization} · ${quantInfo.summary} · ${tradeoff}`;
@@ -116,10 +116,15 @@ function renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, c
   if (kvInfo) {
     document.getElementById('scorePrecision').dataset.tip = `${kvLabel} · ${ctxTradeoff}`;
   }
-  const pctPart = contextFitPct !== null && contextFitPct < 100
-    ? `${contextFitPct}% of max context` : 'full context';
+  const scoreTgtCtx    = getTargetCtx();
+  const scoreTgtFitPct = scoreTgtCtx ? Math.round(Math.min(1, ctxResult.maxCtx / scoreTgtCtx) * 100) : null;
+  const pctPart = scoreTgtFitPct !== null && scoreTgtFitPct < 100
+    ? `${fmtCtx(ctxResult.maxCtx)} of ${fmtCtx(scoreTgtCtx)} token target (${scoreTgtFitPct}%)`
+    : (contextFitPct !== null && contextFitPct < 100
+        ? `${contextFitPct}% of model limit`
+        : 'full target');
   const mmPart = (libInfo.capabilities || []).includes('vision') ? ' · images use tokens' : '';
-  document.getElementById('scoreContext').dataset.tip = `${fmtCtx(ctxResult.maxCtx)} · ${pctPart}${mmPart} · ${ctxTradeoff}`;
+  document.getElementById('scoreContext').dataset.tip = `${pctPart}${mmPart} · ${ctxTradeoff}`;
 }
 
 function renderVerdict(noFit) {
@@ -172,9 +177,32 @@ function renderAside(speedEsts, ctxResult, contextFitPct) {
   const caveatMark = contextFitPct && contextFitPct > 50
     ? ' <span data-tip="Like human memory — most models recall the start and end of a long text better than the middle." style="font-size:0.75em;opacity:0.5;cursor:help;">ⓘ</span>'
     : '';
-  ctxPagesEl.innerHTML   = fmtCtxPages(ctxResult.maxCtx) + caveatMark;
-  ctxPagesEl.dataset.tip = `${fmtCtx(ctxResult.maxCtx)} tokens · ${fmtTokensHuman(ctxResult.maxCtx)} (attention span — how much text fits in VRAM at once)`;
-  ctxLabelEl.textContent = `context · ${fmtCtxWords(ctxResult.maxCtx)}`;
+
+  const targetCtx    = getTargetCtx();
+  // targetFitPct: how much of the user's chosen target this model can deliver
+  // (contextFitPct from scores is % of model's arch limit — separate concept)
+  const targetFitPct = targetCtx ? Math.round(Math.min(1, ctxResult.maxCtx / targetCtx) * 100) : null;
+  const showGap      = targetFitPct !== null && targetFitPct < 95;
+
+  // Color the context stat to reflect how well the target is met
+  ctxPagesEl.style.color = !showGap               ? 'var(--text)'
+                         : targetFitPct >= 90      ? 'var(--green)'
+                         : targetFitPct >= 50      ? 'var(--amber)'
+                         :                           'var(--orange)';
+
+  // Show achieved / target when there's a meaningful gap
+  if (showGap) {
+    ctxPagesEl.innerHTML = `${fmtCtxPages(ctxResult.maxCtx)}<span class="ctx-target-gap"> / ${fmtCtxPages(targetCtx)}</span>` + caveatMark;
+  } else {
+    ctxPagesEl.innerHTML = fmtCtxPages(ctxResult.maxCtx) + caveatMark;
+  }
+  ctxPagesEl.dataset.tip = showGap
+    ? `${fmtCtx(ctxResult.maxCtx)} tokens achieved · target: ${fmtCtx(targetCtx)} tokens · ${targetFitPct}% of target`
+    : `${fmtCtx(ctxResult.maxCtx)} tokens · ${fmtTokensHuman(ctxResult.maxCtx)} (context fit — how much text fits in VRAM at once)`;
+
+  ctxLabelEl.textContent = showGap
+    ? `context · ${fmtCtxWords(ctxResult.maxCtx)} · ${targetFitPct}% of target`
+    : `context · ${fmtCtxWords(ctxResult.maxCtx)}`;
   ctxLabelEl.dataset.tip = `${fmtCtx(ctxResult.maxCtx)} tokens · ~0.75 words per token`;
 
   document.getElementById('resultAside').hidden = false;
