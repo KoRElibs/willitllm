@@ -55,6 +55,7 @@ for f in "${FILES[@]}"; do
     continue
   fi
   if curl --silent --show-error \
+       --insecure \
        --user "$USER:$PASS" \
        --upload-file "$local_path" \
        "sftp://$HOST$REMOTE_DIR/$f"; then
