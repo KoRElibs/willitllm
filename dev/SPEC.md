@@ -410,10 +410,10 @@ Headline class (drives border colour and verdict glow):
 
 | Position | Label | Element | Behaviour |
 |----------|-------|---------|-----------|
-| top-left | GPU VRAM | `<select id="vramInput">` | Two sections: generic sizes, then named GPUs |
+| top-left | Your GPU | `<select id="vramInput">` | Two sections: generic sizes, then named GPUs |
 | top-right | Model | Custom combobox (`#modelComboWrap`) | Searchable: face button (`#modelFace`) opens a panel (`#modelPanel`) with a text filter (`#modelSearch`) and a scrollable list (`#modelList`). Models grouped by organization with flag emoji. A hidden `<select id="modelSelect">` is kept in sync for form compatibility. Embedding models are hidden from the list entirely. |
 | bottom-left | Capability | `<div id="capFilter">` pill row | Four pills: `any` · `tools` · `vision` · `thinking`. Multi-select with AND logic — active pills are highlighted; the list shows only models whose library has **all** selected capability badges (sourced from `data.libraries.js`). `any` clears the filter (default). When the filter changes, the model dropdown auto-selects the first fitting model. |
-| bottom-right | Target context | `<select id="targetCtx">` | Presets for common context sizes; drives model colour coding |
+| bottom-right | Context | `<select id="targetCtx">` | Presets for common context sizes; drives model colour coding |
 
 Variant (`<select id="variantSelect">`) and KV Cache are auto-managed and shown in geek mode only (see §7.3).
 
