@@ -637,3 +637,17 @@ significant at that point.
 **AI notice** — the page includes a prominent disclaimer that model metadata was compiled using AI
 and has not been manually verified. Users are directed to `ollama show <model>` and
 `ollama.com/library` for authoritative data.
+
+---
+
+## 12. Documentation maintenance
+
+Every code change must keep the following three files in sync with the codebase. Stale documentation is worse than none — it actively misleads future contributors and AI assistants working from this spec.
+
+| File | Update when |
+|---|---|
+| `dev/FEATURES.md` | A feature is implemented (`backlog` → `done`), a new feature is planned (add as `backlog`), or an existing feature's behaviour changes |
+| `dev/BUGS.md` | A bug is discovered (add as `open`) or fixed (`open` → `fixed` with a description of the root cause and fix) |
+| `dev/SPEC.md` | Any described behaviour changes — data structures, formulas, UI layout, constants, file paths, or interaction rules |
+
+The rule: if you changed the code, you changed at least one of these files.

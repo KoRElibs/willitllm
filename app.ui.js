@@ -27,16 +27,10 @@ function updateSelectionSummary(model) {
   const variant = model ? getSelectedVariant(model) : null;
   const fullTag = variant ? `${library}:${variant.tag}` : library;
 
-  const kvOpt  = document.getElementById('kvCacheType').selectedOptions[0];
-  const kvLabel = kvOpt ? kvOpt.textContent.trim().replace(/^[■□\s]+/, '') : '';
-
   const gpuOpt = document.getElementById('vramInput').selectedOptions[0];
   const gpuName = gpuOpt ? gpuOpt.textContent.trim() : '';
 
-  const modelParts = [fullTag, kvLabel ? `KV ${kvLabel}` : ''].filter(Boolean);
-  el.textContent = gpuName
-    ? `${gpuName}: ${modelParts.join(' · ')}`
-    : modelParts.join(' · ');
+  el.textContent = gpuName ? `${gpuName}: ${fullTag}` : fullTag;
 }
 
 function populateVariants(model) {
@@ -118,23 +112,29 @@ function modelCtxColor(ctxResult, model, targetCtx) {
 }
 
 // Marks OOM models red and colours in-VRAM models by target context fit.
-function markModelOptions(vramGB, bytesPerElement, targetCtx) {
+// Each model's optimal KV type is auto-selected before colouring.
+function markModelOptions(vramGB, targetCtx, flashOk) {
   const sel = document.getElementById('modelSelect');
+  let fitCount = 0;
   Array.from(sel.options).forEach((opt) => {
     const m = MODELS[parseInt(opt.value)];
     if (!m) return;
     const weightsGB = m.variants && m.variants.length ? m.variants[0].weights_gb : 0;
-    const fits      = weightsGB < vramGB - OVERHEAD_GB;
-    if (!fits) {
+    if (weightsGB >= vramGB - OVERHEAD_GB) {
       opt.textContent = `✗  ${m.ollama_tag}`;
       opt.style.color = '#f06464';
       return;
     }
-    const ctxResult = calcMaxContext(m, vramGB, bytesPerElement, weightsGB);
+    const bpe       = autoKvBpe(m, vramGB, weightsGB, targetCtx, flashOk);
+    const ctxResult = calcMaxContext(m, vramGB, bpe, weightsGB);
+    const color     = modelCtxColor(ctxResult, m, targetCtx);
     opt.textContent = m.ollama_tag;
-    opt.style.color = modelCtxColor(ctxResult, m, targetCtx);
+    opt.style.color = color;
+    if (color === '#56d88a') fitCount++;
   });
-  markComboboxItems(vramGB, bytesPerElement, targetCtx);
+  const countEl = document.getElementById('ctxFitCount');
+  if (countEl) countEl.textContent = `${fitCount} fit`;
+  markComboboxItems(vramGB, targetCtx, flashOk);
 }
 
 // ── Model combobox ────────────────────────────────────────────────────────────
@@ -219,17 +219,17 @@ function syncComboboxFace() {
   if (item) { item.classList.add('selected'); faceText.style.color = item.style.color || ''; }
 }
 
-function markComboboxItems(vramGB, bytesPerElement, targetCtx) {
+function markComboboxItems(vramGB, targetCtx, flashOk) {
   const list = document.getElementById('modelList');
   if (!list) return;
   list.querySelectorAll('.combobox-item').forEach(item => {
     const m = MODELS[parseInt(item.dataset.idx)];
     if (!m) return;
     const weightsGB = m.variants && m.variants.length ? m.variants[0].weights_gb : 0;
-    const fits      = weightsGB < vramGB - OVERHEAD_GB;
-    if (!fits) { item.textContent = '✗  ' + m.ollama_tag; item.style.color = '#f06464'; return; }
+    if (weightsGB >= vramGB - OVERHEAD_GB) { item.textContent = '✗  ' + m.ollama_tag; item.style.color = '#f06464'; return; }
     item.textContent = m.ollama_tag;
-    const ctxResult = calcMaxContext(m, vramGB, bytesPerElement, weightsGB);
+    const bpe       = autoKvBpe(m, vramGB, weightsGB, targetCtx, flashOk);
+    const ctxResult = calcMaxContext(m, vramGB, bpe, weightsGB);
     item.style.color = modelCtxColor(ctxResult, m, targetCtx);
   });
   syncComboboxFace();
@@ -282,21 +282,6 @@ function buildModelCombobox(groups) {
   });
 }
 
-// ── KV cache dropdown ─────────────────────────────────────────────────────────
-
-function updateKvOptions() {
-  const gpuOpt  = document.getElementById('vramInput').selectedOptions[0];
-  const flash   = gpuOpt ? gpuOpt.dataset.flash : 'yes';
-  const flashOk = flash === 'yes' || flash === 'mixed';
-  const kvSel   = document.getElementById('kvCacheType');
-  Array.from(kvSel.options).forEach(opt => {
-    const needsFlash = parseFloat(opt.value) < 2;
-    opt.hidden   = needsFlash && !flashOk;
-    opt.disabled = needsFlash && !flashOk;
-  });
-  if (parseFloat(kvSel.value) < 2 && !flashOk) kvSel.value = '2';
-}
-
 // ── Nudge buttons ─────────────────────────────────────────────────────────────
 
 // All variants sorted by quality ascending (lowest quality = fastest first).
@@ -319,37 +304,21 @@ function nudgeVariant(direction) {
   render();
 }
 
-function nudgeKv(direction) {
-  const sel     = document.getElementById('kvCacheType');
-  const visible = Array.from(sel.options).filter(o => !o.hidden && !o.disabled);
-  const curIdx  = visible.findIndex(o => o.value === sel.value);
-  const target  = direction === 'quality' ? curIdx - 1 : curIdx + 1;
-  if (target < 0 || target >= visible.length) return;
-  sel.value = visible[target].value;
-  render();
-}
-
-function updateNudgeButtons(ctxAtMax, vramGB) {
+function updateNudgeButtons(vramGB) {
   const modelIdx = parseInt(document.getElementById('modelSelect').value);
   const model    = MODELS[modelIdx];
-  const kvSel    = document.getElementById('kvCacheType');
   const show     = (id, visible) => { const el = document.getElementById(id); if (el) el.hidden = !visible; };
 
   if (!model || !model.variants) {
-    ['nudge-speed','nudge-quality','nudge-ctx-quality','nudge-ctx-size'].forEach(id => show(id, false));
+    ['nudge-speed', 'nudge-quality'].forEach(id => show(id, false));
     return;
   }
   const idx    = getSelectedVariantIdx(model);
   const sorted = variantsSortedByQuality(model);
   const pos    = sorted.findIndex(({ i }) => i === idx);
-
-  const fits = v => !vramGB || v.weights_gb < vramGB - OVERHEAD_GB;
+  const fits   = v => !vramGB || v.weights_gb < vramGB - OVERHEAD_GB;
   show('nudge-speed',   pos > 0                 && fits(sorted[pos - 1].v));
   show('nudge-quality', pos < sorted.length - 1 && fits(sorted[pos + 1].v));
-  const kvVisible = Array.from(kvSel.options).filter(o => !o.hidden && !o.disabled);
-  const kvCurIdx  = kvVisible.findIndex(o => o.value === kvSel.value);
-  show('nudge-ctx-quality', kvCurIdx > 0);
-  show('nudge-ctx-size',    !ctxAtMax && kvCurIdx < kvVisible.length - 1);
 }
 
 // ── OS tab toggle ─────────────────────────────────────────────────────────────

@@ -15,17 +15,16 @@ let activeOsTab = null;                   // 'linux' | 'windows' | null
 const setupContent = { linux: '', windows: '' };
 
 function getTargetCtx() {
-  const active = document.querySelector('.ctx-pill.active');
-  if (!active) return 32000;
-  const v = active.dataset.ctx;
+  const v = document.getElementById('targetCtx').value;
   return v === 'max' ? null : parseInt(v);
 }
 
-const LIB_META = Object.fromEntries(LIBRARIES.map(l => [l.library, l]));
-
-function getBytesPerElement() {
-  return parseFloat(document.getElementById('kvCacheType').value);
+function getFlashOk() {
+  const opt = document.getElementById('vramInput').selectedOptions[0];
+  return opt?.dataset.flash === 'yes' || opt?.dataset.flash === 'mixed';
 }
+
+const LIB_META = Object.fromEntries(LIBRARIES.map(l => [l.library, l]));
 
 function getLibMeta(m) {
   return LIB_META[m.ollama_tag.split(':')[0]] || {};
@@ -38,7 +37,6 @@ function getLibMeta(m) {
 function pushHashState() {
   const gpuSel   = document.getElementById('vramInput');
   const modelSel = document.getElementById('modelSelect');
-  const kvSel    = document.getElementById('kvCacheType');
   const gpuOpt   = gpuSel.selectedOptions[0];
   const modelIdx = parseInt(modelSel.value);
   const model    = MODELS[modelIdx];
@@ -48,7 +46,7 @@ function pushHashState() {
   p.set('g', gpuOpt.textContent.trim());
   p.set('m', model.ollama_tag);
   if (variant) p.set('v', variant.tag);
-  p.set('k', kvSel.value);
+  p.set('t', document.getElementById('targetCtx').value);
   history.replaceState(null, '', '#' + p.toString());
 }
 
@@ -59,16 +57,16 @@ function applyHashState() {
   const gpuName  = p.get('g');
   const modelTag = p.get('m');
   const varTag   = p.get('v');
-  const kv       = p.get('k');
+  const target   = p.get('t');
 
   if (gpuName) {
     const gpuSel = document.getElementById('vramInput');
     const opt = Array.from(gpuSel.options).find(o => o.textContent.trim() === gpuName);
-    if (opt) { opt.selected = true; updateKvOptions(); }
+    if (opt) opt.selected = true;
   }
-  if (kv) {
-    const kvSel = document.getElementById('kvCacheType');
-    if (Array.from(kvSel.options).some(o => o.value === kv && !o.hidden && !o.disabled)) kvSel.value = kv;
+  if (target) {
+    const sel = document.getElementById('targetCtx');
+    if (Array.from(sel.options).some(o => o.value === target)) sel.value = target;
   }
   if (modelTag) {
     const modelSel = document.getElementById('modelSelect');
@@ -89,18 +87,14 @@ function applyHashState() {
 // RENDER — orchestrator
 // ─────────────────────────────────────────────────────────────────────────────
 function render() {
-  const modelIdx        = parseInt(document.getElementById('modelSelect').value);
-  const vramGB          = parseFloat(document.getElementById('vramInput').value);
-  const bytesPerElement = getBytesPerElement();
-  const kvEntry         = getKvCache(bytesPerElement);
-  const kvLabel         = kvEntry.label;
-  const kvInfo          = kvEntry;
-  const model           = MODELS[modelIdx];
+  const modelIdx  = parseInt(document.getElementById('modelSelect').value);
+  const vramGB    = parseFloat(document.getElementById('vramInput').value);
+  const targetCtx = getTargetCtx();
+  const flashOk   = getFlashOk();
+  const model     = MODELS[modelIdx];
   updateSelectionSummary(model);
 
-  // Mark model options as soon as VRAM is known — before the model-selection guard
-  // so the dropdown is colour-coded on first GPU selection, not only after a model is picked.
-  if (!isNaN(vramGB) && vramGB > 0) markModelOptions(vramGB, bytesPerElement, getTargetCtx());
+  if (!isNaN(vramGB) && vramGB > 0) markModelOptions(vramGB, targetCtx, flashOk);
 
   const noModel = document.getElementById('noModel');
   const results = document.getElementById('results');
@@ -112,15 +106,19 @@ function render() {
   noModel.hidden = true;
   results.hidden = false;
 
-  const variant      = getSelectedVariant(model);
-  const weightsGB    = variant ? variant.weights_gb : 0;
-  const quantization = variant ? variant.quantization : '—';
-  const quantInfo    = variant ? QUANT_INFO[variant.quantization] : null;
-  const libInfo      = getLibMeta(model);
+  const variant         = getSelectedVariant(model);
+  const weightsGB       = variant ? variant.weights_gb : 0;
+  const quantization    = variant ? variant.quantization : '—';
+  const quantInfo       = variant ? QUANT_INFO[variant.quantization] : null;
+  const libInfo         = getLibMeta(model);
+  const bytesPerElement = autoKvBpe(model, vramGB, weightsGB, targetCtx, flashOk);
+  const kvEntry         = getKvCache(bytesPerElement);
+  const kvLabel         = kvEntry.label;
+  const kvInfo          = kvEntry;
 
   const ctxResult = calcMaxContext(model, vramGB, bytesPerElement, weightsGB);
   const noFit     = weightsGB >= vramGB - OVERHEAD_GB;
-  const scores    = computeScores(quantInfo, bytesPerElement, ctxResult, noFit, model);
+  const scores    = computeScores(quantInfo, bytesPerElement, ctxResult, noFit, model, getTargetCtx());
   const { contextFitPct, scoreClass } = scores;
 
   document.getElementById('resultHeadline').className = `result-headline ${scoreClass}`;
@@ -142,7 +140,7 @@ function render() {
 
   populateGpuTab(vramGB, speedEsts);
   renderFormula(model, variant, ctxResult, speedEsts, vramGB, weightsGB, bytesPerElement, kvLabel, quantInfo, noFit, contextFitPct);
-  updateNudgeButtons(ctxResult ? ctxResult.limitedByArch : false, vramGB);
+  updateNudgeButtons(vramGB);
   pushHashState();
 }
 
@@ -237,8 +235,8 @@ function init() {
     populateVariants(MODELS[parseInt(sel.value)]);
     render();
   });
-  document.getElementById('vramInput').addEventListener('change', () => { updateKvOptions(); render(); });
-  document.getElementById('kvCacheType').addEventListener('change', render);
+  document.getElementById('vramInput').addEventListener('change', render);
+  document.getElementById('targetCtx').addEventListener('change', render);
   document.getElementById('variantSelect').addEventListener('change', render);
 
   // Rebuild variant options on resize (mobile vs desktop format differs)
@@ -252,22 +250,11 @@ function init() {
     }
   });
 
-  document.getElementById('ctxPills').addEventListener('click', e => {
-    const pill = e.target.closest('.ctx-pill');
-    if (!pill) return;
-    document.querySelectorAll('.ctx-pill').forEach(p => p.classList.remove('active'));
-    pill.classList.add('active');
-    const vramGB = parseFloat(document.getElementById('vramInput').value);
-    if (!isNaN(vramGB) && vramGB > 0) markModelOptions(vramGB, getBytesPerElement(), getTargetCtx());
-  });
-
   document.getElementById('tabLinux').addEventListener('click',   () => setOsTab('linux'));
   document.getElementById('tabWindows').addEventListener('click', () => setOsTab('windows'));
 
-  document.getElementById('nudge-speed').addEventListener('click',       () => nudgeVariant('speed'));
-  document.getElementById('nudge-quality').addEventListener('click',     () => nudgeVariant('quality'));
-  document.getElementById('nudge-ctx-quality').addEventListener('click', () => nudgeKv('quality'));
-  document.getElementById('nudge-ctx-size').addEventListener('click',    () => nudgeKv('size'));
+  document.getElementById('nudge-speed').addEventListener('click',   () => nudgeVariant('speed'));
+  document.getElementById('nudge-quality').addEventListener('click', () => nudgeVariant('quality'));
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -288,6 +275,20 @@ function init() {
     const rect = el.getBoundingClientRect();
     tip.style.top  = (rect.bottom + 8) + 'px';
     tip.style.left = Math.min(rect.left, window.innerWidth - 276) + 'px';
+  });
+
+  // Geek mode — persistent via localStorage, off by default
+  const geekToggle  = document.getElementById('geekToggle');
+  const geekSection = document.getElementById('geekSection');
+  const applyGeek = on => {
+    geekSection.hidden    = !on;
+    geekToggle.textContent = on ? '▾ details' : '▸ details';
+  };
+  applyGeek(localStorage.getItem('geekMode') === 'true');
+  geekToggle.addEventListener('click', () => {
+    const on = geekSection.hidden;
+    applyGeek(on);
+    localStorage.setItem('geekMode', on);
   });
 
   applyHashState();

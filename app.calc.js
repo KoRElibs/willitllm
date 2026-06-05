@@ -157,15 +157,40 @@ function calcSpeedEstimates(model, variant, vramGB, quantInfo, maxCtx) {
   return { genLo, genHi, prefillLo, prefillHi, isExact: gpuSpecs.isExact };
 }
 
+// Returns the best KV bytes-per-element for a model given a target context and GPU flash support.
+// Prefers highest quality (f16) that still meets the target; falls back to most efficient available.
+function autoKvBpe(model, vramGB, weightsGB, targetCtx, flashOk) {
+  const candidates  = flashOk ? [2, 1, 0.5] : [2];
+  const effective   = targetCtx ?? model.context_length ?? Infinity;
+  for (const bpe of candidates) {
+    if (calcMaxContext(model, vramGB, bpe, weightsGB).maxCtx >= effective) return bpe;
+  }
+  return candidates[candidates.length - 1];
+}
+
 // Returns all scores + scoreClass for the current selection.
-function computeScores(quantInfo, bytesPerElement, ctxResult, noFit, model) {
+function computeScores(quantInfo, bytesPerElement, ctxResult, noFit, model, targetCtx) {
+  // contextFitPct stays as % of architectural max — used for ⓘ caveats, not for scoring
   const contextFitPct = (!noFit && model.context_length)
     ? Math.round((ctxResult.maxCtx / model.context_length) * 100) : null;
   const scoreSpeed     = quantInfo ? Math.max(1, Math.round((quantInfo.speed   / 10) * 5)) : 0;
   const scoreQuality   = quantInfo ? Math.max(1, Math.round((quantInfo.quality / 10) * 5)) : 0;
-  const scoreContext   = contextFitPct === null ? 0
-    : contextFitPct >= 90 ? 5 : contextFitPct >= 66 ? 4 : contextFitPct >= 40 ? 3 : contextFitPct >= 15 ? 2 : 1;
-  const scoreContext10 = contextFitPct === null ? 0 : Math.min(10, Math.max(1, Math.ceil(contextFitPct / 10)));
+
+  let scoreContext, scoreContext10;
+  if (contextFitPct === null || noFit) {
+    scoreContext = 0; scoreContext10 = 0;
+  } else if (targetCtx === null) {
+    // "full model context" — score against architectural max (original behaviour)
+    scoreContext   = contextFitPct >= 90 ? 5 : contextFitPct >= 66 ? 4 : contextFitPct >= 40 ? 3 : contextFitPct >= 15 ? 2 : 1;
+    scoreContext10 = Math.min(10, Math.max(1, Math.ceil(contextFitPct / 10)));
+  } else {
+    // actual / desired — calcMaxContext already caps maxCtx at model's arch limit,
+    // so a model that tops out at 131k when you need 200k correctly scores 131/200 = 65%
+    const ratio    = Math.min(1, ctxResult.maxCtx / targetCtx);
+    scoreContext   = ratio >= 0.9 ? 5 : ratio >= 0.66 ? 4 : ratio >= 0.40 ? 3 : ratio >= 0.15 ? 2 : 1;
+    scoreContext10 = Math.max(1, Math.round(ratio * 10));
+  }
+
   const scorePrecision = bytesPerElement === 2 ? 5 : bytesPerElement === 1 ? 3 : 2;
   const scoreAvg       = (scoreSpeed + scoreQuality + scoreContext + scorePrecision) / 4;
   const scoreClass     = noFit ? 'error'
