@@ -83,9 +83,7 @@ Each entry in `GPUS` has exactly one name (or a "series" name covering near-iden
 Entries that previously grouped very different GPUs (e.g. RTX 3070 and RTX 3070 Ti) are split
 so each named card gets accurate bandwidth and TFLOPS values.
 
-The GPU dropdown shows two sections: "Generic X GB" entries (one per unique VRAM size, with `flash`
-set to `'mixed'` if GPUs of the same VRAM differ in flash support), followed by a disabled separator,
-followed by individual named GPU entries sorted alphabetically.
+The GPU dropdown uses `<optgroup>` to group cards by vendor in this order: **NVIDIA GeForce** (consumer GTX/RTX), **NVIDIA Professional** (workstation and data-centre: RTX A-series, Ada generation, A100, H100, etc.), **AMD Radeon**, **Apple** (when entries exist), **Generic** (one entry per unique VRAM size). Within each named group cards are sorted alphabetically. Generic entries are sorted by VRAM descending.
 
 Generic entries do not store bandwidth/tflops — these are derived at runtime as `[min, max]`
 across all named entries at that VRAM tier, producing a wide speed estimate. A note prompts
@@ -410,7 +408,7 @@ Headline class (drives border colour and verdict glow):
 
 | Position | Label | Element | Behaviour |
 |----------|-------|---------|-----------|
-| top-left | Your GPU | `<select id="vramInput">` | Two sections: generic sizes, then named GPUs |
+| top-left | Your GPU | `<select id="vramInput">` | Grouped by vendor: NVIDIA GeForce → NVIDIA Professional → AMD Radeon → Generic |
 | top-right | Model | Custom combobox (`#modelComboWrap`) | Searchable: face button (`#modelFace`) opens a panel (`#modelPanel`) with a text filter (`#modelSearch`) and a scrollable list (`#modelList`). Models grouped by organization with flag emoji. A hidden `<select id="modelSelect">` is kept in sync for form compatibility. Embedding models are hidden from the list entirely. |
 | bottom-left | Capability | `<div id="capFilter">` pill row | Four pills: `any` · `tools` · `vision` · `thinking`. Multi-select with AND logic — active pills are highlighted; the list shows only models whose library has **all** selected capability badges (sourced from `data.libraries.js`). `any` clears the filter (default). When the filter changes, the model dropdown auto-selects the first fitting model. |
 | bottom-right | Context | `<select id="targetCtx">` | Presets for common context sizes; drives model colour coding |
