@@ -215,10 +215,30 @@ function init() {
   document.getElementById('targetCtx').addEventListener('change', render);
   document.getElementById('variantSelect').addEventListener('change', render);
 
+  // Swap target context option labels for narrow viewports (native selects truncate long text)
+  const TARGET_LABELS = [
+    { value: '8000',   wide: 'a chat · ~25 pages',        narrow: 'chat' },
+    { value: '32000',  wide: 'a document · ~100 pages',   narrow: 'document' },
+    { value: '64000',  wide: 'The Hobbit · ~200 pages',   narrow: 'The Hobbit' },
+    { value: '100000', wide: 'Harry Potter · ~300 pages', narrow: 'Harry Potter' },
+    { value: '200000', wide: 'several books · ~600 pages',narrow: 'several books' },
+    { value: 'max',    wide: 'full model context',        narrow: 'full context' },
+  ];
+  function updateTargetCtxLabels() {
+    const narrow = window.innerWidth <= 400;
+    const sel    = document.getElementById('targetCtx');
+    TARGET_LABELS.forEach(({ value, wide, narrow: short }) => {
+      const opt = Array.from(sel.options).find(o => o.value === value);
+      if (opt) opt.textContent = narrow ? short : wide;
+    });
+  }
+  updateTargetCtxLabels();
+
   // Rebuild variant options on resize (mobile vs desktop format differs)
   let lastMobile = window.innerWidth <= 600;
   window.addEventListener('resize', () => {
     const isMobile = window.innerWidth <= 600;
+    updateTargetCtxLabels();
     if (isMobile !== lastMobile) {
       lastMobile = isMobile;
       const modelIdx = parseInt(document.getElementById('modelSelect').value);

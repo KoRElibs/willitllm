@@ -8,8 +8,8 @@ Keep this file updated on every change — see `SPEC.md §12`.
 
 ## Open
 
-**BUG-05 — TARGET CONTEXT label and fit count truncate on narrow mobile (375px)** `open`
-On very narrow phones the "TARGET CONTEXT" label competes with the "24 FIT" badge for horizontal space, and the select option text ("a document · ~100 pages") gets clipped by the native select element. Native select truncation is hard to fix; the label fit-count clash can be addressed with a media query.
+**BUG-05 — TARGET CONTEXT option text truncates on narrow mobile (375px)** `fixed`
+On very narrow phones the select option text ("a document · ~100 pages") was clipped by the native select control. The "fit count" badge that also competed for space was removed in a prior commit. Fixed by swapping to shorter option labels (e.g. "document", "The Hobbit") at ≤400px viewport width via JS; full labels are restored at wider viewports.
 
 **BUG-06 — Model face briefly shows plain tag without flag on URL hash restore** `fixed`
 On page load from a URL hash, `syncComboboxFace` was called before `markComboboxItems` had set item colours — so the face showed the model tag without colour. Fixed by removing the premature standalone `syncComboboxFace()` calls from `init()` and the `hashchange` handler; `render()` → `markComboboxItems` → `syncComboboxFace()` now handles both in one pass with colours already set.
