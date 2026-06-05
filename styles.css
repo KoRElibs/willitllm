@@ -114,7 +114,6 @@ header p {
 .geek-toggle:hover { color: var(--text); }
 #geekSection .bar-section { margin-top: 20px; }
 
-.field-fit-count { color: var(--green); font-size: 10px; opacity: 0.8; margin-left: 6px; }
 
 /* ── Model combobox ── */
 .combobox-wrap { position: relative; }
@@ -181,18 +180,6 @@ header p {
 .combobox-list::-webkit-scrollbar { width: 6px; }
 .combobox-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-.combobox-group-label {
-  padding: 5px 12px 3px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  text-transform: uppercase;
-  background: var(--bg3);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-}
 
 .combobox-item {
   padding: 6px 12px;
@@ -521,8 +508,8 @@ header p {
   font-size: 12px;
   color: var(--accent);
   line-height: 1.9;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
+  overflow-x: auto;
 }
 .ollama-cmd .cmd-muted { color: var(--muted); }
 .os-tabs {

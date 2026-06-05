@@ -180,9 +180,10 @@ function computeScores(quantInfo, bytesPerElement, ctxResult, noFit, model, targ
   if (contextFitPct === null || noFit) {
     scoreContext = 0; scoreContext10 = 0;
   } else if (targetCtx === null) {
-    // "full model context" — score against architectural max (original behaviour)
+    // "full model context" — score against architectural max.
+    // If VRAM is not the constraint (arch-limited), the model is giving everything it has → 10/10.
     scoreContext   = contextFitPct >= 90 ? 5 : contextFitPct >= 66 ? 4 : contextFitPct >= 40 ? 3 : contextFitPct >= 15 ? 2 : 1;
-    scoreContext10 = Math.min(10, Math.max(1, Math.ceil(contextFitPct / 10)));
+    scoreContext10 = ctxResult?.limitedByArch ? 10 : Math.min(10, Math.max(1, Math.ceil(contextFitPct / 10)));
   } else {
     // actual / desired — calcMaxContext already caps maxCtx at model's arch limit,
     // so a model that tops out at 131k when you need 200k correctly scores 131/200 = 65%

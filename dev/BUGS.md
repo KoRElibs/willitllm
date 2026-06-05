@@ -8,16 +8,20 @@ Keep this file updated on every change — see `SPEC.md §12`.
 
 ## Open
 
-**BUG-02 — Target context pills appear to have no effect** `fixed`
-Clicking between presets correctly recoloured the hidden combobox list, but with the combobox closed the only visible change was the face button text colour — unnoticeable when the selected model stayed the same colour tier. Fixed by adding a live "X fit" count next to the pills that updates on every `markModelOptions` call, giving clear feedback regardless of combobox state.
+**BUG-05 — TARGET CONTEXT label and fit count truncate on narrow mobile (375px)** `open`
+On very narrow phones the "TARGET CONTEXT" label competes with the "24 FIT" badge for horizontal space, and the select option text ("a document · ~100 pages") gets clipped by the native select element. Native select truncation is hard to fix; the label fit-count clash can be addressed with a media query.
 
-**BUG-03 — KV cache options selectable before GPU is chosen** `fixed`
-q8_0 and q4_0 started visible and selectable on fresh page load because `updateKvOptions()` was never called at startup — only on GPU `change` events and inside `applyHashState`. Fixed by calling `updateKvOptions()` once in `init()` immediately after the GPU dropdown is built.
+**BUG-06 — Model face briefly shows plain tag without flag on URL hash restore** `open`
+On page load from a URL hash, `syncComboboxFace` is called before `markComboboxItems` has set item colours — so the face shows the model tag without the colour that would distinguish it. `dataset.label` (including flag) is set at build time and should be present, but the no-colour flash is visible for a frame.
 
----
+**BUG-07 — Ollama command block wraps awkwardly on narrow mobile** `fixed`
+`>>> /set parameter num_ctx 33152` broke mid-line at 375px because `.ollama-cmd` used `white-space: pre-wrap; word-break: break-all`. Fixed: `white-space: pre; overflow-x: auto` — command now scrolls horizontally rather than wrapping.
 
-**BUG-04 — Attention span score unresponsive and incorrectly scored against target context** `fixed`
-Two issues: (1) pill handler only called `markModelOptions`, never `render()`, so scorecard never updated — fixed by calling `render()` from pill handler directly. (2) scoring logic was wrong: `computeScores` had no knowledge of the target context and always scored against architectural max; an attempt to fix it incorrectly capped the desired span at `model.context_length`, making a model that gives its full arch limit score 10/10 even when the target is larger. Correct formula: `ratio = min(1, maxCtx / targetCtx)` — actual divided by desired, no arch cap (calcMaxContext already caps maxCtx). A model topping out at 131k when you need 200k correctly scores 66%.
+**BUG-08 — Verdict pop animation may not trigger on mobile** `open`
+The `verdict-pop` keyframe relies on `void el.offsetWidth` to force a reflow before re-adding the animation class. This reflow trick is not guaranteed on all mobile browsers. Needs investigation on real hardware.
+
+**BUG-09 — "Full model context" target scored 9/10 when model is arch-limited** `fixed`
+When `targetCtx = null` and the model is architecture-limited (VRAM can provide more than the model's trained max), `contextFitPct ≈ 90%` due to the safety factor, giving `scoreContext10 = ceil(9) = 9` — never 10/10 even though the model is giving everything it has. Fixed: when `ctxResult.limitedByArch` is true, force `scoreContext10 = 10`.
 
 ---
 
@@ -29,3 +33,15 @@ After nudging to higher sharpness, the "faster" nudge button disappeared even wh
 Root cause: `groupVariantsSorted()` filtered candidates to the current variant's group, which excluded cross-group alternatives. The `group` field is a UI label for `<optgroup>` sections — it was never meant to constrain nudge direction.
 
 Fix: replaced `groupVariantsSorted()` with `variantsSortedByQuality()` — sorts all variants by quality regardless of group. 12 lines → 4 lines.
+
+**BUG-02 — Target context pills appeared to have no effect** `fixed`
+Clicking between presets correctly recoloured the hidden combobox list, but with the combobox closed the only visible change was the face button text colour — unnoticeable when the selected model stayed the same colour tier. Fixed by adding a live "X fit" count next to the target label that updates on every `markModelOptions` call, giving clear feedback regardless of combobox state.
+
+**BUG-03 — KV cache options selectable before GPU is chosen** `fixed`
+q8_0 and q4_0 started visible and selectable on fresh page load because `updateKvOptions()` was never called at startup. Fixed by calling `updateKvOptions()` once in `init()` immediately after the GPU dropdown is built. (KV cache is now auto-selected; this function has since been removed entirely.)
+
+**BUG-04 — Attention span score unresponsive and incorrectly scored against target context** `fixed`
+Two issues: (1) pill handler only called `markModelOptions`, never `render()`, so scorecard never updated. (2) scoring logic was wrong — capped desired span at `model.context_length`, making a model that gives its full arch limit score 10/10 even when the target is larger. Correct formula: `ratio = min(1, maxCtx / targetCtx)` — actual divided by desired, no arch cap.
+
+**BUG-10 — Model list sort broken by browser hex-to-RGB colour normalisation** `fixed`
+`item.style.color = '#56d88a'` is read back as `rgb(86, 216, 138)` — the hex-keyed `fitPriority` lookup always returned `undefined`, so all models sorted as priority 4 (unknown) and the sort was a no-op. Fixed by storing fit priority in `item.dataset.fit` at mark time and sorting on that integer attribute instead.

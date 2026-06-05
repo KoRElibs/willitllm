@@ -11,7 +11,7 @@
 
   <header>
     <h1><span class="h1-will">will</span><span class="h1-it">it</span><span class="h1-llm">llm</span><span class="h1-tld">.com</span></h1>
-    <p>Pick your GPU, pick an ollama model — find out if it fits.</p>
+    <p>Pick your GPU, set your context need, find the right model.</p>
   </header>
 
   <div class="controls">
@@ -22,27 +22,7 @@
       </div>
     </div>
     <div class="field">
-      <label>Model</label>
-      <div id="modelComboWrap" class="combobox-wrap">
-        <div id="modelFace" class="combobox-face" tabindex="0">
-          <span id="modelFaceText" class="combobox-face-text">Select a model...</span>
-          <span class="combobox-caret">▾</span>
-        </div>
-        <div id="modelPanel" class="combobox-panel" hidden>
-          <input id="modelSearch" class="combobox-search" type="text" placeholder="filter models..." autocomplete="off" spellcheck="false">
-          <div id="modelList" class="combobox-list"></div>
-        </div>
-      </div>
-      <select id="modelSelect" hidden></select>
-    </div>
-    <div class="field">
-      <label>Variant</label>
-      <div class="select-wrap">
-        <select id="variantSelect"></select>
-      </div>
-    </div>
-    <div class="field">
-      <label>Target context <span id="ctxFitCount" class="field-fit-count"></span></label>
+      <label>Target context</label>
       <div class="select-wrap">
         <select id="targetCtx">
           <option value="8000">a chat · ~25 pages</option>
@@ -54,9 +34,29 @@
         </select>
       </div>
     </div>
+    <div class="field">
+      <label>Variant</label>
+      <div class="select-wrap">
+        <select id="variantSelect"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Model</label>
+      <div id="modelComboWrap" class="combobox-wrap">
+        <div id="modelFace" class="combobox-face" tabindex="0">
+          <span id="modelFaceText" class="combobox-face-text">Select a model...</span>
+          <span class="combobox-caret">▾</span>
+        </div>
+        <div id="modelPanel" class="combobox-panel" hidden>
+          <input id="modelSearch" class="combobox-search" type="text" placeholder="search models..." autocomplete="off" spellcheck="false">
+          <div id="modelList" class="combobox-list"></div>
+        </div>
+      </div>
+      <select id="modelSelect" hidden></select>
+    </div>
   </div>
 
-  <div id="noModel" class="no-model">Select a GPU and a model to find out.</div>
+  <div id="noModel" class="no-model">Pick your GPU, then choose a model — it will be sorted by best fit.</div>
 
   <div id="results" hidden>
 

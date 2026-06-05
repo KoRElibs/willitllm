@@ -190,45 +190,21 @@ function init() {
     vramSel.appendChild(opt);
   });
 
-  // Model dropdown
+  // Model dropdown (hidden — combobox is the visible control)
   MODELS.sort((a, b) => a.ollama_tag.localeCompare(b.ollama_tag));
   const sel = document.getElementById('modelSelect');
-
   const modelPlaceholder = document.createElement('option');
-  modelPlaceholder.value       = '';
-  modelPlaceholder.disabled    = true;
-  modelPlaceholder.selected    = true;
+  modelPlaceholder.value = ''; modelPlaceholder.disabled = true; modelPlaceholder.selected = true;
   modelPlaceholder.textContent = 'Select a model...';
   sel.appendChild(modelPlaceholder);
-
-  // Group by organization with flag in optgroup label
-  const groups = new Map();
   MODELS.forEach((m, i) => {
-    const [library] = m.ollama_tag.split(':');
-    const info = LIB_META[library];
-    const org  = info?.organization || 'Other';
-    const flag = info?.flag || (info?.origin ? '🌍' : '👥');
-    const key  = `${org}||${flag}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push({ m, i });
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = m.ollama_tag;
+    sel.appendChild(opt);
   });
 
-  [...groups.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .forEach(([key, items]) => {
-      const [org, flag] = key.split('||');
-      const grp = document.createElement('optgroup');
-      grp.label = `${org}  ${flag}`;
-      items.forEach(({ m, i }) => {
-        const opt       = document.createElement('option');
-        opt.value       = i;
-        opt.textContent = m.ollama_tag;
-        grp.appendChild(opt);
-      });
-      sel.appendChild(grp);
-    });
-
-  buildModelCombobox(groups);
+  buildModelCombobox();
+  populateVariants(null);
 
   // Event listeners
   sel.addEventListener('change', () => {
