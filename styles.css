@@ -107,13 +107,17 @@ header p {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 11px;
+  line-height: 1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 8px 12px;
+  padding: 0 12px;
+  height: 39px;
   border-radius: 6px;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
 }
 .cap-pill:hover { color: var(--text); border-color: var(--text); }
 .cap-pill.active { color: var(--accent); border-color: var(--accent); }

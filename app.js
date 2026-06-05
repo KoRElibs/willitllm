@@ -87,14 +87,16 @@ function applyHashState() {
 // RENDER — orchestrator
 // ─────────────────────────────────────────────────────────────────────────────
 function render() {
-  const modelIdx  = parseInt(document.getElementById('modelSelect').value);
   const vramGB    = parseFloat(document.getElementById('vramInput').value);
   const targetCtx = getTargetCtx();
   const flashOk   = getFlashOk();
-  const model     = MODELS[modelIdx];
-  updateSelectionSummary(model);
 
   if (!isNaN(vramGB) && vramGB > 0) markModelOptions(vramGB, targetCtx, flashOk);
+
+  // Re-read after markModelOptions — auto-selection may have changed sel.value
+  const modelIdx = parseInt(document.getElementById('modelSelect').value);
+  const model    = MODELS[modelIdx];
+  updateSelectionSummary(model);
 
   const noModel = document.getElementById('noModel');
   const results = document.getElementById('results');

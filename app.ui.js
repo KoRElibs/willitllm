@@ -141,24 +141,18 @@ function markModelOptions(vramGB, targetCtx, flashOk) {
 
 // ── Capability filter ─────────────────────────────────────────────────────────
 
-let _activeCap = '';
+const _activeCaps = new Set();
 
 function applyCap(cap) {
-  _activeCap = cap;
-  document.querySelectorAll('.cap-pill').forEach(pill => {
-    pill.classList.toggle('active', pill.dataset.cap === cap);
-  });
-  filterModelList(document.getElementById('modelSearch')?.value || '');
-  const sel = document.getElementById('modelSelect');
-  const idx = sel?.value;
-  if (idx !== '' && idx !== undefined) {
-    const item = document.querySelector(`.combobox-item[data-idx="${idx}"]`);
-    if (item?.hidden) {
-      sel.value = '';
-      syncComboboxFace();
-      sel.dispatchEvent(new Event('change'));
-    }
+  if (cap === '') {
+    _activeCaps.clear();
+  } else {
+    _activeCaps.has(cap) ? _activeCaps.delete(cap) : _activeCaps.add(cap);
   }
+  document.querySelectorAll('.cap-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.cap === '' ? _activeCaps.size === 0 : _activeCaps.has(pill.dataset.cap));
+  });
+  filterModelList(document.getElementById('modelSearch')?.value || '', true);
 }
 
 // ── Model combobox ────────────────────────────────────────────────────────────
@@ -196,18 +190,33 @@ function comboHighlight(el) {
   }
 }
 
-function filterModelList(query) {
+function filterModelList(query, autoSelect = false) {
   const list = document.getElementById('modelList');
   const q    = query.toLowerCase().trim();
   let firstVisible = null;
   list.querySelectorAll('.combobox-item').forEach(item => {
     const textMatch = !q || item.dataset.tag.includes(q);
-    const capMatch  = !_activeCap || (item.dataset.caps || '').split(',').includes(_activeCap);
+    const itemCaps  = new Set((item.dataset.caps || '').split(','));
+    const capMatch  = _activeCaps.size === 0 || [..._activeCaps].every(c => itemCaps.has(c));
     const show = textMatch && capMatch;
     item.hidden = !show;
     if (show && !firstVisible) firstVisible = item;
   });
   comboHighlight(firstVisible);
+  if (autoSelect) {
+    const sel        = document.getElementById('modelSelect');
+    const currentIdx = sel?.value;
+    const currentItem = currentIdx !== '' && currentIdx !== undefined
+      ? list.querySelector(`.combobox-item[data-idx="${currentIdx}"]`)
+      : null;
+    const currentFits = currentItem && !currentItem.hidden && currentItem.dataset.fit !== '3';
+    if (!currentFits) {
+      const items   = Array.from(list.querySelectorAll('.combobox-item'));
+      const firstFit = items.find(el => !el.hidden && el.dataset.fit !== '3');
+      sel.value = firstFit ? firstFit.dataset.idx : '';
+      sel.dispatchEvent(new Event('change'));
+    }
+  }
 }
 
 function selectComboboxModel(idx) {
@@ -269,6 +278,25 @@ function markComboboxItems(vramGB, targetCtx, flashOk) {
     return pa !== pb ? pa - pb : a.dataset.tag.localeCompare(b.dataset.tag);
   });
   items.forEach(item => list.appendChild(item));
+  const sel        = document.getElementById('modelSelect');
+  const currentIdx = sel?.value;
+  const currentItem = currentIdx !== '' && currentIdx !== undefined
+    ? list.querySelector(`.combobox-item[data-idx="${currentIdx}"]`)
+    : null;
+  const currentFits = currentItem && currentItem.dataset.fit !== '3' && !currentItem.hidden;
+  if (!currentFits) {
+    // Auto-select the first visible green (fit=0) model; fall back to amber/orange
+    const firstFit = items.find(el => !el.hidden && el.dataset.fit !== '3');
+    if (firstFit) {
+      sel.value = firstFit.dataset.idx;
+      sel.dispatchEvent(new Event('change'));
+      return;
+    } else {
+      sel.value = '';
+      sel.dispatchEvent(new Event('change'));
+      return;
+    }
+  }
   syncComboboxFace();
 }
 
