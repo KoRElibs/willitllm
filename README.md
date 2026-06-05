@@ -72,7 +72,7 @@ python dev/scripts/update_models.py --variants --apply     # refresh quantizatio
 python dev/scripts/update_models.py --tag llama3.2:3b      # one model only
 ```
 
-See `dev/update_models_prompt.md` for full workflow documentation.
+See `dev/scripts/update-models.md` for full workflow documentation.
 
 ## Data provenance
 
@@ -80,7 +80,7 @@ All architecture parameters (`block_count`, `head_count_kv`, `key_length`, `valu
 
 ## Contributing
 
-To add a model or library, update `data.libraries.js` and run `dev/scripts/update_models.py --discover --apply`. See `dev/update_models_prompt.md` for step-by-step instructions.
+To add a model or library, update `data.libraries.js` and run `dev/scripts/update_models.py --discover --apply`. See `dev/scripts/update-models.md` for step-by-step instructions.
 
 ## License
 
