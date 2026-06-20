@@ -2676,5 +2676,93 @@ const MODELS = [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 15.0, "group": "(default)"},
       {"tag": "24b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 26.0, "group": "instruct-2512"}
     ]
+  },
+  {
+    "ollama_tag": "gemma4:e2b",
+    "context_length": 131072,
+    "params_b": 5.12,
+    "block_count": 35,
+    "head_count": 8,
+    "head_count_kv": 1,
+    "embedding_length": 1536,
+    "key_length": 512,
+    "value_length": 512,
+    "variants": [
+      {"tag": "e2b", "quantization": "Q4_K_M", "weights_gb": 7.2, "group": "e2b"},
+      {"tag": "e2b-it-q8_0", "quantization": "Q8_0", "weights_gb": 8.1, "group": "e2b-it"},
+      {"tag": "e2b-it-bf16", "quantization": "BF16", "weights_gb": 10.0, "group": "e2b-it"},
+      {"tag": "e2b-mlx-bf16", "quantization": "BF16", "weights_gb": 10.0, "group": "e2b-mlx"}
+    ]
+  },
+  {
+    "ollama_tag": "gemma4:e4b",
+    "context_length": 131072,
+    "params_b": 8.0,
+    "block_count": 42,
+    "head_count": 8,
+    "head_count_kv": 2,
+    "embedding_length": 2560,
+    "key_length": 512,
+    "value_length": 512,
+    "variants": [
+      {"tag": "e4b", "quantization": "Q4_K_M", "weights_gb": 9.6, "group": "e4b"},
+      {"tag": "e4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 12.0, "group": "e4b-it"},
+      {"tag": "e4b-it-bf16", "quantization": "BF16", "weights_gb": 16.0, "group": "e4b-it"},
+      {"tag": "e4b-mlx-bf16", "quantization": "BF16", "weights_gb": 16.0, "group": "e4b-mlx"}
+    ]
+  },
+  {
+    "ollama_tag": "gemma4:12b",
+    "context_length": 262144,
+    "params_b": 11.9,
+    "block_count": 48,
+    "head_count": 16,
+    "head_count_kv": 8,
+    "embedding_length": 3840,
+    "key_length": 512,
+    "value_length": 512,
+    "variants": [
+      {"tag": "12b", "quantization": "Q4_K_M", "weights_gb": 7.6, "group": "(default)"},
+      {"tag": "12b-it-q8_0", "quantization": "Q8_0", "weights_gb": 13.0, "group": "it"},
+      {"tag": "12b-it-bf16", "quantization": "BF16", "weights_gb": 24.0, "group": "it"},
+      {"tag": "12b-mlx-bf16", "quantization": "BF16", "weights_gb": 24.0, "group": "mlx"}
+    ]
+  },
+  {
+    "ollama_tag": "gemma4:26b",
+    "moe": true,
+    "context_length": 262144,
+    "params_b": 25.8,
+    "params_b_active": 3.8,
+    "block_count": 30,
+    "head_count": 16,
+    "head_count_kv": 8,
+    "embedding_length": 2816,
+    "key_length": 512,
+    "value_length": 512,
+    "variants": [
+      {"tag": "26b", "quantization": "Q4_K_M", "weights_gb": 18.0, "group": "(default)"},
+      {"tag": "26b-a4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 28.0, "group": "a4b-it"},
+      {"tag": "26b-a4b-it-bf16", "quantization": "BF16", "weights_gb": 52.0, "group": "a4b-it"},
+      {"tag": "26b-mlx-bf16", "quantization": "BF16", "weights_gb": 52.0, "group": "mlx"}
+    ]
+  },
+  {
+    "ollama_tag": "gemma4:31b",
+    "context_length": 262144,
+    "params_b": 31.3,
+    "block_count": 60,
+    "head_count": 32,
+    "head_count_kv": 16,
+    "embedding_length": 5376,
+    "key_length": 512,
+    "value_length": 512,
+    "variants": [
+      {"tag": "31b", "quantization": "Q4_K_M", "weights_gb": 20.0, "group": "(default)"},
+      {"tag": "31b-coding-mtp-bf16", "quantization": "BF16", "weights_gb": 64.0, "group": "coding-mtp"},
+      {"tag": "31b-it-q8_0", "quantization": "Q8_0", "weights_gb": 34.0, "group": "it"},
+      {"tag": "31b-it-bf16", "quantization": "BF16", "weights_gb": 63.0, "group": "it"},
+      {"tag": "31b-mlx-bf16", "quantization": "BF16", "weights_gb": 63.0, "group": "mlx"}
+    ]
   }
 ];

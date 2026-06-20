@@ -16,6 +16,7 @@ const LIBRARIES = [
   { "library": "codegemma", "organization": "Google DeepMind", "origin": "USA", "flag": "\ud83c\uddfa\ud83c\uddf8", "source": null, "pulls": "3M" },
   { "library": "gemma2", "organization": "Google DeepMind", "origin": "USA", "flag": "\ud83c\uddfa\ud83c\uddf8", "source": null, "pulls": "24.8M" },
   { "library": "gemma3", "organization": "Google DeepMind", "origin": "USA", "flag": "\ud83c\uddfa\ud83c\uddf8", "source": "https://ai.google.dev/gemma/docs/integrations/ollama", "capabilities": ["vision"] },
+  { "library": "gemma4", "organization": "Google DeepMind", "origin": "USA", "flag": "\ud83c\uddfa\ud83c\uddf8", "source": "https://ai.google.dev/gemma/docs/integrations/ollama" },
   { "library": "translategemma", "organization": "Google DeepMind", "origin": "USA", "flag": "\ud83c\uddfa\ud83c\uddf8", "source": null, "capabilities": ["vision"] },
   { "library": "smollm2", "organization": "HuggingFace", "origin": "France", "flag": "\ud83c\uddeb\ud83c\uddf7", "source": null, "capabilities": ["tools"] },
   { "library": "zephyr", "organization": "HuggingFace", "origin": "France", "flag": "\ud83c\uddeb\ud83c\uddf7", "source": null, "pulls": "1.2M" },
