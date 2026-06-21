@@ -127,8 +127,12 @@ As a Buyer I want to specify a target context length (e.g. 32k) so the recommend
 **US-23 — Best coding model for my GPU** `done`
 As a Vibe Coder I want to see which coding models run on my GPU, ranked by the balance of speed and context relevant to agentic coding — so I can pick without manual comparison.
 
-Implemented: all models with `tools` capability or `coding_role` set are shown, ranked by
-`speed×0.5 + context×0.3 + quality×0.2`. Agent-labelled models (devstral family) surface first.
+Implemented: only curated coding models are shown — those with a `coding_role` (`agent`|`code`|`fim`).
+The generic `tools` capability is no longer used for inclusion (it pulled in general chat models —
+llama, mistral, mixtral … — while excluding real code models like codellama/codegemma/starcoder2).
+Three ranked sections (Agents → Code → FIM), each by `speed×0.5 + context×0.3 + quality×0.2`. The
+top agent is marked `★ recommended`. Sizes that don't fit the GPU are hidden; each row shows the
+origin flag. See SPEC §13.3–13.5.
 
 **US-24 — Editor config output** `done`
 As a Vibe Coder I want a ready-to-paste provider config for my editor so I can wire up my local model without digging through settings docs.

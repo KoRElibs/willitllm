@@ -15,10 +15,13 @@ function getLibMeta(m) {
   return LIB_META_C[m.ollama_tag.split(':')[0]] || {};
 }
 
+// A model belongs on the coder page only if it has a curated coding_role.
+// The generic `tools` capability is NOT used — it lets in general chat models
+// (llama, mistral, mixtral, …) that merely support function calling while
+// excluding real code models (codellama, codegemma, starcoder2) that lack the badge.
+const CODING_ROLES = ['agent', 'code', 'fim'];
 function isCodingModel(lib) {
-  return (lib.capabilities || []).includes('tools')
-    || lib.coding_role === 'agent'
-    || lib.coding_role === 'fim';
+  return CODING_ROLES.includes(lib.coding_role);
 }
 
 // Escape HTML special chars for safe insertion into innerHTML <pre> content
@@ -115,6 +118,7 @@ function buildGpuSelector() {
 
 function buildEntries(vramGB, flashOk) {
   const agent = [];
+  const code  = [];
   const fim   = [];
 
   MODELS.forEach(model => {
@@ -125,26 +129,27 @@ function buildEntries(vramGB, flashOk) {
     if (!variant) return;
 
     const weightsGB = variant.weights_gb;
-    const fits      = weightsGB < vramGB - OVERHEAD_GB;
-    const bpe       = fits ? autoKvBpe(model, vramGB, weightsGB, null, flashOk) : 2;
+    if (weightsGB >= vramGB - OVERHEAD_GB) return;   // hide sizes that don't fit
+
+    const bpe       = autoKvBpe(model, vramGB, weightsGB, null, flashOk);
     const ctx       = calcMaxContext(model, vramGB, bpe, weightsGB);
     const quantInfo = QUANT_INFO[variant.quantization];
-    const speedEsts = fits ? calcSpeedEstimates(model, variant, vramGB, quantInfo, ctx.maxCtx, ctx.kvCacheGB, bpe) : null;
-    const score     = fits && speedEsts
-      ? codingRank(speedEsts.genLo, ctx.maxCtx, quantInfo?.quality)
-      : -1;
+    const speedEsts = calcSpeedEstimates(model, variant, vramGB, quantInfo, ctx.maxCtx, ctx.kvCacheGB, bpe);
+    const score     = speedEsts ? codingRank(speedEsts.genLo, ctx.maxCtx, quantInfo?.quality) : 0;
+    const ctxF16    = calcMaxContext(model, vramGB, 2, weightsGB);
 
-    const ctxF16 = fits ? calcMaxContext(model, vramGB, 2, weightsGB) : null;
-    const entry = { model, lib, variant, weightsGB, bpe, ctx, ctxF16, fits, speedEsts, quantInfo, score };
-    if (lib.coding_role === 'fim') fim.push(entry);
-    else agent.push(entry);
+    const entry = { model, lib, variant, weightsGB, bpe, ctx, ctxF16, fits: true, speedEsts, quantInfo, score };
+    const bucket = lib.coding_role === 'fim'  ? fim
+                 : lib.coding_role === 'code' ? code
+                 : agent;
+    bucket.push(entry);
   });
 
-  // Fitting models ranked by score desc; OOM models sink to the bottom
   const sortFn = (a, b) => b.score - a.score;
   agent.sort(sortFn);
+  code.sort(sortFn);
   fim.sort(sortFn);
-  return { agent, fim };
+  return { agent, code, fim };
 }
 
 // ── Config HTML ───────────────────────────────────────────────────────────────
@@ -262,44 +267,48 @@ function makeConfigHtml(entry) {
 // ── Row building ──────────────────────────────────────────────────────────────
 
 function makeRow(entry) {
-  const { model, lib, variant, fits, speedEsts, ctx, bpe, score } = entry;
+  const { model, lib, variant, speedEsts, ctx, score, recommended } = entry;
   const [library] = model.ollama_tag.split(':');
   const runTag    = `${library}:${variant.tag}`;
 
-  const role    = lib.coding_role === 'agent' ? 'AGENT' : lib.coding_role === 'fim' ? 'FIM' : 'TOOLS';
-  const roleCls = lib.coding_role === 'agent' ? 'badge-agent' : lib.coding_role === 'fim' ? 'badge-fim' : 'badge-tools';
+  const role    = lib.coding_role === 'agent' ? 'AGENT' : lib.coding_role === 'code' ? 'CODE' : 'FIM';
+  const roleCls = lib.coding_role === 'agent' ? 'badge-agent' : lib.coding_role === 'code' ? 'badge-code' : 'badge-fim';
   const roleTip = lib.coding_role === 'agent'
     ? 'Purpose-built for tool-calling agent loops (Cline, Continue, Aider). Multi-step planning, file edits, shell commands.'
-    : lib.coding_role === 'fim'
-    ? 'Fill-in-the-middle autocomplete — not for agent loops. Uses special FIM tokens; works in IDE autocomplete plugins.'
-    : 'General tools model — capable of tool calling but not specifically tuned for coding agent workflows.';
+    : lib.coding_role === 'code'
+    ? 'Code-specialised model — trained on code for completion and edits. Good in IDE assistants; not tuned for autonomous tool-calling loops.'
+    : 'Fill-in-the-middle autocomplete — not for agent loops. Uses special FIM tokens; works in IDE autocomplete plugins.';
 
-  const speedText = fits && speedEsts ? fmtSpeed(speedEsts.genLo, speedEsts.genHi) : '—';
-  const ctxText   = fits ? fmtCtxCoding(ctx.maxCtx) : '✗ OOM';
-  const ctxTip    = fits
-    ? `${ctx.maxCtx.toLocaleString()} tokens · ~${Math.round(ctx.maxCtx / 3).toLocaleString()} lines · ~${Math.round(ctx.maxCtx / 1000)} avg files`
-    : 'Does not fit in selected VRAM';
-  const barPct    = fits ? Math.round(Math.max(0, score) * 100) : 0;
+  const flag      = flagFor(lib.origin);
+  const speedText = speedEsts ? fmtSpeed(speedEsts.genLo, speedEsts.genHi) : '—';
+  const ctxText   = fmtCtxCoding(ctx.maxCtx);
+  const ctxTip    = `${ctx.maxCtx.toLocaleString()} tokens · ~${Math.round(ctx.maxCtx / 3).toLocaleString()} lines · ~${Math.round(ctx.maxCtx / 1000)} avg files`;
+  const barPct    = Math.round(Math.max(0, score) * 100);
 
   const row = document.createElement('div');
-  row.className = 'coder-row' + (fits ? '' : ' coder-row-oom');
+  row.className = 'coder-row' + (recommended ? ' coder-row-recommended' : '');
+
+  const recTag = recommended
+    ? '<span class="rec-tag" data-tip="Top-ranked agent model for this GPU — the recommended starting point.">★ recommended</span>'
+    : '';
 
   row.innerHTML = `
     <div class="coder-row-header">
       <span class="coder-badge ${roleCls}" data-tip="${roleTip}">${role}</span>
+      ${recTag}
+      <span class="coder-flag" data-tip="${esc(lib.organization || '')}${lib.origin ? ' · ' + esc(lib.origin) : ''}">${flag}</span>
       <span class="coder-name">${esc(runTag)}</span>
       <span class="coder-speed" data-tip="Est. generation speed (lower bound). Speed matters most in agentic loops — tool calls chain sequentially.">${speedText}</span>
       <span class="coder-ctx" data-tip="${ctxTip}">${ctxText}</span>
       <div class="coder-score-bar" data-tip="Coding rank: 50% speed + 30% context + 20% quality"><div class="coder-score-fill" style="width:${barPct}%"></div></div>
     </div>
     <div class="coder-config" hidden>
-      ${fits ? makeConfigHtml(entry) : '<div class="config-oom">Model does not fit in selected VRAM.</div>'}
+      ${makeConfigHtml(entry)}
     </div>
   `;
 
   // Toggle config panel on header click
   row.querySelector('.coder-row-header').addEventListener('click', () => {
-    if (!fits) return;
     const config  = row.querySelector('.coder-config');
     const wasOpen = !config.hidden;
     document.querySelectorAll('.coder-config').forEach(c => c.hidden = true);
@@ -359,23 +368,35 @@ function makeRow(entry) {
 
 // ── List render ───────────────────────────────────────────────────────────────
 
+function sectionDivider(text) {
+  const d = document.createElement('div');
+  d.className = 'fim-divider';
+  d.innerHTML = `<span>${text}</span>`;
+  return d;
+}
+
 function renderList(vramGB) {
-  const { agent, fim } = buildEntries(vramGB, getFlashOk());
+  const { agent, code, fim } = buildEntries(vramGB, getFlashOk());
   const list = document.getElementById('coderList');
   list.innerHTML = '';
 
-  if (!agent.length && !fim.length) {
-    list.innerHTML = '<div class="no-model">No coding models found in data.</div>';
+  if (!agent.length && !code.length && !fim.length) {
+    list.innerHTML = '<div class="no-model">No coding models fit this GPU. Try a larger card.</div>';
     return;
   }
 
-  agent.forEach(e => list.appendChild(makeRow(e)));
+  if (agent.length) {
+    agent[0].recommended = true;   // top-ranked agent = recommended starting point
+    agent.forEach(e => list.appendChild(makeRow(e)));
+  }
+
+  if (code.length) {
+    list.appendChild(sectionDivider('Code models — completion &amp; edits, not agent loops'));
+    code.forEach(e => list.appendChild(makeRow(e)));
+  }
 
   if (fim.length) {
-    const divider = document.createElement('div');
-    divider.className = 'fim-divider';
-    divider.innerHTML = '<span>Autocomplete / fill-in-the-middle — not for agent loops</span>';
-    list.appendChild(divider);
+    list.appendChild(sectionDivider('Autocomplete / fill-in-the-middle — not for agent loops'));
     fim.forEach(e => list.appendChild(makeRow(e)));
   }
 }

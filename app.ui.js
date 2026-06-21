@@ -308,7 +308,7 @@ function buildModelCombobox() {
     const info  = LIB_META[library];
     const caps  = info?.capabilities || [];
     if (caps.includes('embedding')) return;   // embedding models are not for chat — hide entirely
-    const flag  = info?.flag || (info?.origin ? '🌍' : '👥');
+    const flag  = flagFor(info?.origin);
     const label = `${flag} ${m.ollama_tag}`;
     const item  = document.createElement('div');
     item.className     = 'combobox-item';

@@ -438,6 +438,9 @@ def write_libraries_js(libs: list[dict]) -> None:
         "//                  Omitted when empty. Do NOT set manually — run --capabilities to refresh.\n"
         "// pulls         — download count string from ollama.com/library x-test-pull-count.\n"
         "//                  Omitted when not available. Do NOT set manually.\n"
+        "// coding_role   — agent | code | fim. Curated by hand (human judgement); drives the\n"
+        "//                  coder.html model list. Preserved across scraper runs. Omit for non-coding libs.\n"
+        "// (flag emoji lives in data.flags.js, keyed by `origin` — not stored per-library.)\n"
     )
 
     def _entry(lib: dict) -> str:
@@ -446,13 +449,15 @@ def write_libraries_js(libs: list[dict]) -> None:
             ("library",      lib["library"]),
             ("organization", lib.get("organization")),
             ("origin",       lib.get("origin")),
-            ("flag",         lib.get("flag")),
             ("source",       lib.get("source")),
         ]
         caps  = lib.get("capabilities") or []
         pulls = lib.get("pulls")
+        role  = lib.get("coding_role")
         if caps:
             fields.append(("capabilities", caps))
+        if role:                                   # hand-curated; must survive rewrites
+            fields.append(("coding_role", role))
         if pulls:
             fields.append(("pulls", pulls))
 

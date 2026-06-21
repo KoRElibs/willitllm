@@ -250,7 +250,7 @@ function renderDetails(model, libInfo, variant, weightsGB, quantization, bytesPe
 
   const originEl = document.getElementById('detailOrigin');
   if (libInfo.origin) {
-    originEl.textContent = `${libInfo.flag || ''} ${libInfo.origin}`.trim();
+    originEl.textContent = `${flagFor(libInfo.origin)} ${libInfo.origin}`.trim();
     originEl.className   = 'detail-val';
   } else {
     originEl.textContent = 'community project';

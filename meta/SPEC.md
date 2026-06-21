@@ -45,6 +45,7 @@ data.gpus.js             — GPU database (const GPUS)
 data.libraries.js        — model library metadata (const LIBRARIES)
 data.quantizations.js    — quantization quality/speed ratings (const QUANT_INFO)
 data.kv-cache.js         — KV cache precision options (const KV_CACHE)
+data.flags.js            — origin → flag emoji map + flagFor() helper (const FLAGS)
 data.models.js           — model architecture + variant data (const MODELS)
 app.calc.js              — pure calculation and formatting helpers (shared)
 app.render.js            — DOM rendering functions (index.html only)
@@ -141,9 +142,9 @@ const LIBRARIES = [
     "library":      "llama3.2",            // ollama library name (prefix before the colon)
     "organization": "Meta",                // company/group that made it
     "origin":       "USA",                 // country/region — human-readable label
-    "flag":         "🇺🇸",                 // flag emoji — used directly in UI (model group headers)
     "source":       null,                  // optional URL to announcement/docs
     "capabilities": ["tools"],             // optional — capability badges from ollama.com/library
+    "coding_role":  "agent",               // optional — agent | code | fim (coder.html, see §13.3)
     "pulls":        "71.6M",              // optional — download count from ollama.com/library
   },
   ...
@@ -151,9 +152,10 @@ const LIBRARIES = [
 ```
 
 Keys are quoted (valid JSON) because this file is also parsed by the Python scraper.
-`flag` is an explicit emoji field used directly in model dropdown group headers and the detail
-panel. `origin` is a human-readable label shown in the model info table. If `origin` is null,
-the model is shown as "community project" in the detail panel and gets a 👥 group header.
+`origin` is a human-readable label shown in the model info table. If `origin` is null, the model is
+shown as "community project" in the detail panel and gets a 👥 group header. The **flag emoji is not
+stored here** — it is derived from `origin` via `FLAGS` / `flagFor()` in `data.flags.js` (single
+source of truth; see §3.6), so adding a model needs only `origin`.
 
 `capabilities` is sourced exclusively from the `x-test-capability` elements on `ollama.com/library`.
 Possible values: `tools` | `vision` | `thinking` | `embedding` | `audio`. Omit the field when empty.
@@ -234,6 +236,19 @@ the KV cache VRAM formula. The KV cache selector in the UI is populated from thi
 - `prefill_eff` is intentionally narrow and low (0.04–0.30) because single-user batch-1
   inference rarely saturates tensor cores — real efficiency varies widely with context length
 - `gen_eff` is higher (0.35–0.70) because generation is a simpler memory streaming pattern
+
+### 3.6 `FLAGS` — `data.flags.js`
+
+```js
+const FLAGS = { 'USA': '🇺🇸', 'France': '🇫🇷', 'Canada': '🇨🇦', /* … */ };
+function flagFor(origin) { … }   // FLAGS[origin] | 🌍 (unmapped) | 👥 (null/empty)
+```
+
+Single source of truth for the flag emoji shown next to a model's origin. Keyed by the `origin`
+string in `LIBRARIES`, so libraries store only `origin` and never a redundant per-entry emoji.
+Loaded by both pages (after `data.libraries.js`). All consumers — the model combobox group rows
+(`app.ui.js`), the detail-panel origin row (`app.render.js`), and the coder row (`coder.js`) — call
+`flagFor(lib.origin)`.
 
 ---
 
@@ -736,6 +751,7 @@ models ranked by agentic loop performance, with ready-to-paste editor configs.
 ```
 data.gpus.js          — GPU selector (shared)
 data.libraries.js     — coding_role field consumed here
+data.flags.js         — flagFor(origin) for the row flag (shared)
 data.quantizations.js — gen_eff, quality, speed ratings (shared)
 data.models.js        — weights, context, architecture (shared)
 app.calc.js           — calcMaxContext(), calcSpeedEstimates(), autoKvBpe() (shared)
@@ -753,36 +769,40 @@ coder.js              — all coder logic: GPU selector, ranking, row building, 
 
 ### 13.3 `coding_role` field in `LIBRARIES`
 
-One optional field added to `data.libraries.js`:
+One optional, hand-curated field in `data.libraries.js` — it is the **sole** signal for coder-page
+inclusion (the generic `tools` capability is deliberately NOT used):
 
 ```js
-"coding_role": "agent"   // "agent" | "fim" — omit for general-purpose models
+"coding_role": "agent"   // "agent" | "code" | "fim" — omit for everything else
 ```
 
 - `"agent"` — purpose-built for tool-calling agent loops (devstral, devstral-small-2)
-- `"fim"` — fill-in-the-middle autocomplete, not for agent loops (codestral)
-- omitted — general model with tools capability; capable but not specialised
+- `"code"` — code-specialised model for completion/edits, not autonomous loops (codellama, codegemma)
+- `"fim"` — fill-in-the-middle autocomplete, not for agent loops (codestral, starcoder2)
+- omitted — not shown on the coder page at all (includes general chat models that merely have a
+  `tools` badge — llama, mistral, mixtral, command-r, … — they are not coding models)
 
-This cannot be derived from `capabilities` alone — codestral has no tools badge but is a coding
-model of a different kind. Do **not** set this automatically with the scraper — it requires human
-judgement about the model's intended workflow.
+This cannot be derived from `capabilities`: the `tools` badge lets in general chat models while
+real code models (codellama, codegemma, starcoder2) carry no badge. Do **not** set automatically
+with the scraper — it requires human judgement. The scraper **preserves** `coding_role` across
+rewrites but never sets it.
 
 ### 13.4 Model filtering
 
-The coder page shows models where:
-- `library.capabilities` includes `"tools"`, **or**
-- `library.coding_role` is set (`"agent"` or `"fim"`)
+The coder page shows a model only when its library has a `coding_role` (`agent` | `code` | `fim`).
+Sizes that do not fit the selected VRAM are **hidden entirely**; every fitting size is shown (no
+family collapse). No variant selector — only the default variant (index 0) is used.
 
-Embedding models are always excluded (same rule as index.html). Models that do not fit in the
-selected VRAM are shown at the bottom, muted, with `✗ OOM` instead of context. No variant
-selector — only the default variant (index 0) is used.
+Rows are grouped into three sections in order, each its own ranked block:
+1. **Agents** — top section. The top-ranked agent is flagged `★ recommended`.
+2. **Code models** — under a divider ("Code models — completion & edits").
+3. **FIM** — under a divider ("Autocomplete / fill-in-the-middle").
 
-FIM models are shown in a separate section below the agent/tools list, separated by a labelled
-divider that explains they are autocomplete models, not agentic.
+Each row shows the origin **flag** (`flagFor(lib.origin)`, see §3.6) next to the model name.
 
 ### 13.5 Ranking
 
-Agent and general-tools models are ranked by a weighted coding score:
+Models within each section are ranked by a weighted coding score:
 
 ```
 speed_norm  = min(1, gen_lo / 30)       // normalised at 30 t/s
@@ -798,7 +818,7 @@ Context second (0.3) — seeing more of the codebase is the primary quality leve
 
 `coding_score` is not displayed to the user. It drives sort order and the score bar width (0–100%).
 
-OOM models are assigned `score = -1` and sink below all fitting models.
+Non-fitting sizes are not ranked — they are excluded from the list entirely (§13.4).
 
 ### 13.6 Context in coding units
 

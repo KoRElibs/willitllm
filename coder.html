@@ -56,10 +56,11 @@
     <h3>Coding rank</h3>
     <p>Models are ranked by a weighted score: <strong>50% generation speed</strong> (most important in sequential agent loops), <strong>30% context</strong> (more of the codebase visible at once), and <strong>20% quality</strong> (quantization sharpness). This is a heuristic — not a benchmark.</p>
 
-    <h3>AGENT vs TOOLS vs FIM</h3>
-    <p><strong>AGENT</strong> — purpose-built for tool-calling agent loops (Devstral, Devstral-small). Best for Cline / Continue agentic workflows.</p>
-    <p><strong>TOOLS</strong> — general-purpose models with tool-calling capability. Capable but not specifically tuned for coding agents.</p>
-    <p><strong>FIM</strong> — fill-in-the-middle models (Codestral). For IDE autocomplete, not agent loops.</p>
+    <h3>AGENT vs CODE vs FIM</h3>
+    <p><strong>AGENT</strong> — purpose-built for tool-calling agent loops (Devstral, Devstral-small). Best for Cline / Continue agentic workflows. The top-ranked agent is marked ★ recommended.</p>
+    <p><strong>CODE</strong> — code-specialised models (CodeLlama, CodeGemma) for completion and edits in IDE assistants; not tuned for autonomous tool-calling loops.</p>
+    <p><strong>FIM</strong> — fill-in-the-middle models (Codestral, StarCoder2). For IDE autocomplete, not agent loops.</p>
+    <p>General chat models that merely support tool-calling are not shown — only curated coding models appear here.</p>
 
     <h3>AI-generated content disclosure</h3>
     <p>Organisation names, country of origin, and role classifications were inferred by AI and have <strong>not been manually verified</strong>. This tool uses AI-assisted data processing in accordance with EU AI Act transparency requirements (Article 13).</p>
@@ -67,12 +68,13 @@
 </div>
 <div id="tooltip" class="tooltip" hidden></div>
 
-<script src="data.gpus.js?v=7"></script>
-<script src="data.libraries.js?v=7"></script>
-<script src="data.quantizations.js?v=7"></script>
-<script src="data.models.js?v=7"></script>
-<script src="app.calc.js?v=7"></script>
-<script src="coder.js?v=7"></script>
+<script src="data.gpus.js?v=8"></script>
+<script src="data.libraries.js?v=8"></script>
+<script src="data.flags.js?v=8"></script>
+<script src="data.quantizations.js?v=8"></script>
+<script src="data.models.js?v=8"></script>
+<script src="app.calc.js?v=8"></script>
+<script src="coder.js?v=8"></script>
 <script>
   // Info sheet wiring (same as index.html)
   const _open  = document.getElementById('infoSheetOpen');
