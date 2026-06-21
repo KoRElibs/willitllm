@@ -8,6 +8,42 @@ Keep this file updated on every change — see `SPEC.md §12`.
 
 ## Open
 
+**BUG-18 — Generation-speed range too tight for small Q8_0 models at low context** `open`
+llama3.2:1b (Q8_0) on a GTX 1660 Super measured ~78.5 t/s at 27k where the formula's upper bound
+is 78 — and runs near peak bandwidth at low context (effective gen_eff ~0.98 vs the Q8_0 `gen_hi`
+of 0.90). Very small models reach near-100% bandwidth utilisation, exceeding the quant's `gen_hi`.
+Low impact (it under-promises speed, the safe direction). Candidate fix: raise Q8_0 `gen_hi`
+0.90 → ~0.95. Not changed pending more small-model data points.
+
+**BUG-17 — Super-linear decode collapse on very large dense models at extreme context** `open`
+For large *full-attention* dense models at very long context the measured generation speed falls
+faster than the (now context-aware) formula predicts: devstral-small-2:24b at 200k measured ~7 t/s
+where the formula still predicts ~18–23. The added decode attention-compute term (BUG-16 fix)
+captures most of the decline for ≤115k but a residual super-linear effect remains beyond that on
+24B-class dense models. Documented limitation; modelling it would need a quadratic/empirical term
+and more data. Sliding-window models (Gemma) are unaffected.
+
+**BUG-16 — Generation-speed formula ignored attention compute; over-predicted at long context** `fixed`
+The decode estimate was `bandwidth × gen_eff / (active_weights + kv_cache)` — purely memory-bound.
+It over-predicted generation speed for full-attention models as context grew (e.g. devstral:24b on
+RTX 3090: the predicted range missed the measured 19.6 t/s at 112k, sitting entirely above it). Root
+cause: at batch-1 decode there is also a per-token attention-compute cost that grows with the
+attended context. Fixed by adding a serial attention-compute term to `calcSpeedEstimates`
+(`gen = 1/(t_mem + t_attn)`), made general across architectures by capping the attended context at
+each model's `sliding_window` (Gemma 2/3/4) — so sliding-window models stay flat while full-attention
+models decline. New `sliding_window` field added to `data.models.js` (16 Gemma entries) and the
+scraper now captures `{arch}.attention.sliding_window`. Calibrated `DECODE_ATTN_EFF = 0.015` against
+RTX 3090 + GTX 1660 Super full-context sweeps (`meta/benchmarks/`); high-context bracketing error
+dropped from ~32% to ~15% RMS. The same `attn_ctx` cap was applied to the prefill quadratic term.
+
+**BUG-11b — Recommended context could spill to system RAM (overhead under-estimated)** `fixed`
+willitllm recommended a context that did not fit: llama3.2:3b on a GTX 1660 Super (6 GB) was told
+~29k fit, but 28k spilled to system RAM (generation collapsed to 1.6 t/s). Root cause: rated VRAM
+overstates addressable VRAM (driver/system reserve ~4–6%) and runtime overhead exceeded the fixed
+0.5 GB. Fixed by raising `OVERHEAD_GB` 0.5 → 0.8 (within SPEC's documented range). This reduces but
+does not fully eliminate boundary-spill risk on the smallest cards, where the unusable fraction is
+proportionally largest — see SPEC §11 note on modelling usable VRAM as a fraction.
+
 **BUG-15 — render() used stale model variable after auto-selection** `fixed`
 `render()` captured `modelIdx` and `model` at the top before calling `markModelOptions()`. When `markModelOptions` → `markComboboxItems` auto-selected a model and dispatched a synchronous `change` event, a second `render()` ran correctly — but the first `render()` then resumed with its stale `model = undefined`, hiding `#results` again. Fixed by moving the `modelIdx`/`model` reads to after `markModelOptions()` so they reflect any auto-selection that occurred.
 

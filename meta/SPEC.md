@@ -179,6 +179,9 @@ One entry per canonical ollama tag (e.g. `llama3.1:8b`):
   "embedding_length": 4096,         // embedding dimension
   "key_length":     128,            // key vector size per head
   "value_length":   128,            // optional — value vector size; defaults to key_length
+  "sliding_window": 1024,           // optional — sliding-window attention span (Gemma 2/3/4).
+                                    //   Absent = full global attention. Caps the attended
+                                    //   context in the decode/prefill attention-compute terms.
   "variants": [
     { "tag": "8b",      "quantization": "Q4_K_M", "weights_gb": 4.9, "group": "(default)" },
     { "tag": "8b-q8_0", "quantization": "Q8_0",   "weights_gb": 8.5, "group": "(default)" },
@@ -241,10 +244,15 @@ This is the heart of the tool. Implemented in `calcMaxContext()`.
 ### 4.1 Constants
 
 ```js
-const OVERHEAD_GB   = 0.5;  // fixed reservation for CUDA context, driver, ollama runtime
-const SAFETY_FACTOR = 0.9;  // 10% margin for overhead estimation uncertainty (0.5–1.0 GB in practice)
-const CTX_ROUND     = 128;  // round down to nearest 128 (natural head-dimension granularity)
+const OVERHEAD_GB    = 0.8;  // fixed reservation for CUDA context, driver, ollama runtime + driver-reserved VRAM
+const SAFETY_FACTOR  = 0.9;  // 10% margin for overhead estimation uncertainty (0.5–1.0 GB in practice)
+const CTX_ROUND      = 128;  // round down to nearest 128 (natural head-dimension granularity)
+const DECODE_ATTN_EFF = 0.015; // batch-1 decode attention: fraction of fp16 TFLOPS reached per token
 ```
+
+`OVERHEAD_GB` was raised 0.5 → 0.8 after a GTX 1660 Super spilled to system RAM at a context
+the 0.5 value predicted would fit: rated VRAM overstates usable VRAM (driver/system reserve
+~4–6%) and runtime overhead alone can reach ~0.8 GB. See `meta/knowledge/benchmark-rtx3090-devstral.md`.
 
 ### 4.2 KV cache encoding
 
@@ -306,7 +314,7 @@ kv_cache_gb = (max_ctx × bytes_per_token) / 1024³
 free_gb = vram_gb − weights_gb − kv_cache_gb
 ```
 
-Note: `free_gb` includes the 0.5 GB overhead reservation (it is subtracted from available when
+Note: `free_gb` includes the 0.8 GB overhead reservation (it is subtracted from available when
 computing raw_max_tokens, but not added back to used). The "free" segment therefore includes the
 overhead in its display.
 
@@ -331,18 +339,45 @@ have no `gpuIdx`. The function returns:
 - **Generic tier**: `[min, max]` across all `GPUS` entries at that `vramGB`. `isExact = false`.
   A note "Select your exact GPU for a tighter estimate" is shown.
 
-### 5.2 Generation speed (decode) — memory-bandwidth bound
+### 5.2 Generation speed (decode) — two serial costs per token
 
-At batch size 1 (standard for ollama), every generated token requires loading all active model
-weights from VRAM once. This makes generation almost entirely memory-bandwidth bound.
+At batch size 1 (standard for ollama), each generated token incurs two costs in series:
+
+1. **Memory streaming** (bandwidth-bound) — read all active weights once *and* read the full
+   KV cache once for attention.
+2. **Attention compute** (compute-bound) — the per-token QKᵀ/AV GEMV over the attended context.
+   Negligible at small context (weights dominate); grows with context and becomes the dominant
+   cost for full-attention models at 100k+ tokens. This term is what reproduces the measured
+   efficiency collapse of large dense models (e.g. devstral:24b: ~0.76 → ~0.37 effective gen_eff
+   from 1k → 112k tokens) instead of the old weights-only formula over-predicting at long context.
 
 ```
 active_weights_gb = variant.weights_gb × (params_b_active / params_b)   // MoE only; 1.0 for dense
-gen_lo = bandwidth_lo × gen_eff[0] / active_weights_gb   (tokens/sec)
-gen_hi = bandwidth_hi × gen_eff[1] / active_weights_gb
+attn_ctx          = min(maxCtx, sliding_window ?? ∞)                    // sliding-window aware
+attn_flops        = 2 × attn_ctx × block_count × head_count_kv × (key_length + value_length)
+
+t_mem  = (active_weights_gb + kv_cache_gb) / (bandwidth × gen_eff)
+t_attn = attn_flops / (tflops_fp16 × 1e12 × DECODE_ATTN_EFF)
+gen    = 1 / (t_mem + t_attn)                                           (tokens/sec)
 ```
 
-`gen_eff` is taken from `QUANT_INFO[quantization].gen_eff`. Range: 0.35–0.70 depending on quant.
+The range is produced by pairing the fast/slow ends: `gen_hi` uses `bandwidth_hi`, `gen_eff[1]`,
+`tflops_hi`; `gen_lo` uses `bandwidth_lo`, `gen_eff[0]`, `tflops_lo`. `kv_cache_gb` is passed in
+from `calcMaxContext` (the KV memory at the recommended context). `gen_eff` is taken from
+`QUANT_INFO[quantization].gen_eff`.
+
+**Sliding-window attention** (`sliding_window` set, Gemma 2/3/4): most layers attend only to a
+fixed window (512–4096 tokens), so `attn_ctx` is capped and the attention term stays small —
+matching the measured near-flat generation speed of Gemma models across context. Capping at the
+window (rather than a per-model constant) is what makes the attention term **general across
+architectures**: full-attention models (Llama, Mistral/devstral, codellama) decline with context;
+sliding-window models do not, and the same formula captures both.
+
+`DECODE_ATTN_EFF = 0.015` was calibrated against full-context sweeps on an RTX 3090 (flash, q4_0 KV)
+and a GTX 1660 Super (no-flash, f16 KV) covering devstral:24b, gemma4:e4b, llama3.2:1b/3b,
+gemma3:4b, codellama:13b. Adding the term cut high-context bracketing error from ~32% to ~15% RMS.
+A residual super-linear collapse remains for very large dense models at extreme context
+(devstral-small-2:24b at 200k still over-predicts) — documented gap, not modelled.
 
 ### 5.3 Processing speed (prefill) — compute bound
 
@@ -354,15 +389,17 @@ fold in any dequantisation overhead difference.
 FLOPs per token has two components:
 
 - **Linear** (`2 × params_active`): MLP and projection layers — constant regardless of context.
-- **Quadratic** (`2 × context × block_count × head_count_kv × (key_length + value_length)`):
+- **Quadratic** (`2 × attn_ctx × block_count × head_count_kv × (key_length + value_length)`):
   attention QK^T and AV operations — grows with context length, dominates at 100k+ tokens.
-  Uses KV head dimensions (same fields as the KV cache formula); slightly conservative for
-  full MHA models, correct for GQA.
+  Uses `attn_ctx = min(maxCtx, sliding_window ?? ∞)` (same sliding-window cap as decode) and KV
+  head dimensions (same fields as the KV cache formula); slightly conservative for full MHA
+  models, correct for GQA.
 
 ```
 params_active    = (model.params_b_active || model.params_b) × 1e9
+attn_ctx         = min(maxCtx, sliding_window ?? ∞)
 kv_dims_per_tok  = block_count × head_count_kv × (key_length + value_length)
-flops_per_token  = 2 × params_active  +  2 × maxCtx × kv_dims_per_tok
+flops_per_token  = 2 × params_active  +  2 × attn_ctx × kv_dims_per_tok
 
 prefill_lo = tflops_lo × 1e12 × prefill_eff[0] / flops_per_token   (tokens/sec)
 prefill_hi = tflops_hi × 1e12 × prefill_eff[1] / flops_per_token
@@ -478,7 +515,7 @@ Segment widths are percentages of total VRAM. Each segment shows its GB value wh
 Bar segment classes:
 - `seg-model` — blue, or `seg-overflow` (dark red) when OOM
 - `seg-context` — dark green, or `seg-overflow` when OOM
-- `segOverhead` — muted (fixed ~0.5 GB overhead reservation)
+- `segOverhead` — muted (fixed ~0.8 GB overhead reservation)
 - `segSafety` — muted (VRAM held back by the 10% safety factor)
 - `segFree` — muted (genuinely free; only >0 when arch-limited)
 
@@ -649,19 +686,22 @@ trivially simple (upload files to any static host) and eliminates dependency man
 
 **10% safety factor for context** — ollama's `num_ctx` accepts any integer; powers-of-2 are
 not required. We apply `SAFETY_FACTOR = 0.9` before rounding down to the nearest `CTX_ROUND = 128`
-tokens. The margin exists because `OVERHEAD_GB = 0.5` is a rough estimate; actual driver and
-runtime overhead can reach 0.7–1.0 GB. Setting `num_ctx` to the raw theoretical maximum risks
-OOM — the 10% margin keeps the recommended value safely within budget. Rounding to 128 keeps
-`num_ctx` clean while wasting less than 1% of available context.
+tokens. The margin exists because `OVERHEAD_GB = 0.8` is a rough estimate; actual driver and
+runtime overhead plus driver-reserved VRAM can reach 0.8–1.2 GB. Setting `num_ctx` to the raw
+theoretical maximum risks OOM — the 10% margin keeps the recommended value safely within budget.
+Rounding to 128 keeps `num_ctx` clean while wasting less than 1% of available context.
 
 **KV cache auto-maximises context** — when the user selects a more efficient KV encoding (e.g.
 q4_0), the context window scales up to use the freed VRAM, up to the model's architectural limit.
 The bar may look identical between encodings when the efficiency gain exactly fills to the arch
 limit — this is correct behaviour, not a display bug.
 
-**0.5 GB overhead** — a fixed reservation for CUDA context, driver overhead, and ollama runtime.
-This is a conservative estimate; actual overhead varies by GPU and system but 0.5 GB is a
-reasonable floor.
+**0.8 GB overhead** — a fixed reservation for CUDA context, driver overhead, ollama runtime, and
+driver-reserved VRAM (rated VRAM is ~4–6% larger than what is actually addressable). Raised from
+0.5 GB after a GTX 1660 Super spilled to system RAM at a context 0.5 GB predicted would fit. Actual
+overhead varies by GPU/system; 0.8 GB is a safer floor. On small cards the unusable fraction is
+proportionally larger, so a single fixed value still slightly under-protects the smallest GPUs —
+a future refinement could model usable VRAM as a fraction of rated.
 
 **Scores are heuristic** — the four-star ratings are opinionated approximations to guide
 non-expert users. They are not benchmarks.

@@ -132,7 +132,7 @@ _FIELD_ORDER = [
     "ollama_tag", "moe",
     "context_length", "params_b", "params_b_active",
     "block_count", "head_count", "head_count_kv",
-    "embedding_length", "key_length", "value_length",
+    "embedding_length", "key_length", "value_length", "sliding_window",
     "variants",
 ]
 
@@ -313,6 +313,13 @@ def _parse_blob(html: str) -> dict:
     vl = iv("attention.value_length")
     if vl:
         r["value_length"] = vl
+
+    # Sliding-window attention (Gemma 2/3/4): caps the context each token attends to,
+    # which keeps generation speed nearly flat with context. Drives the decode
+    # attention-compute term in app.calc.js. Absent = full global attention.
+    sw = iv("attention.sliding_window")
+    if sw:
+        r["sliding_window"] = sw
 
     qt = pairs.get("general.file_type")
     if qt:

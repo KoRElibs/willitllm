@@ -101,6 +101,9 @@ As an Optimizer I want one-click nudge buttons that jump to the next faster/shar
 **US-18 — Speed in human terms** `done`
 As an Optimizer I want speed shown in words/second and pages of context rather than raw tokens/second so the numbers are meaningful without mental conversion.
 
+**US-28 — Context-aware, architecture-aware speed estimates** `done`
+As an Optimizer I want generation-speed estimates that account for how speed changes with context length and model architecture, so the numbers stay realistic at long context. Decode is modelled as memory streaming + a per-token attention-compute term, with the attended context capped at each model's `sliding_window` (Gemma 2/3/4 stay flat with context; full-attention models slow down). Calibrated against RTX 3090 + GTX 1660 Super benchmark sweeps in `meta/benchmarks/`. Known gaps tracked as BUG-17 (super-linear collapse on 24B-class dense models at extreme context) and BUG-18 (tight range for tiny Q8_0 models).
+
 **US-19 — Geek mode** `done`
 As an Optimizer I want to toggle detailed views (VRAM bar, model/GPU/formula tabs) on and off so the page stays clean for casual use but the full breakdown is one click away. Preference persists via localStorage. Default: off.
 

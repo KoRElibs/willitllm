@@ -7,9 +7,14 @@
 // Globals:     GPUS, QUANT_INFO                             (data files)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const OVERHEAD_GB    = 0.5;  // fixed reservation: CUDA context, driver, ollama
+const OVERHEAD_GB    = 0.8;  // fixed reservation: CUDA context, driver, ollama runtime + driver-reserved
+                            // VRAM. Raised 0.5→0.8 after a GTX 1660S spill at a context the old value
+                            // predicted would fit (real usable VRAM < rated; see meta/knowledge/).
 const SAFETY_FACTOR  = 0.9;  // 10% margin — overhead estimate is imprecise (0.5–1.0 GB in practice)
 const CTX_ROUND      = 128;  // round down to nearest 128 (natural head-dimension granularity)
+const DECODE_ATTN_EFF = 0.015; // batch-1 decode attention: fraction of fp16 TFLOPS reached by the
+                               // per-token attention GEMV. Calibrated against RTX 3090 + GTX 1660S
+                               // sweeps (meta/benchmarks/); see meta/knowledge/benchmark-rtx3090-devstral.md
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -124,7 +129,7 @@ function calcMaxContext(model, vramGB, bytesPerElement, weightsGB) {
   return { maxCtx, kvCacheGB, safetyGB, genuinelyFreeGB, freeGB, perToken, rawTokens, availableBytes, usedGB, archLimit, limitedByArch };
 }
 
-function calcSpeedEstimates(model, variant, vramGB, quantInfo, maxCtx) {
+function calcSpeedEstimates(model, variant, vramGB, quantInfo, maxCtx, kvCacheGB = 0) {
   if (!quantInfo || !quantInfo.gen_eff || !quantInfo.prefill_eff) return null;
   const gpuSpecs = getGpuSpecs(vramGB);
   if (!gpuSpecs) return null;
@@ -137,20 +142,41 @@ function calcSpeedEstimates(model, variant, vramGB, quantInfo, maxCtx) {
   const [genEffLo,     genEffHi]     = quantInfo.gen_eff;
   const [prefillEffLo, prefillEffHi] = quantInfo.prefill_eff;
 
-  // Generation: bandwidth-bound. tokens/s = bandwidth × efficiency / active_weights
-  const genLo = Math.round((gpuSpecs.bwLo * genEffLo) / activeWeightsGB);
-  const genHi = Math.round((gpuSpecs.bwHi * genEffHi) / activeWeightsGB);
-
-  // Prefill: compute-bound.
-  // FLOPs per token = linear term (MLP + projections) + quadratic attention term.
-  // Quadratic term: each token attends to maxCtx tokens across all layers —
-  // 2 × maxCtx × block_count × head_count_kv × (key_length + value_length).
-  // Uses KV head dims (same data as the KV cache formula); slightly conservative
-  // for MHA models but correct for GQA and internally consistent.
   const paramsActive   = (model.params_b_active || model.params_b) * 1e9;
   const valueDim       = model.value_length ?? model.key_length;
   const kvDimsPerToken = model.block_count * model.head_count_kv * (model.key_length + valueDim);
-  const flopsPerToken  = 2 * paramsActive + 2 * (maxCtx || 0) * kvDimsPerToken;
+
+  // Effective attended context. Sliding-window models (Gemma 2/3/4) only attend to a
+  // fixed window of recent tokens in most layers, so their attention cost — and hence
+  // generation speed — stays nearly flat as context grows. Full-attention models attend
+  // to the whole context. Capping at the window is what makes the attention term general
+  // across architectures rather than a per-model fudge.
+  const attnCtx = Math.min(maxCtx || 0, model.sliding_window ?? Infinity);
+
+  // Generation (decode): two serial costs per token.
+  //   1. Memory streaming — read all active weights + the full KV cache once.
+  //      t_mem = (active_weights + kv_cache) / (bandwidth × gen_eff)
+  //   2. Attention compute — the per-token QKᵀ/AV GEMV over the attended context.
+  //      t_attn = 2 × attnCtx × kvDimsPerToken / (tflops × DECODE_ATTN_EFF)
+  // gen t/s = 1 / (t_mem + t_attn). The compute term is negligible at small context
+  // (weights dominate) and grows with context for full-attention models — matching the
+  // measured efficiency collapse of large dense models at 100k+ tokens.
+  const decodeAttnFlops = 2 * attnCtx * kvDimsPerToken;
+  const tMemFast  = (activeWeightsGB + kvCacheGB) / (gpuSpecs.bwHi * genEffHi);
+  const tMemSlow  = (activeWeightsGB + kvCacheGB) / (gpuSpecs.bwLo * genEffLo);
+  const tAttnFast = decodeAttnFlops / (gpuSpecs.tflopsHi * 1e12 * DECODE_ATTN_EFF);
+  const tAttnSlow = decodeAttnFlops / (gpuSpecs.tflopsLo * 1e12 * DECODE_ATTN_EFF);
+  const genHi = Math.round(1 / (tMemFast + tAttnFast));
+  const genLo = Math.round(1 / (tMemSlow + tAttnSlow));
+
+  // Prefill: compute-bound.
+  // FLOPs per token = linear term (MLP + projections) + quadratic attention term.
+  // Quadratic term: each token attends to attnCtx tokens across all layers —
+  // 2 × attnCtx × block_count × head_count_kv × (key_length + value_length).
+  // attnCtx (sliding-window aware) keeps this honest for Gemma-family models too.
+  // Uses KV head dims (same data as the KV cache formula); slightly conservative
+  // for MHA models but correct for GQA and internally consistent.
+  const flopsPerToken  = 2 * paramsActive + 2 * attnCtx * kvDimsPerToken;
   const prefillLo = Math.round((gpuSpecs.tflopsLo * 1e12 * prefillEffLo) / flopsPerToken);
   const prefillHi = Math.round((gpuSpecs.tflopsHi * 1e12 * prefillEffHi) / flopsPerToken);
 
