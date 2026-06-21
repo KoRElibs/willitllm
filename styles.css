@@ -677,6 +677,7 @@ header p {
 }
 .page-nav a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
 .page-nav a:hover { color: var(--text); }
+.page-nav-right { text-align: right; }
 
 .coder-controls { grid-template-columns: 1fr; max-width: 480px; }
 .coder-controls input[type="text"] {
