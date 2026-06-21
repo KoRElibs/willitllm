@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>willitllm — vibe coder</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page">
+
+  <nav class="page-nav"><a href="index.html">← fit checker</a></nav>
+
+  <header>
+    <h1><span class="h1-will">will</span><span class="h1-it">it</span><span class="h1-llm">llm</span><span class="h1-tld">.com</span></h1>
+    <p>Pick your GPU — see the best local coding models ranked for agentic loops, with ready-to-paste editor configs.</p>
+  </header>
+
+  <div class="controls coder-controls">
+    <div class="field">
+      <label>Your GPU</label>
+      <div class="select-wrap">
+        <select id="vramInput"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Ollama URL</label>
+      <input type="text" id="baseUrlInput" value="http://localhost:11434" placeholder="http://localhost:11434" spellcheck="false" autocomplete="off">
+    </div>
+  </div>
+
+  <div id="noGpu" class="no-model">Pick your GPU to see compatible coding models, ranked for vibe coding.</div>
+
+  <div id="coderList" hidden></div>
+
+  <div class="page-footer">
+    AI-assisted data · source: <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a> · treat as a guide
+    · <a href="index.html">fit checker</a>
+    · <button class="footer-info-btn" id="infoSheetOpen" aria-label="About this tool and data disclaimer">about &amp; disclaimer</button>
+  </div>
+
+</div> <!-- /page -->
+
+<!-- Info / disclaimer sheet (same as index.html) -->
+<div id="infoSheetBackdrop" class="info-sheet-backdrop" hidden></div>
+<div id="infoSheet" class="info-sheet" hidden role="dialog" aria-modal="true" aria-label="About & Disclaimer">
+  <div class="info-sheet-header">
+    <span>About &amp; Disclaimer</span>
+    <button class="info-sheet-close" id="infoSheetClose" aria-label="Close">✕</button>
+  </div>
+  <div class="info-sheet-body">
+    <h3>Data sources</h3>
+    <p>Architecture parameters and capabilities are scraped from <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a>. Run <code>ollama show &lt;model&gt;</code> to verify values for your installed variant.</p>
+    <p>Speed estimates are derived from GPU bandwidth and TFLOPS figures from public manufacturer data. Actual performance varies by driver, system load, and context length.</p>
+
+    <h3>Coding rank</h3>
+    <p>Models are ranked by a weighted score: <strong>50% generation speed</strong> (most important in sequential agent loops), <strong>30% context</strong> (more of the codebase visible at once), and <strong>20% quality</strong> (quantization sharpness). This is a heuristic — not a benchmark.</p>
+
+    <h3>AGENT vs TOOLS vs FIM</h3>
+    <p><strong>AGENT</strong> — purpose-built for tool-calling agent loops (Devstral, Devstral-small). Best for Cline / Continue agentic workflows.</p>
+    <p><strong>TOOLS</strong> — general-purpose models with tool-calling capability. Capable but not specifically tuned for coding agents.</p>
+    <p><strong>FIM</strong> — fill-in-the-middle models (Codestral). For IDE autocomplete, not agent loops.</p>
+
+    <h3>AI-generated content disclosure</h3>
+    <p>Organisation names, country of origin, and role classifications were inferred by AI and have <strong>not been manually verified</strong>. This tool uses AI-assisted data processing in accordance with EU AI Act transparency requirements (Article 13).</p>
+  </div>
+</div>
+<div id="tooltip" class="tooltip" hidden></div>
+
+<script src="data.gpus.js?v=5"></script>
+<script src="data.libraries.js?v=5"></script>
+<script src="data.quantizations.js?v=5"></script>
+<script src="data.models.js?v=5"></script>
+<script src="app.calc.js?v=5"></script>
+<script src="coder.js?v=1"></script>
+<script>
+  // Info sheet wiring (same as index.html)
+  const _open  = document.getElementById('infoSheetOpen');
+  const _close = document.getElementById('infoSheetClose');
+  const _back  = document.getElementById('infoSheetBackdrop');
+  const _sheet = document.getElementById('infoSheet');
+  function openSheet()  { _sheet.hidden = false; _back.hidden = false; }
+  function closeSheet() { _sheet.hidden = true;  _back.hidden = true; }
+  _open.addEventListener('click', openSheet);
+  _close.addEventListener('click', closeSheet);
+  _back.addEventListener('click', closeSheet);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+</script>
+</body>
+</html>

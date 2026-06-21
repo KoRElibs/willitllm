@@ -12,4 +12,4 @@ __pycache__/
 *.pyc
 
 # Deploy credentials (never commit)
-dev/deploy.cfg
+meta/deploy/deploy.cfg

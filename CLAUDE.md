@@ -1,3 +1,1 @@
-# willitllm — Claude instructions
-
-Read `dev/SPEC.md` before doing anything in this repo.
+See [meta/AGENT.md](meta/AGENT.md).

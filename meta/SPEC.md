@@ -8,7 +8,9 @@
 
 ## 1. What it is
 
-**willitllm.com** is a single-page web tool that answers one question:
+**willitllm.com** is a static web tool with two pages.
+
+**`index.html`** answers:
 
 > *Can I run this LLM on my GPU?*
 
@@ -21,6 +23,13 @@ the KV cache encoding, and the page instantly shows:
 - A scorecard rating speed, quality, precision, and context fit
 - The full mathematical breakdown of the VRAM calculation
 
+**`coder.html`** answers:
+
+> *What's the best local coding model for my GPU, and how do I wire it into my editor?*
+
+The user picks a GPU; the page shows all fitting coding models ranked for agentic performance,
+with ready-to-paste configs for Cline and Continue.
+
 There is **no backend**. Everything runs in the browser. All data is static JS files loaded as
 global variables.
 
@@ -29,18 +38,20 @@ global variables.
 ## 2. File structure
 
 ```
-index.html               — single HTML page, all structure, no logic
-styles.css               — all styling
+index.html               — fit checker page, all structure, no logic
+coder.html               — vibe coder page, all structure, no logic
+styles.css               — all styling (shared between both pages)
 data.gpus.js             — GPU database (const GPUS)
 data.libraries.js        — model library metadata (const LIBRARIES)
 data.quantizations.js    — quantization quality/speed ratings (const QUANT_INFO)
 data.kv-cache.js         — KV cache precision options (const KV_CACHE)
 data.models.js           — model architecture + variant data (const MODELS)
-app.calc.js              — pure calculation and formatting helpers
-app.render.js            — DOM rendering functions
-app.ui.js                — UI helpers (dropdowns, model option colouring)
-app.js                   — entry point: shared state, render orchestrator, init
-dev/
+app.calc.js              — pure calculation and formatting helpers (shared)
+app.render.js            — DOM rendering functions (index.html only)
+app.ui.js                — UI helpers: dropdowns, combobox, nudge buttons (index.html only)
+app.js                   — entry point for index.html: shared state, render orchestrator, init
+coder.js                 — entry point for coder.html: ranking, config output, init
+meta/
   SPEC.md                    — this file
   scripts/update-models.md   — scraper workflow instructions (AI-readable)
   todo.md                    — development todo list
@@ -49,8 +60,12 @@ dev/
 ```
 
 All JS files are loaded via `<script src="file.js?v=N">` tags in dependency order (data files
-first, then app.calc/render/ui, then app.js last). The `?v=N` query string is bumped manually on
+first, then app.calc, then page-specific files). The `?v=N` query string is bumped manually on
 each deploy to bust CDN caches. No build step, no bundler, no framework.
+
+**Shared vs page-specific:** `data.*.js` and `app.calc.js` are loaded by both pages.
+`app.render.js`, `app.ui.js`, and `app.js` are index.html only. `coder.js` is coder.html only.
+`data.kv-cache.js` is index.html only (coder.html uses `autoKvBpe` from app.calc.js directly).
 
 ---
 
@@ -611,9 +626,9 @@ header → controls → result headline → details → formula → footer.
 
 ## 10. Data maintenance (model scraper)
 
-`dev/scripts/update_models.py` maintains `data.models.js` and `data.libraries.js`. It is never run
+`meta/scripts/update_models.py` maintains `data.models.js` and `data.libraries.js`. It is never run
 automatically — it is run manually by the developer (or by an AI following
-`dev/scripts/update-models.md`) when new models need to be added.
+`meta/scripts/update-models.md`) when new models need to be added.
 
 Workflow:
 1. `--capabilities --apply` — scrapes `ollama.com/library` once for capability badges and pull counts, writes to `data.libraries.js`. Run whenever new libraries are added or capability data may have changed.
@@ -662,14 +677,220 @@ significant at that point.
 
 ---
 
+## 13. Coder page — `coder.html`
+
+### 13.1 Purpose
+
+`coder.html` answers a different question from `index.html`. The interaction is **ranked discovery**,
+not single-model inspection. The user selects a GPU once; the page instantly shows all fitting coding
+models ranked by agentic loop performance, with ready-to-paste editor configs.
+
+### 13.2 Scripts loaded
+
+```
+data.gpus.js          — GPU selector (shared)
+data.libraries.js     — coding_role field consumed here
+data.quantizations.js — gen_eff, quality, speed ratings (shared)
+data.models.js        — weights, context, architecture (shared)
+app.calc.js           — calcMaxContext(), calcSpeedEstimates(), autoKvBpe() (shared)
+coder.js              — all coder logic: GPU selector, ranking, row building, init
+```
+
+`coder.js` is one file (~250 lines) with clear `// ── Section ──` dividers:
+- Pure helpers (data, formatting, ranking formula)
+- GPU selector (mirrors app.js — same optgroup structure)
+- Data/ranking (buildEntries)
+- Config HTML (makeConfigHtml)
+- Row building (makeRow + event wiring)
+- List render (renderList)
+- Render + init
+
+### 13.3 `coding_role` field in `LIBRARIES`
+
+One optional field added to `data.libraries.js`:
+
+```js
+"coding_role": "agent"   // "agent" | "fim" — omit for general-purpose models
+```
+
+- `"agent"` — purpose-built for tool-calling agent loops (devstral, devstral-small-2)
+- `"fim"` — fill-in-the-middle autocomplete, not for agent loops (codestral)
+- omitted — general model with tools capability; capable but not specialised
+
+This cannot be derived from `capabilities` alone — codestral has no tools badge but is a coding
+model of a different kind. Do **not** set this automatically with the scraper — it requires human
+judgement about the model's intended workflow.
+
+### 13.4 Model filtering
+
+The coder page shows models where:
+- `library.capabilities` includes `"tools"`, **or**
+- `library.coding_role` is set (`"agent"` or `"fim"`)
+
+Embedding models are always excluded (same rule as index.html). Models that do not fit in the
+selected VRAM are shown at the bottom, muted, with `✗ OOM` instead of context. No variant
+selector — only the default variant (index 0) is used.
+
+FIM models are shown in a separate section below the agent/tools list, separated by a labelled
+divider that explains they are autocomplete models, not agentic.
+
+### 13.5 Ranking
+
+Agent and general-tools models are ranked by a weighted coding score:
+
+```
+speed_norm  = min(1, gen_lo / 30)       // normalised at 30 t/s
+ctx_norm    = min(1, maxCtx / 65536)    // normalised at 64k; cap avoids outlier inflation
+qual_norm   = QUANT_INFO[quant].quality / 10
+
+coding_score = speed_norm × 0.5 + ctx_norm × 0.3 + qual_norm × 0.2
+```
+
+Speed weighted highest (0.5) because agentic coding sessions chain 30–100 sequential tool calls.
+Context second (0.3) — seeing more of the codebase is the primary quality lever. Quality last (0.2)
+— at Q4_K_M, differences are small for code generation.
+
+`coding_score` is not displayed to the user. It drives sort order and the score bar width (0–100%).
+
+OOM models are assigned `score = -1` and sink below all fitting models.
+
+### 13.6 Context in coding units
+
+Context is shown in developer units in the row and tooltip:
+
+```
+files = round(maxCtx / 1000)
+if files >= 5: display "~N files"  (rounded to nearest 5)
+else:          display "~N lines"  (maxCtx / 3, rounded to nearest 100)
+```
+
+Tooltip also shows: `X tokens · ~Y lines · ~Z avg files (est. ~1000 tokens/file)`.
+
+### 13.7 KV cache for ranking
+
+`autoKvBpe(model, vramGB, weightsGB, null, flashOk)` selects the best KV precision that maximises
+context. `targetCtx = null` means "push to arch limit". The selected `bpe` drives the **More
+context** mode tab; the baseline `bpe = 2` (f16) drives **Quick start**.
+
+Two mode tabs are shown only when `bpe < 2` AND the optimised context exceeds the f16 context
+(i.e. the model is not already arch-limited at f16). When both modes yield the same context, only
+a single config section is shown with no tabs.
+
+**Quality transparency** — the "More context" tab tooltip states the tradeoff explicitly:
+- `q8_0`: "Quality: nearly lossless (~0.5% perplexity hit)"
+- `q4_0`: "Quality: modest hit (~2–5% perplexity, degrades further at long contexts)"
+
+### 13.8 Config output
+
+Config blocks are templated from the model's default variant tag and the user-supplied Ollama URL.
+The UI has an **Ollama URL** text input (defaults to `http://localhost:11434`; re-renders list on
+`change`). Remote users set this to their server address (e.g. `http://192.168.1.10:11434`).
+
+Note: remote ollama requires `OLLAMA_HOST=0.0.0.0` on the server — without it ollama binds only
+to loopback and remote connections get ECONNREFUSED.
+
+**Two-mode config panel** (shown when `bpe < 2` and modes yield different context):
+
+*Quick start* — f16 KV, no setup required:
+```
+ollama run devstral:24b
+>>> /set parameter num_ctx 24576
+```
+
+*More context* — q8_0 or q4_0 KV, OS-specific setup step shown first (see §13.11), then run
+command with the larger context value.
+
+**Cline** — native Ollama provider, configured through the Cline UI (not a JSON file):
+```
+API Provider      Ollama
+Base URL          <ollama-url>
+Model             devstral:24b
+Context Window    55296
+```
+
+**Continue** (`.continue/config.json` model entry):
+```json
+{
+  "title": "devstral:24b",
+  "provider": "ollama",
+  "model": "devstral:24b",
+  "apiBase": "<ollama-url>",
+  "contextLength": 55296
+}
+```
+
+Each sub-block has a copy button (`navigator.clipboard.writeText`). The KV setup section has OS
+tabs (Linux / macOS / Windows) with separate copy buttons; the handler scopes to the active
+`.kv-os-block` so only the visible command is copied.
+
+### 13.9 UI layout
+
+```
+<nav>  ← fit checker
+<header>  title + subtitle
+<controls>  GPU selector + Ollama URL input (single column, max-width 480px)
+<noGpu>  placeholder until GPU selected
+<coderList>  ranked rows
+  <coder-row>  (one per model)
+    .coder-row-header  [BADGE] [name] [speed] [ctx] [score bar]
+    .coder-config      (hidden until row clicked)
+      [mode tabs: Quick start · More context]  ← only when context modes differ
+        .mode-block[quick]   ollama cmd + Cline/Continue tabs
+        .mode-block[optimized]
+          [KV setup: Linux | macOS | Windows]  step 1
+          ollama cmd                            step 2
+          Cline/Continue tabs                   step 3
+  <fim-divider>
+  <coder-row>  (FIM models)
+<footer>  links: ollama.com · fit checker · about & disclaimer
+```
+
+Clicking a row header expands its config panel and collapses any previously open row.
+Clicking again collapses it. OOM rows are not clickable.
+
+### 13.10 Navigation
+
+### 13.11 External references — ollama platform setup
+
+**Always verify against these docs before changing platform-specific setup instructions**
+in `kvSetupHtml` or anywhere else in `coder.js`. Our instructions must stay aligned with
+what the official installer actually creates.
+
+| Platform | Doc URL | Key facts |
+|---|---|---|
+| Linux | https://docs.ollama.com/linux | systemd service at `/etc/systemd/system/ollama.service`; customise via drop-in `…/ollama.service.d/override.conf` (same file `sudo systemctl edit ollama` creates); env vars as `Environment=` lines under `[Service]` |
+| macOS | https://docs.ollama.com/macos | App stores data in `~/.ollama`; env var docs sparse — current approach: export in `~/.zshrc`, quit menu bar app, run `ollama serve` from terminal |
+| Windows | https://docs.ollama.com/windows | Env vars via Settings → Environment Variables UI or `setx` from cmd/PowerShell; restart Ollama from system tray after |
+
+**Linux implementation note**: use the drop-in (`override.conf`) rather than editing
+`/etc/systemd/system/ollama.service` directly. The original service file is written by the
+ollama installer and may be overwritten on `ollama update`. The drop-in survives updates.
+
+Write the drop-in with:
+```bash
+sudo mkdir -p /etc/systemd/system/ollama.service.d && printf '[Service]\nEnvironment="OLLAMA_KV_CACHE_TYPE=q8_0"\n' | sudo tee /etc/systemd/system/ollama.service.d/override.conf
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+```
+
+(Split into write + apply in the UI so users don't bounce the service unnecessarily on re-runs.)
+
+### 13.12 Navigation
+
+- `index.html` footer: `· vibe coder` link to `coder.html`
+- `coder.html` nav: `← fit checker` link to `index.html`
+
+Both pages are independently linkable. No shared nav component.
+
+---
+
 ## 12. Documentation maintenance
 
 Every code change must keep the following three files in sync with the codebase. Stale documentation is worse than none — it actively misleads future contributors and AI assistants working from this spec.
 
 | File | Update when |
 |---|---|
-| `dev/FEATURES.md` | A feature is implemented (`backlog` → `done`), a new feature is planned (add as `backlog`), or an existing feature's behaviour changes |
-| `dev/BUGS.md` | A bug is discovered (add as `open`) or fixed (`open` → `fixed` with a description of the root cause and fix) |
-| `dev/SPEC.md` | Any described behaviour changes — data structures, formulas, UI layout, constants, file paths, or interaction rules |
+| `meta/FEATURES.md` | A feature is implemented (`backlog` → `done`), a new feature is planned (add as `backlog`), or an existing feature's behaviour changes |
+| `meta/BUGS.md` | A bug is discovered (add as `open`) or fixed (`open` → `fixed` with a description of the root cause and fix) |
+| `meta/SPEC.md` | Any described behaviour changes — data structures, formulas, UI layout, constants, file paths, or interaction rules |
 
 The rule: if you changed the code, you changed at least one of these files.

@@ -119,13 +119,35 @@ As a Buyer I want to specify a target context length (e.g. 32k) so the recommend
 
 ---
 
-## Vibe Coder — `coder.html` `backlog`
+## Vibe Coder — `coder.html`
 
-**US-23 — Best coding model for my GPU**
-As a Vibe Coder I want to see which Mistral coding models (Devstral, Codestral, etc.) run on my GPU, ranked by the balance of context and speed relevant to agentic coding.
+**US-23 — Best coding model for my GPU** `done`
+As a Vibe Coder I want to see which coding models run on my GPU, ranked by the balance of speed and context relevant to agentic coding — so I can pick without manual comparison.
 
-**US-24 — Cline config output**
-As a Vibe Coder using Cline I want a ready-to-paste provider config (OpenAI-compatible base URL, model ID) so I can wire up my local model without digging through Cline's settings docs.
+Implemented: all models with `tools` capability or `coding_role` set are shown, ranked by
+`speed×0.5 + context×0.3 + quality×0.2`. Agent-labelled models (devstral family) surface first.
 
-**US-25 — Context in coder terms**
-As a Vibe Coder I want context window shown in practical coding units (approximate lines of code or files) so I know how much of my codebase the model can see at once.
+**US-24 — Editor config output** `done`
+As a Vibe Coder I want a ready-to-paste provider config for my editor so I can wire up my local model without digging through settings docs.
+
+Implemented: Cline (openai-compatible JSON block) and Continue (ollama JSON block) tabs, each with
+a copy button. Ollama command also shown with optional KV cache note when non-f16 is selected.
+
+**US-25 — Context in coder terms** `done`
+As a Vibe Coder I want context window shown in practical coding units so I know how much of my codebase the model can see at once.
+
+Implemented: `~N files` (≥5 files) or `~N lines` (<5 files) derived from `maxCtx / 1000` and
+`maxCtx / 3` respectively. Tooltip shows exact tokens + lines + files.
+
+**US-27 — FIM vs agent distinction** `done`
+As a Vibe Coder I want to know whether a model is an autocomplete tool or an agent model so I don't try to use Codestral in an agentic loop where it won't work.
+
+Implemented: AGENT / TOOLS / FIM badges on every row. FIM models (codestral) shown in a separate
+labelled section below the ranked agent/tools list. `coding_role` field in `data.libraries.js`
+carries this — set manually, not by the scraper.
+
+**US-28 — OOM models visible** `done`
+As a Vibe Coder I want to see models that don't fit my GPU listed at the bottom (not hidden) so I know what I'm missing and can consider an upgrade.
+
+Implemented: OOM models are rendered muted with `✗ OOM` label, ranked below all fitting models,
+and non-clickable (no config panel expands).

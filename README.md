@@ -43,7 +43,7 @@ Pure static HTML/CSS/JS — no build step, no dependencies, no server.
 | `data.quantizations.js` | Quantization info (speed/quality ratings, summaries) |
 | `data.kv-cache.js` | KV cache precision options (f16, q8\_0, q4\_0) |
 | `data.models.js` | Model database (architecture params, variants) |
-| `dev/scripts/update_models.py` | Maintenance script — scrapes and updates `data.models.js` |
+| `meta/scripts/update_models.py` | Maintenance script — scrapes and updates `data.models.js` |
 
 ## Running locally
 
@@ -63,16 +63,16 @@ python -m http.server
 
 ## Updating model data
 
-`dev/scripts/update_models.py` reads architecture parameters and weight sizes directly from the Ollama registry — no model weights are downloaded.
+`meta/scripts/update_models.py` reads architecture parameters and weight sizes directly from the Ollama registry — no model weights are downloaded.
 
 ```bash
-python dev/scripts/update_models.py --verify               # read-only status check
-python dev/scripts/update_models.py --discover --apply     # find and add new model sizes
-python dev/scripts/update_models.py --variants --apply     # refresh quantization variants
-python dev/scripts/update_models.py --tag llama3.2:3b      # one model only
+python meta/scripts/update_models.py --verify               # read-only status check
+python meta/scripts/update_models.py --discover --apply     # find and add new model sizes
+python meta/scripts/update_models.py --variants --apply     # refresh quantization variants
+python meta/scripts/update_models.py --tag llama3.2:3b      # one model only
 ```
 
-See `dev/scripts/update-models.md` for full workflow documentation.
+See `meta/scripts/update-models.md` for full workflow documentation.
 
 ## Data provenance
 
@@ -80,7 +80,7 @@ All architecture parameters (`block_count`, `head_count_kv`, `key_length`, `valu
 
 ## Contributing
 
-To add a model or library, update `data.libraries.js` and run `dev/scripts/update_models.py --discover --apply`. See `dev/scripts/update-models.md` for step-by-step instructions.
+To add a model or library, update `data.libraries.js` and run `meta/scripts/update_models.py --discover --apply`. See `meta/scripts/update-models.md` for step-by-step instructions.
 
 ## License
 
