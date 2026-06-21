@@ -23,6 +23,18 @@ captures most of the decline for ≤115k but a residual super-linear effect rema
 24B-class dense models. Documented limitation; modelling it would need a quadratic/empirical term
 and more data. Sliding-window models (Gemma) are unaffected.
 
+**BUG-19 — Decode slowdown term wrongly penalized f16 + flash-attention setups** `fixed`
+The BUG-16 slowdown term fired unconditionally, but a three-way KV-type sweep (f16/q8_0/q4_0)
+on the RTX 3090 showed the context-decline is caused by KV **dequantization** (quantized KV) and
+**unfused attention** (no-flash GPUs) — not attention compute per se. With f16 KV on a flash GPU,
+decode is flat (~0.80 effective gen_eff to 48k, confirmed on two architectures: llama-arch
+devstral:24b and mistral3 mistral-small3.2:24b). The unconditional term under-predicted those
+setups (devstral f16 @32k: measured 41.4, formula said [20–35]). Fixed by gating the term on
+`bytes_per_element < 2 OR gpu.flash ≠ 'yes'`; f16+flash now predicts [22–42] (brackets 41.4).
+`calcSpeedEstimates` gained a `bytesPerElement` arg and `getGpuSpecs` now returns `flash`; call
+sites in app.js/coder.js updated. Quantized/no-flash paths unchanged (no regression). Also noted:
+per-token speed is f16 ≥ quantized at any context — q4_0's benefit is capacity, not speed.
+
 **BUG-16 — Generation-speed formula ignored attention compute; over-predicted at long context** `fixed`
 The decode estimate was `bandwidth × gen_eff / (active_weights + kv_cache)` — purely memory-bound.
 It over-predicted generation speed for full-attention models as context grew (e.g. devstral:24b on

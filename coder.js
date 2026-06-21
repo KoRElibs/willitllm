@@ -129,7 +129,7 @@ function buildEntries(vramGB, flashOk) {
     const bpe       = fits ? autoKvBpe(model, vramGB, weightsGB, null, flashOk) : 2;
     const ctx       = calcMaxContext(model, vramGB, bpe, weightsGB);
     const quantInfo = QUANT_INFO[variant.quantization];
-    const speedEsts = fits ? calcSpeedEstimates(model, variant, vramGB, quantInfo, ctx.maxCtx, ctx.kvCacheGB) : null;
+    const speedEsts = fits ? calcSpeedEstimates(model, variant, vramGB, quantInfo, ctx.maxCtx, ctx.kvCacheGB, bpe) : null;
     const score     = fits && speedEsts
       ? codingRank(speedEsts.genLo, ctx.maxCtx, quantInfo?.quality)
       : -1;

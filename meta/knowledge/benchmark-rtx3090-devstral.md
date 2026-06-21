@@ -128,3 +128,51 @@ rated rather than a fixed GB (BUG-11b).
 
 devstral-small-2:24b at 200k still measures ~7 t/s vs ~18–23 predicted — a super-linear collapse on
 24B-class **dense** models beyond ~115k that the linear attention term does not fully capture (BUG-17).
+
+---
+
+## KV-cache-type matrix (2026-06-21) — what actually causes the context decline
+
+Swept the **same model at all three KV types** on the RTX 3090 (restarting ollama with
+`OLLAMA_KV_CACHE_TYPE` between each) to separate KV-type effects from context effects.
+
+**devstral:24b (GQA, 8 KV heads — small KV), per-token t/s at matched context:**
+
+| ctx | f16 | q8_0 | q4_0 |
+|---|---|---|---|
+| 4k  | 50.9 | 46.9 | 46.6 |
+| 16k | 46.2 | 42.1 | 41.4 |
+| 32k | 41.4 | 35.8 | 35.1 |
+| effective gen_eff | **~0.80 flat** | 0.72 → 0.54 | 0.72 → 0.57 |
+
+**codellama:13b (MHA, 40 KV heads — huge KV):** q4_0 *faster* than q8_0 (80→60 vs 76→54 over
+4k→13k) — when KV dominates the bytes read, halving it outweighs dequant. **mistral-small3.2:24b
+(mistral3 arch) at f16:** flat ~0.80 (50.6 → 37.7 over 4k→46k, efficiency 0.79 → 0.81) — independent
+confirmation of the flat-f16 behaviour on a second architecture.
+
+### Findings
+
+1. **f16 KV is fastest per token at any context.** Quantized KV never speeds up decode despite the
+   smaller cache — dequantization overhead cancels the bandwidth saved. q4_0's only benefit is
+   fitting more context. (q4 vs q8: equal for small-KV GQA models; q4 wins only when KV is huge, e.g.
+   MHA codellama.)
+2. **f16 + flash attention → flat decode efficiency** (~0.80), no context decline (two architectures).
+3. **The context-decline is dequant + unfused-attention, not attention compute.** It appears with
+   quantized KV or on no-flash GPUs, and vanishes with f16+flash.
+
+### Consequence (BUG-19)
+
+The decode slowdown term is now **gated**: it applies only when `bpe < 2` (quantized KV) or the GPU
+lacks flash attention. f16+flash is modelled as flat. Verified the gated formula brackets all f16
+points (devstral, mistral-small3.2) and still brackets the quantized/no-flash points (no regression).
+
+Raw run files: `meta/benchmarks/rtx-3090-devstral-24b-{f16,q8_0,q4_0}.md`,
+`rtx-3090-codellama-13b-instruct-q4-0-{q8_0,q4_0}.md`, `rtx-3090-mistral-small3-2-24b-f16.md`.
+
+## Local-vs-cloud model metadata cache
+
+`update_models.py --cache` dumps full ollama.com GGUF metadata for every model in data.models.js to
+`meta/cache/` (git-ignored): one `{library}-{tag}.json` plus `_params.txt` (union of ~207 available
+params). This is the working menu for deciding which new fields to pull into data.models.js (e.g.
+`feed_forward_length`, `rope.*`, gemma4 `*_swa` dims). Cloud-sourced so it covers all curated models,
+not just ones pulled locally.

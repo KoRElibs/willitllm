@@ -345,16 +345,19 @@ At batch size 1 (standard for ollama), each generated token incurs two costs in 
 
 1. **Memory streaming** (bandwidth-bound) — read all active weights once *and* read the full
    KV cache once for attention.
-2. **Attention compute** (compute-bound) — the per-token QKᵀ/AV GEMV over the attended context.
-   Negligible at small context (weights dominate); grows with context and becomes the dominant
-   cost for full-attention models at 100k+ tokens. This term is what reproduces the measured
-   efficiency collapse of large dense models (e.g. devstral:24b: ~0.76 → ~0.37 effective gen_eff
-   from 1k → 112k tokens) instead of the old weights-only formula over-predicting at long context.
+2. **KV-access slowdown** — a per-token cost that grows with the attended context, applied **only
+   when KV access is not free-flowing**: quantized KV (dequantization on every read) or a GPU
+   without flash attention (unfused attention). With **f16 KV on a flash GPU it is gated off** —
+   decode then stays flat with context (measured ~0.80 effective gen_eff to ~48k on both
+   llama-arch devstral:24b and mistral3 mistral-small3.2:24b). When it applies it reproduces the
+   measured decline of quantized/no-flash setups (e.g. devstral:24b q4_0: ~0.76 → ~0.37 effective
+   gen_eff from 1k → 112k).
 
 ```
 active_weights_gb = variant.weights_gb × (params_b_active / params_b)   // MoE only; 1.0 for dense
 attn_ctx          = min(maxCtx, sliding_window ?? ∞)                    // sliding-window aware
-attn_flops        = 2 × attn_ctx × block_count × head_count_kv × (key_length + value_length)
+kv_slowdown       = (bytes_per_element < 2) OR (gpu.flash ≠ 'yes')      // quantized KV OR no flash
+attn_flops        = kv_slowdown ? 2 × attn_ctx × block_count × head_count_kv × (key+value) : 0
 
 t_mem  = (active_weights_gb + kv_cache_gb) / (bandwidth × gen_eff)
 t_attn = attn_flops / (tflops_fp16 × 1e12 × DECODE_ATTN_EFF)
@@ -366,16 +369,19 @@ The range is produced by pairing the fast/slow ends: `gen_hi` uses `bandwidth_hi
 from `calcMaxContext` (the KV memory at the recommended context). `gen_eff` is taken from
 `QUANT_INFO[quantization].gen_eff`.
 
-**Sliding-window attention** (`sliding_window` set, Gemma 2/3/4): most layers attend only to a
-fixed window (512–4096 tokens), so `attn_ctx` is capped and the attention term stays small —
-matching the measured near-flat generation speed of Gemma models across context. Capping at the
-window (rather than a per-model constant) is what makes the attention term **general across
-architectures**: full-attention models (Llama, Mistral/devstral, codellama) decline with context;
-sliding-window models do not, and the same formula captures both.
+**Two things make the slowdown term general across architectures rather than a per-model fudge:**
+- **Sliding-window attention** (`sliding_window` set, Gemma 2/3/4): most layers attend only to a
+  fixed window (512–4096 tokens), so `attn_ctx` is capped and the term stays small — matching the
+  measured near-flat generation speed of Gemma models across context.
+- **The KV/flash gate**: full-attention models on quantized KV or no-flash GPUs decline with
+  context; the same models on f16+flash do not. Measured per-token speed is f16 ≥ quantized at any
+  context (q4_0 is smaller but dequant overhead cancels the bandwidth saving — its benefit is
+  capacity, not speed), and the gate captures exactly that.
 
-`DECODE_ATTN_EFF = 0.015` was calibrated against full-context sweeps on an RTX 3090 (flash, q4_0 KV)
-and a GTX 1660 Super (no-flash, f16 KV) covering devstral:24b, gemma4:e4b, llama3.2:1b/3b,
-gemma3:4b, codellama:13b. Adding the term cut high-context bracketing error from ~32% to ~15% RMS.
+`DECODE_ATTN_EFF = 0.015` was calibrated against full-context sweeps on an RTX 3090 (flash; f16,
+q8_0 and q4_0 KV) and a GTX 1660 Super (no-flash, f16 KV) covering devstral:24b, mistral-small3.2:24b,
+gemma4:e4b, llama3.2:1b/3b, gemma3:4b, codellama:13b. Adding the (gated) term cut high-context
+bracketing error from ~32% to ~15% RMS without regressing the f16+flash path.
 A residual super-linear collapse remains for very large dense models at extreme context
 (devstral-small-2:24b at 200k still over-predicts) — documented gap, not modelled.
 

@@ -63,6 +63,7 @@ from pathlib import Path
 
 MODELS_JS    = Path(__file__).parent.parent.parent / "data.models.js"
 LIBRARIES_JS = Path(__file__).parent.parent.parent / "data.libraries.js"
+CACHE_DIR    = Path(__file__).parent.parent / "cache"   # meta/cache (git-ignored working set)
 OLLAMA_BASE  = "https://ollama.com"
 
 
@@ -230,6 +231,74 @@ def fetch_blob_data(library: str, tag: str) -> dict:
 
     r.update(_parse_blob(blob_html))
     return r
+
+
+def fetch_raw_metadata(library: str, tag: str) -> dict | None:
+    """
+    Fetch the FULL, uncurated GGUF key-value metadata for a canonical library:tag
+    from its blob page — every {arch}.* / general.* / tokenizer.* key ollama exposes,
+    not just the fields parse_blob keeps. Used to populate the local cache so the full
+    parameter surface is available while developing the formula.
+    """
+    try:
+        detail_html = http_get(f"{OLLAMA_BASE}/library/{library}:{tag}").decode("utf-8", errors="replace")
+    except Exception:
+        return None
+    m = re.search(
+        rf'/library/{re.escape(library)}(?::{re.escape(tag)})?/blobs/([a-f0-9]+)',
+        detail_html,
+    )
+    if not m:
+        return None
+    try:
+        blob_html = http_get(
+            f"{OLLAMA_BASE}/library/{library}:{tag}/blobs/{m.group(1)}"
+        ).decode("utf-8", errors="replace")
+    except Exception:
+        return None
+    raw = dict(re.findall(
+        r'([a-z_][a-z0-9_.]+)</div>\s*<div[^>]*>\s*([^<]{1,200}?)\s*</div>',
+        blob_html, re.IGNORECASE,
+    ))
+    # The blob page lists both metadata params and the GGUF tensor manifest
+    # (blk.*, a.blk.*, v.*, *.weight — hundreds of per-layer entries). Keep only
+    # real metadata via an allowlist of namespaces: the model's own architecture
+    # plus general/tokenizer/mm. Cuts ~950 tensor rows down to the ~40 params.
+    arch = raw.get("general.architecture", "")
+    keep = {arch, "general", "tokenizer", "mm"} if arch else {"general", "tokenizer", "mm"}
+    pairs = {
+        k: v for k, v in raw.items()
+        if k.split(".", 1)[0] in keep and not k.endswith((".weight", ".bias"))
+    }
+    return pairs or None
+
+
+def cache_metadata(targets: list[tuple[str, dict]]) -> None:
+    """
+    Dump full raw GGUF metadata for every model in data.models.js to meta/cache/
+    (git-ignored). Writes one {library}-{tag}.json per model and a _params.txt index
+    listing the union of all metadata keys seen — the working set for deciding which
+    new fields to add to data.models.js.
+    """
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    all_keys: set[str] = set()
+    saved = 0
+    for ollama_tag, _m in targets:
+        if ":" not in ollama_tag:
+            continue
+        library, tag = ollama_tag.split(":", 1)
+        pairs = fetch_raw_metadata(library, tag)
+        if not pairs:
+            print(f"  {ollama_tag:<28} — no metadata")
+            continue
+        slug = re.sub(r"[^a-z0-9]+", "-", ollama_tag.lower()).strip("-")
+        (CACHE_DIR / f"{slug}.json").write_text(json.dumps(pairs, indent=2, sort_keys=True))
+        all_keys |= set(pairs)
+        saved += 1
+        print(f"  {ollama_tag:<28} — {len(pairs)} keys")
+    (CACHE_DIR / "_params.txt").write_text("\n".join(sorted(all_keys)) + "\n")
+    print(f"\nCached {saved} models to {CACHE_DIR}")
+    print(f"Union of {len(all_keys)} metadata keys → {CACHE_DIR / '_params.txt'}")
 
 
 def fetch_variant_weights(library: str, tag: str) -> dict | None:
@@ -794,6 +863,7 @@ def main() -> None:
     do_variants  = "--variants" in argv
     do_verify    = "--verify"   in argv
     do_caps      = "--capabilities" in argv
+    do_cache     = "--cache"    in argv
     tag_filter   = argv[argv.index("--tag") + 1] if "--tag" in argv else None
 
     print("will-it-llm — model metadata updater\n")
@@ -807,7 +877,13 @@ def main() -> None:
     models  = parse_models_js(MODELS_JS)
     targets = [(m["ollama_tag"], m) for m in models if m.get("ollama_tag")]
 
-    if do_migrate:
+    if do_cache:
+        if tag_filter:
+            targets = [(t, m) for t, m in targets if t == tag_filter]
+            if not targets:
+                die(f"No model with ollama_tag '{tag_filter}' found.")
+        cache_metadata(targets)
+    elif do_migrate:
         migrate(models, apply_flag, MODELS_JS)
     elif do_discover:
         libraries = load_libraries()

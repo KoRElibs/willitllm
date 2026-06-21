@@ -74,23 +74,26 @@ function colorForScore(n5) {
 
 // ── GPU specs ─────────────────────────────────────────────────────────────────
 
-// Returns { bwLo, bwHi, tflopsLo, tflopsHi, isExact } or null if no data.
+// Returns { bwLo, bwHi, tflopsLo, tflopsHi, flash, isExact } or null if no data.
 // For a named card (dataset.gpuIdx set), returns exact values (lo === hi).
 // For a generic VRAM-tier entry, returns [min, max] across all named cards at that tier.
+// flash ('yes'|'no'|'mixed') is read from the selected option's dataset.
 function getGpuSpecs(vramGB) {
   const sel    = document.getElementById('vramInput');
   const opt    = sel.selectedOptions[0];
   const gpuIdx = opt ? parseInt(opt.dataset.gpuIdx) : NaN;
+  const flash  = opt?.dataset.flash || 'no';
 
   if (!isNaN(gpuIdx) && GPUS[gpuIdx] && GPUS[gpuIdx].bandwidth) {
     const gpu = GPUS[gpuIdx];
     return { bwLo: gpu.bandwidth, bwHi: gpu.bandwidth,
-             tflopsLo: gpu.tflops_fp16, tflopsHi: gpu.tflops_fp16, isExact: true };
+             tflopsLo: gpu.tflops_fp16, tflopsHi: gpu.tflops_fp16, flash, isExact: true };
   }
 
   const entries = GPUS.filter(g => g.vram === vramGB && g.bandwidth);
   if (entries.length === 0) return null;
   return {
+    flash,
     bwLo:     Math.min(...entries.map(g => g.bandwidth)),
     bwHi:     Math.max(...entries.map(g => g.bandwidth)),
     tflopsLo: Math.min(...entries.map(g => g.tflops_fp16)),
@@ -129,7 +132,7 @@ function calcMaxContext(model, vramGB, bytesPerElement, weightsGB) {
   return { maxCtx, kvCacheGB, safetyGB, genuinelyFreeGB, freeGB, perToken, rawTokens, availableBytes, usedGB, archLimit, limitedByArch };
 }
 
-function calcSpeedEstimates(model, variant, vramGB, quantInfo, maxCtx, kvCacheGB = 0) {
+function calcSpeedEstimates(model, variant, vramGB, quantInfo, maxCtx, kvCacheGB = 0, bytesPerElement = 2) {
   if (!quantInfo || !quantInfo.gen_eff || !quantInfo.prefill_eff) return null;
   const gpuSpecs = getGpuSpecs(vramGB);
   if (!gpuSpecs) return null;
@@ -156,12 +159,18 @@ function calcSpeedEstimates(model, variant, vramGB, quantInfo, maxCtx, kvCacheGB
   // Generation (decode): two serial costs per token.
   //   1. Memory streaming — read all active weights + the full KV cache once.
   //      t_mem = (active_weights + kv_cache) / (bandwidth × gen_eff)
-  //   2. Attention compute — the per-token QKᵀ/AV GEMV over the attended context.
+  //   2. KV-access slowdown — grows with the attended context (∝ attnCtx × kvDims).
   //      t_attn = 2 × attnCtx × kvDimsPerToken / (tflops × DECODE_ATTN_EFF)
-  // gen t/s = 1 / (t_mem + t_attn). The compute term is negligible at small context
-  // (weights dominate) and grows with context for full-attention models — matching the
-  // measured efficiency collapse of large dense models at 100k+ tokens.
-  const decodeAttnFlops = 2 * attnCtx * kvDimsPerToken;
+  // gen t/s = 1 / (t_mem + t_attn).
+  //
+  // The slowdown only applies when KV access is NOT free-flowing:
+  //   • quantized KV (bpe < 2) — per-element dequantization on every read, OR
+  //   • no flash attention (GPU flash ≠ 'yes') — unfused attention.
+  // With f16 KV on a flash GPU, decode stays flat with context (measured ~0.80
+  // efficiency to ~48k on both llama-arch devstral and mistral3 mistral-small) —
+  // so the term is gated off there to avoid under-predicting speed.
+  const kvSlowdown      = bytesPerElement < 2 || gpuSpecs.flash !== 'yes';
+  const decodeAttnFlops = kvSlowdown ? 2 * attnCtx * kvDimsPerToken : 0;
   const tMemFast  = (activeWeightsGB + kvCacheGB) / (gpuSpecs.bwHi * genEffHi);
   const tMemSlow  = (activeWeightsGB + kvCacheGB) / (gpuSpecs.bwLo * genEffLo);
   const tAttnFast = decodeAttnFlops / (gpuSpecs.tflopsHi * 1e12 * DECODE_ATTN_EFF);

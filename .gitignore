@@ -13,3 +13,6 @@ __pycache__/
 
 # Deploy credentials (never commit)
 meta/deploy/deploy.cfg
+
+# Cached raw model metadata from ollama /api/show (local working set, not source of truth)
+meta/cache/
