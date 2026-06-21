@@ -42,6 +42,7 @@ FILES=(
   data.gpus.js
   data.kv-cache.js
   data.libraries.js
+  data.flags.js
   data.models.js
   data.quantizations.js
 )
