@@ -121,6 +121,7 @@ header p {
 }
 .cap-pill:hover { color: var(--text); border-color: var(--text); }
 .cap-pill.active { color: var(--accent); border-color: var(--accent); }
+.cap-pill[data-tip] { cursor: pointer; }
 
 /* ── Geek variant field ── */
 .geek-variant-field { margin-top: 20px; }
@@ -677,6 +678,8 @@ header p {
   header p  { font-size: 13px; }
 
   .controls { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .controls .field:nth-child(3),
+  .controls .field:nth-child(4) { grid-column: 1 / -1; }
   .field select { font-size: 11px; }
 
   .detail-src { display: none; }

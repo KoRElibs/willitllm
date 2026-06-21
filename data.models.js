@@ -188,9 +188,21 @@ const MODELS = [
     "key_length": 64,
     "value_length": 64,
     "variants": [
-      {"tag": "1b", "quantization": "Q8_0", "weights_gb": 1.3, "group": "(default)"},
-      {"tag": "1b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 1.0, "group": "instruct"},
-      {"tag": "1b-text-q6_K", "quantization": "Q6_K", "weights_gb": 1.0, "group": "text"}
+      {"tag": "1b", "quantization": "Q8_0", "weights_gb": 1.3},
+      {"tag": "1b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 1.0},
+      {"tag": "1b-text-q6_K", "quantization": "Q6_K", "weights_gb": 1.0},
+      {"tag": "1b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 0.57},
+      {"tag": "1b-instruct-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 0.63},
+      {"tag": "1b-instruct-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 0.67},
+      {"tag": "1b-instruct-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 0.72},
+      {"tag": "1b-instruct-q4_0", "quantization": "Q4_0", "weights_gb": 0.75},
+      {"tag": "1b-instruct-q4_1", "quantization": "Q4_1", "weights_gb": 0.81},
+      {"tag": "1b-instruct-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 0.76},
+      {"tag": "1b-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 0.79},
+      {"tag": "1b-instruct-q5_0", "quantization": "Q5_0", "weights_gb": 0.87},
+      {"tag": "1b-instruct-q5_1", "quantization": "Q5_1", "weights_gb": 0.93},
+      {"tag": "1b-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 0.87},
+      {"tag": "1b-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 0.89}
     ]
   },
   {
@@ -258,7 +270,8 @@ const MODELS = [
     "key_length": 256,
     "value_length": 256,
     "variants": [
-      {"tag": "1b-it-q8_0", "quantization": "Q8_0", "weights_gb": 1.1, "group": "it"}
+      {"tag": "1b", "quantization": "Q4_K_M", "weights_gb": 0.8},
+      {"tag": "1b-it-q8_0", "quantization": "Q8_0", "weights_gb": 1.1}
     ]
   },
   {
@@ -2081,21 +2094,22 @@ const MODELS = [
     "embedding_length": 576,
     "key_length": 64,
     "variants": [
-      {"tag": "135m-instruct-q2_K",   "quantization": "Q2_K",   "weights_gb": 0.088, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 0.088, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 0.094, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 0.098, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q4_0",   "quantization": "Q4_0",   "weights_gb": 0.092, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q4_1",   "quantization": "Q4_1",   "weights_gb": 0.098, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 0.102, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 0.105, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q5_0",   "quantization": "Q5_0",   "weights_gb": 0.105, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q5_1",   "quantization": "Q5_1",   "weights_gb": 0.112, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 0.110, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 0.112, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q6_K",   "quantization": "Q6_K",   "weights_gb": 0.120, "group": "135m-instruct"},
-      {"tag": "135m-instruct-q8_0",   "quantization": "Q8_0",   "weights_gb": 0.145, "group": "135m-instruct"},
-      {"tag": "135m-instruct-fp16",   "quantization": "F16",    "weights_gb": 0.271, "group": "135m-instruct-fp16"}
+      {"tag": "135m", "quantization": "F16", "weights_gb": 0.26},
+      {"tag": "135m-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 0.088},
+      {"tag": "135m-instruct-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 0.088},
+      {"tag": "135m-instruct-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 0.094},
+      {"tag": "135m-instruct-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 0.098},
+      {"tag": "135m-instruct-q4_0", "quantization": "Q4_0", "weights_gb": 0.092},
+      {"tag": "135m-instruct-q4_1", "quantization": "Q4_1", "weights_gb": 0.098},
+      {"tag": "135m-instruct-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 0.102},
+      {"tag": "135m-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 0.105},
+      {"tag": "135m-instruct-q5_0", "quantization": "Q5_0", "weights_gb": 0.105},
+      {"tag": "135m-instruct-q5_1", "quantization": "Q5_1", "weights_gb": 0.112},
+      {"tag": "135m-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 0.11},
+      {"tag": "135m-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 0.112},
+      {"tag": "135m-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 0.12},
+      {"tag": "135m-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 0.145},
+      {"tag": "135m-instruct-fp16", "quantization": "F16", "weights_gb": 0.271}
     ]
   },
   {
@@ -2108,21 +2122,22 @@ const MODELS = [
     "embedding_length": 960,
     "key_length": 64,
     "variants": [
-      {"tag": "360m-instruct-q2_K",   "quantization": "Q2_K",   "weights_gb": 0.219, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 0.219, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 0.235, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 0.246, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q4_0",   "quantization": "Q4_0",   "weights_gb": 0.229, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q4_1",   "quantization": "Q4_1",   "weights_gb": 0.249, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 0.260, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 0.271, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q5_0",   "quantization": "Q5_0",   "weights_gb": 0.268, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q5_1",   "quantization": "Q5_1",   "weights_gb": 0.288, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 0.283, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 0.290, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q6_K",   "quantization": "Q6_K",   "weights_gb": 0.367, "group": "360m-instruct"},
-      {"tag": "360m-instruct-q8_0",   "quantization": "Q8_0",   "weights_gb": 0.386, "group": "360m-instruct"},
-      {"tag": "360m-instruct-fp16",   "quantization": "F16",    "weights_gb": 0.726, "group": "360m-instruct-fp16"}
+      {"tag": "360m", "quantization": "F16", "weights_gb": 0.71},
+      {"tag": "360m-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 0.219},
+      {"tag": "360m-instruct-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 0.219},
+      {"tag": "360m-instruct-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 0.235},
+      {"tag": "360m-instruct-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 0.246},
+      {"tag": "360m-instruct-q4_0", "quantization": "Q4_0", "weights_gb": 0.229},
+      {"tag": "360m-instruct-q4_1", "quantization": "Q4_1", "weights_gb": 0.249},
+      {"tag": "360m-instruct-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 0.26},
+      {"tag": "360m-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 0.271},
+      {"tag": "360m-instruct-q5_0", "quantization": "Q5_0", "weights_gb": 0.268},
+      {"tag": "360m-instruct-q5_1", "quantization": "Q5_1", "weights_gb": 0.288},
+      {"tag": "360m-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 0.283},
+      {"tag": "360m-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 0.29},
+      {"tag": "360m-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 0.367},
+      {"tag": "360m-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 0.386},
+      {"tag": "360m-instruct-fp16", "quantization": "F16", "weights_gb": 0.726}
     ]
   },
   {
@@ -2135,21 +2150,22 @@ const MODELS = [
     "embedding_length": 2048,
     "key_length": 64,
     "variants": [
-      {"tag": "1.7b-instruct-q2_K",   "quantization": "Q2_K",   "weights_gb": 0.675, "group": "instruct"},
-      {"tag": "1.7b-instruct-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 0.777, "group": "instruct"},
-      {"tag": "1.7b-instruct-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 0.860, "group": "instruct"},
-      {"tag": "1.7b-instruct-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 0.933, "group": "instruct"},
-      {"tag": "1.7b-instruct-q4_0",   "quantization": "Q4_0",   "weights_gb": 0.991, "group": "instruct"},
-      {"tag": "1.7b-instruct-q4_1",   "quantization": "Q4_1",   "weights_gb": 1.1, "group": "instruct"},
-      {"tag": "1.7b-instruct-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 0.999, "group": "instruct"},
-      {"tag": "1.7b-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 1.1, "group": "instruct"},
-      {"tag": "1.7b-instruct-q5_0",   "quantization": "Q5_0",   "weights_gb": 1.2, "group": "instruct"},
-      {"tag": "1.7b-instruct-q5_1",   "quantization": "Q5_1",   "weights_gb": 1.3, "group": "instruct"},
-      {"tag": "1.7b-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 1.2, "group": "instruct"},
-      {"tag": "1.7b-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 1.2, "group": "instruct"},
-      {"tag": "1.7b-instruct-q6_K",   "quantization": "Q6_K",   "weights_gb": 1.4, "group": "instruct"},
-      {"tag": "1.7b-instruct-q8_0",   "quantization": "Q8_0",   "weights_gb": 1.8, "group": "instruct"},
-      {"tag": "1.7b-instruct-fp16",   "quantization": "F16",    "weights_gb": 3.4, "group": "instruct-fp16"}
+      {"tag": "1.7b", "quantization": "Q8_0", "weights_gb": 1.8},
+      {"tag": "1.7b-instruct-q2_K", "quantization": "Q2_K", "weights_gb": 0.675},
+      {"tag": "1.7b-instruct-q3_K_S", "quantization": "Q3_K_S", "weights_gb": 0.777},
+      {"tag": "1.7b-instruct-q3_K_M", "quantization": "Q3_K_M", "weights_gb": 0.86},
+      {"tag": "1.7b-instruct-q3_K_L", "quantization": "Q3_K_L", "weights_gb": 0.933},
+      {"tag": "1.7b-instruct-q4_0", "quantization": "Q4_0", "weights_gb": 0.991},
+      {"tag": "1.7b-instruct-q4_1", "quantization": "Q4_1", "weights_gb": 1.1},
+      {"tag": "1.7b-instruct-q4_K_S", "quantization": "Q4_K_S", "weights_gb": 0.999},
+      {"tag": "1.7b-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 1.1},
+      {"tag": "1.7b-instruct-q5_0", "quantization": "Q5_0", "weights_gb": 1.2},
+      {"tag": "1.7b-instruct-q5_1", "quantization": "Q5_1", "weights_gb": 1.3},
+      {"tag": "1.7b-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 1.2},
+      {"tag": "1.7b-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 1.2},
+      {"tag": "1.7b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 1.4},
+      {"tag": "1.7b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 1.8},
+      {"tag": "1.7b-instruct-fp16", "quantization": "F16", "weights_gb": 3.4}
     ]
   },
   {
