@@ -34,6 +34,14 @@ function getLibMeta(m) {
 // URL STATE — encode/restore selections in the URL hash for shareability
 // ─────────────────────────────────────────────────────────────────────────────
 
+function coderPageUrl() {
+  const gpuOpt = document.getElementById('vramInput').selectedOptions[0];
+  if (!gpuOpt || gpuOpt.disabled) return 'coder.html';
+  const p = new URLSearchParams();
+  p.set('g', gpuOpt.textContent.trim());
+  return 'coder.html#' + p.toString();
+}
+
 function pushHashState() {
   const gpuSel   = document.getElementById('vramInput');
   const modelSel = document.getElementById('modelSelect');
@@ -91,6 +99,11 @@ function render() {
   const targetCtx = getTargetCtx();
   const flashOk   = getFlashOk();
 
+  // Keep cross-page nav link in sync with current GPU selection
+  const coderUrl     = coderPageUrl();
+  const vibeNavLink  = document.getElementById('vibeNavLink');
+  if (vibeNavLink) vibeNavLink.href = coderUrl;
+
   if (!isNaN(vramGB) && vramGB > 0) markModelOptions(vramGB, targetCtx, flashOk);
 
   // Re-read after markModelOptions — auto-selection may have changed sel.value
@@ -98,11 +111,13 @@ function render() {
   const model    = MODELS[modelIdx];
   updateSelectionSummary(model);
 
-  const noModel = document.getElementById('noModel');
-  const results = document.getElementById('results');
+  const noModel   = document.getElementById('noModel');
+  const results   = document.getElementById('results');
+  const coderHint = document.getElementById('coderHint');
   if (!model || isNaN(vramGB) || vramGB <= 0) {
     noModel.hidden = false;
     results.hidden = true;
+    if (coderHint) coderHint.hidden = true;
     return;
   }
   noModel.hidden = true;
@@ -122,6 +137,19 @@ function render() {
   const noFit     = weightsGB >= vramGB - OVERHEAD_GB;
   const scores    = computeScores(quantInfo, bytesPerElement, ctxResult, noFit, model, getTargetCtx());
   const { contextFitPct, scoreClass } = scores;
+
+  // Show contextual vibe-coder hint for coding models that fit
+  if (coderHint) {
+    if (libInfo.coding_role && !noFit) {
+      const roleText = libInfo.coding_role === 'agent' ? 'agent'
+                     : libInfo.coding_role === 'fim'   ? 'autocomplete (FIM)'
+                     : 'code';
+      coderHint.innerHTML = `${roleText} model — <a href="${coderUrl}">ready-to-paste IDE config in vibe coder →</a>`;
+      coderHint.hidden = false;
+    } else {
+      coderHint.hidden = true;
+    }
+  }
 
   document.getElementById('resultHeadline').className = `result-headline ${scoreClass}`;
 

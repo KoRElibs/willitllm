@@ -51,6 +51,40 @@ function codingRank(genLo, maxCtx, quality) {
   return speedNorm * 0.5 + ctxNorm * 0.3 + qualNorm * 0.2;
 }
 
+// ── URL state — GPU + optional non-default Ollama URL ────────────────────────
+
+function pushHashState() {
+  const gpuOpt = document.getElementById('vramInput').selectedOptions[0];
+  if (!gpuOpt || gpuOpt.disabled) return;
+  const p = new URLSearchParams();
+  p.set('g', gpuOpt.textContent.trim());
+  const url = document.getElementById('baseUrlInput').value.trim();
+  if (url && url !== 'http://localhost:11434') p.set('u', url);
+  history.replaceState(null, '', '#' + p.toString());
+}
+
+function applyHashState() {
+  const hash = window.location.hash.slice(1);
+  if (!hash) return;
+  const p = new URLSearchParams(hash);
+  const gpuName = p.get('g');
+  if (gpuName) {
+    const gpuSel = document.getElementById('vramInput');
+    const opt = Array.from(gpuSel.options).find(o => o.textContent.trim() === gpuName);
+    if (opt) opt.selected = true;
+  }
+  const url = p.get('u');
+  if (url) document.getElementById('baseUrlInput').value = url;
+}
+
+function fitCheckerUrl() {
+  const gpuOpt = document.getElementById('vramInput').selectedOptions[0];
+  if (!gpuOpt || gpuOpt.disabled) return 'index.html';
+  const p = new URLSearchParams();
+  p.set('g', gpuOpt.textContent.trim());
+  return 'index.html#' + p.toString();
+}
+
 // ── GPU selector ──────────────────────────────────────────────────────────────
 // Mirrors the GPU selector in app.js — same optgroup structure.
 
@@ -495,20 +529,25 @@ function renderList(vramGB) {
 // ── Render + Init ─────────────────────────────────────────────────────────────
 
 function render() {
-  const vramGB = parseFloat(document.getElementById('vramInput').value);
-  const noGpu  = document.getElementById('noGpu');
-  const list   = document.getElementById('coderList');
+  const vramGB   = parseFloat(document.getElementById('vramInput').value);
+  const noGpu    = document.getElementById('noGpu');
+  const list     = document.getElementById('coderList');
+  const backLink = document.getElementById('backLink');
+  if (backLink) backLink.href = fitCheckerUrl();
   if (isNaN(vramGB) || vramGB <= 0) {
     noGpu.hidden = false; list.hidden = true; return;
   }
+  pushHashState();
   noGpu.hidden = true; list.hidden = false;
   renderList(vramGB);
 }
 
 function init() {
   buildGpuSelector();
+  applyHashState();
   document.getElementById('vramInput').addEventListener('change', render);
   document.getElementById('baseUrlInput').addEventListener('change', render);
+  window.addEventListener('hashchange', () => { applyHashState(); render(); });
 
   // Tooltip — same pattern as index.html
   const tip = document.getElementById('tooltip');

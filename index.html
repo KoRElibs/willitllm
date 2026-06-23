@@ -9,11 +9,11 @@
 <body>
 <div class="page">
 
-  <nav class="page-nav page-nav-right"><a href="coder.html">vibe coder →</a></nav>
+  <nav class="page-nav page-nav-right"><a id="vibeNavLink" href="coder.html">vibe coder →</a></nav>
 
   <header>
     <h1><span class="h1-will">will</span><span class="h1-it">it</span><span class="h1-llm">llm</span><span class="h1-tld">.com</span></h1>
-    <p>Pick your GPU, set your context need, find the right model.</p>
+    <p>Pick your GPU and a model — see if it fits your VRAM, how fast it runs, and how much context you get.</p>
   </header>
 
   <div class="controls">
@@ -61,7 +61,7 @@
     </div>
   </div>
 
-  <div id="noModel" class="no-model">Pick your GPU, then choose a model — it will be sorted by best fit.</div>
+  <div id="noModel" class="no-model">Pick your GPU above — models will sort by fit, with VRAM breakdown, context window, and speed estimates.</div>
 
   <div id="results" hidden>
 
@@ -102,6 +102,7 @@
       </div>
     </div>
 
+    <div id="coderHint" class="coder-hint" hidden></div>
     <div class="provenance-alert" id="provenanceAlert" hidden></div>
 
     <button class="geek-toggle" id="geekToggle">▸ details</button>

@@ -30,6 +30,18 @@ done
 
 REMOTE_DIR="${REMOTE_DIR%/}"   # strip trailing slash
 
+# Ensure the SFTP host is in known_hosts — curl with libssh (Ubuntu 22.04+) silently
+# fails with error 78 if the host is unknown rather than giving a clear auth error.
+if ! ssh-keygen -F "$HOST" &>/dev/null; then
+  echo "Adding $HOST to ~/.ssh/known_hosts..."
+  FETCHED=$(ssh-keyscan "$HOST" 2>/dev/null)
+  if [[ -z "$FETCHED" ]]; then
+    echo "ERROR: Could not reach $HOST to fetch its host key. Check your network."
+    exit 1
+  fi
+  echo "$FETCHED" >> ~/.ssh/known_hosts
+fi
+
 FILES=(
   index.html
   coder.html
@@ -52,8 +64,10 @@ echo
 
 # Fetch the manifest from the server — a plain "hash  filename" file we maintain there.
 # If it doesn't exist yet (first deploy), MANIFEST is just empty and everything uploads.
+SFTP_BASE="sftp://$HOST/$REMOTE_DIR"   # double-slash = absolute path (required by libssh)
+
 MANIFEST=$(curl --silent --insecure --user "$USER:$PASS" \
-  "sftp://$HOST$REMOTE_DIR/manifest.md5" 2>/dev/null || true)
+  "$SFTP_BASE/manifest.md5" 2>/dev/null || true)
 
 ok=0; skip=0; fail=0
 for f in "${FILES[@]}"; do
@@ -76,7 +90,7 @@ for f in "${FILES[@]}"; do
        --insecure \
        --user "$USER:$PASS" \
        --upload-file "$local_path" \
-       "sftp://$HOST$REMOTE_DIR/$f"; then
+       "$SFTP_BASE/$f"; then
     echo "  OK    $f"
     ((ok++)) || true
   else
@@ -90,7 +104,7 @@ done
 if [[ $ok -gt 0 && $fail -eq 0 ]]; then
   (cd "$REPO_ROOT" && md5sum "${FILES[@]}") | \
     curl --silent --insecure --user "$USER:$PASS" \
-         --upload-file - "sftp://$HOST$REMOTE_DIR/manifest.md5"
+         --upload-file - "$SFTP_BASE/manifest.md5"
 fi
 
 echo
