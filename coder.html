@@ -13,7 +13,7 @@
 
   <header>
     <h1><span class="h1-will">will</span><span class="h1-it">it</span><span class="h1-llm">llm</span><span class="h1-tld">.com</span></h1>
-    <p>Pick your GPU — see the best local coding models ranked for agentic loops, with ready-to-paste editor configs.</p>
+    <p>Pick your GPU — see local coding agents, chat assistants, and autocomplete models ranked for your hardware, with ready-to-paste editor configs.</p>
   </header>
 
   <div class="controls coder-controls">
@@ -49,6 +49,15 @@
     <button class="info-sheet-close" id="infoSheetClose" aria-label="Close">✕</button>
   </div>
   <div class="info-sheet-body">
+    <h3>Getting started — what you need</h3>
+    <p><strong>① A code editor.</strong> <a href="https://code.visualstudio.com" target="_blank" rel="noopener">VS Code</a> is the most common choice — download and install it like any app. <a href="https://cursor.com/download" target="_blank" rel="noopener">Cursor</a> is an AI-focused alternative that also works. All the extensions below install the same way in both.</p>
+    <p><strong>② <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a>.</strong> This runs the AI model on your computer. Download and install it from ollama.com. Once installed, the <code>ollama</code> command is available in your terminal, and Ollama runs in the background automatically.</p>
+    <p><strong>③ A coding assistant extension.</strong> Open VS Code, click the Extensions icon in the left sidebar (or press <kbd>Ctrl+Shift+X</kbd> / <kbd>Cmd+Shift+X</kbd>), search for the extension name, and click Install:</p>
+    <ul>
+      <li><strong>Cline</strong> — for agent models. Search <em>"Cline"</em>. After installing, a Cline icon appears in the sidebar. Click it, then click ⚙️ to enter your settings.</li>
+      <li><strong>Continue</strong> — for code chat and autocomplete models. Search <em>"Continue"</em>. After installing, a Continue icon appears in the sidebar. Click it, then ⚙️ → <em>Open Config</em> to edit the config file.</li>
+    </ul>
+    <p>Continue also works in <a href="https://cursor.com/download" target="_blank" rel="noopener">Cursor</a>, VSCodium, Windsurf, and JetBrains IDEs — the config is identical.</p>
     <h3>Data sources</h3>
     <p>Architecture parameters and capabilities are scraped from <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a>. Run <code>ollama show &lt;model&gt;</code> to verify values for your installed variant.</p>
     <p>Speed estimates are derived from GPU bandwidth and TFLOPS figures from public manufacturer data. Actual performance varies by driver, system load, and context length.</p>
@@ -57,10 +66,10 @@
     <p>Models are ranked by a weighted score: <strong>50% generation speed</strong> (most important in sequential agent loops), <strong>30% context</strong> (more of the codebase visible at once), and <strong>20% quality</strong> (quantization sharpness). This is a heuristic — not a benchmark.</p>
 
     <h3>AGENT vs CODE vs FIM</h3>
-    <p><strong>AGENT</strong> — purpose-built for tool-calling agent loops (Devstral, Devstral-small). Best for Cline / Continue agentic workflows. The top-ranked agent is marked ★ recommended.</p>
-    <p><strong>CODE</strong> — code-specialised models (CodeLlama, CodeGemma) for completion and edits in IDE assistants; not tuned for autonomous tool-calling loops.</p>
-    <p><strong>FIM</strong> — fill-in-the-middle models (Codestral, StarCoder2). For IDE autocomplete, not agent loops.</p>
-    <p>General chat models that merely support tool-calling are not shown — only curated coding models appear here.</p>
+    <p><strong>AGENT</strong> — purpose-built for tool-calling agent loops (Devstral). Multi-step planning, file edits, shell commands. Use with Cline or Continue agentic workflows. The top-ranked agent is marked ★ recommended.</p>
+    <p><strong>CODE</strong> — models that excel at code chat, explanation, review, and generation (CodeLlama, CodeGemma, Granite Code, Phi-4, Mistral Small). Use with Continue for IDE coding assistance. Not designed for autonomous agent loops — Cline is not shown for these.</p>
+    <p><strong>FIM</strong> — fill-in-the-middle models (Codestral, StarCoder2) for IDE cursor autocomplete. These use special FIM tokens — configure as <code>tabAutocompleteModel</code> in Continue. Not for chat or agent use.</p>
+    <p>Only curated coding models appear here. General chat models that merely support tool-calling (Llama, Mistral, Mixtral…) are excluded unless they are among the best for coding specifically.</p>
 
     <h3>AI-generated content disclosure</h3>
     <p>Organisation names, country of origin, and role classifications were inferred by AI and have <strong>not been manually verified</strong>. This tool uses AI-assisted data processing in accordance with EU AI Act transparency requirements (Article 13).</p>

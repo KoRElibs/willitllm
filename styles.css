@@ -811,6 +811,50 @@ header p {
 .config-section { margin-bottom: 14px; }
 .config-section:last-child { margin-bottom: 0; }
 
+.config-note {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.doc-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.doc-link:hover { color: var(--accent); }
+
+.prereq-strip {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  line-height: 1.6;
+}
+.prereq-step { white-space: nowrap; }
+.prereq-sep { color: var(--border); }
+.prereq-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+.prereq-link:hover { text-decoration: underline; }
+kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  color: var(--text);
+}
+
 .config-label {
   display: flex;
   justify-content: space-between;

@@ -776,16 +776,22 @@ inclusion (the generic `tools` capability is deliberately NOT used):
 "coding_role": "agent"   // "agent" | "code" | "fim" — omit for everything else
 ```
 
-- `"agent"` — purpose-built for tool-calling agent loops (devstral, devstral-small-2)
-- `"code"` — code-specialised model for completion/edits, not autonomous loops (codellama, codegemma)
-- `"fim"` — fill-in-the-middle autocomplete, not for agent loops (codestral, starcoder2)
+- `"agent"` — purpose-built for tool-calling agent loops (devstral, devstral-small-2). Shows Cline + Continue agentic config.
+- `"code"` — excellent for code chat, explanation, review, and generation (codellama, codegemma, granite-code, phi4, mistral-small3.2). Shows Continue chat config only — Cline is omitted because these models are not tuned for autonomous agent loops. Includes both purpose-built coding models and general models that are among the best for coding specifically (non-CN only).
+- `"fim"` — fill-in-the-middle autocomplete; uses FIM tokens for single-cursor completion (codestral, starcoder2). Shows Continue `tabAutocompleteModel` config — completely different format from chat/agent configs. Not for chat or agent loops.
 - omitted — not shown on the coder page at all (includes general chat models that merely have a
-  `tools` badge — llama, mistral, mixtral, command-r, … — they are not coding models)
+  `tools` badge — llama, mistral, mixtral, command-r, … — they are not among the best for coding specifically)
 
 This cannot be derived from `capabilities`: the `tools` badge lets in general chat models while
 real code models (codellama, codegemma, starcoder2) carry no badge. Do **not** set automatically
 with the scraper — it requires human judgement. The scraper **preserves** `coding_role` across
 rewrites but never sets it.
+
+**Curation principles for `"code"` role:**
+
+- Prefer models that rank competitively on coding benchmarks (HumanEval, SWE-bench, etc.) for their size tier
+- Exclude Chinese-origin models (Qwen-coder etc.) — the page is curated around non-CN models
+- Exclude models superseded by newer entries in the same size tier (e.g. phind-codellama, wizardcoder, stable-code are retired in favour of phi4, mistral-small3.2, granite-code)
 
 ### 13.4 Model filtering
 
@@ -795,8 +801,8 @@ family collapse). No variant selector — only the default variant (index 0) is 
 
 Rows are grouped into three sections in order, each its own ranked block:
 1. **Agents** — top section. The top-ranked agent is flagged `★ recommended`.
-2. **Code models** — under a divider ("Code models — completion & edits").
-3. **FIM** — under a divider ("Autocomplete / fill-in-the-middle").
+2. **Code chat & assistance** — under a divider ("Code chat & assistance — explanation, generation, review").
+3. **Autocomplete** — under a divider ("Autocomplete — fill-in-the-middle IDE completion").
 
 Each row shows the origin **flag** (`flagFor(lib.origin)`, see §3.6) next to the model name.
 
@@ -855,7 +861,9 @@ The UI has an **Ollama URL** text input (defaults to `http://localhost:11434`; r
 Note: remote ollama requires `OLLAMA_HOST=0.0.0.0` on the server — without it ollama binds only
 to loopback and remote connections get ECONNREFUSED.
 
-**Two-mode config panel** (shown when `bpe < 2` and modes yield different context):
+Config output differs by `coding_role`:
+
+**`agent` models** — full two-mode config (Cline + Continue):
 
 *Quick start* — f16 KV, no setup required:
 ```
@@ -863,10 +871,10 @@ ollama run devstral:24b
 >>> /set parameter num_ctx 24576
 ```
 
-*More context* — q8_0 or q4_0 KV, OS-specific setup step shown first (see §13.11), then run
-command with the larger context value.
+*More context* (when `bpe < 2` and modes yield different context) — q8_0 or q4_0 KV, OS-specific
+setup step shown first (see §13.11), then run command with the larger context value.
 
-**Cline** — native Ollama provider, configured through the Cline UI (not a JSON file):
+Cline — native Ollama provider, configured through the Cline UI (not a JSON file):
 ```
 API Provider      Ollama
 Base URL          <ollama-url>
@@ -874,7 +882,7 @@ Model             devstral:24b
 Context Window    55296
 ```
 
-**Continue** (`.continue/config.json` model entry):
+Continue (`.continue/config.json` model entry):
 ```json
 {
   "title": "devstral:24b",
@@ -884,6 +892,30 @@ Context Window    55296
   "contextLength": 55296
 }
 ```
+
+**`code` models** — same two-mode layout but **Cline tab is omitted**. Only Continue chat config
+is shown. These models are not designed for autonomous agent loops; showing Cline would mislead.
+
+**`fim` models** — same two-mode Quick start / More context layout as `agent`/`code` (ollama hosting
+is the same concern regardless of downstream use). The editor plugin section is replaced with a
+Continue `tabAutocompleteModel` entry instead of Cline/Continue chat configs. Shows:
+
+1. Ollama `run` + `num_ctx` command (with optional KV setup step in More context mode)
+2. Continue `tabAutocompleteModel` entry (`.continue/config.json`) with `contextLength`:
+
+```json
+{
+  "tabAutocompleteModel": {
+    "title": "starcoder2:3b",
+    "provider": "ollama",
+    "model": "starcoder2:3b",
+    "apiBase": "<ollama-url>"
+  }
+}
+```
+
+A note explains that FIM models use fill-in-the-middle tokens and belong in `tabAutocompleteModel`,
+not in a chat session or agent loop.
 
 Each sub-block has a copy button (`navigator.clipboard.writeText`). The KV setup section has OS
 tabs (Linux / macOS / Windows) with separate copy buttons; the handler scopes to the active
@@ -916,17 +948,47 @@ Clicking again collapses it. OOM rows are not clickable.
 
 ### 13.10 Navigation
 
-### 13.11 External references — ollama platform setup
+### 13.11 External references — tools & docs
 
-**Always verify against these docs before changing platform-specific setup instructions**
+**Always verify these URLs and instructions before changing anything in `coder.js` that references
+external tools.** Docs move; installers change. Keep this table current whenever a URL breaks or
+a tool ships a config change that affects our instructions.
+
+#### Editor extensions
+
+| Tool | URL | Notes |
+|---|---|---|
+| Cline | [docs.cline.bot](https://docs.cline.bot) | VS Code extension for agentic coding loops; configured via its own settings UI (not a JSON file). Extension ID: `saoudrizwan.claude-dev` |
+| Continue | [continue.dev](https://www.continue.dev) | VS Code / JetBrains extension for coding assistance and tab autocomplete |
+| Continue config docs | [docs.continue.dev](https://docs.continue.dev) | Config file reference; `tabAutocompleteModel`, model entries, providers |
+
+Links appear inline in `coder.js` config labels (Cline label → github.com/cline/cline; Continue
+label → docs.continue.dev). Update them here and in the source together if URLs change.
+
+#### Ollama platform setup
+
+**Verify against these docs before changing platform-specific setup instructions**
 in `kvSetupHtml` or anywhere else in `coder.js`. Our instructions must stay aligned with
 what the official installer actually creates.
+
+| Tool | URL | Notes |
+|---|---|---|
+| Ollama install | [ollama.com](https://ollama.com) | Download page; the `ollama` CLI becomes available after install |
+| Ollama docs | [docs.ollama.com](https://docs.ollama.com) | General reference |
 
 | Platform | Doc URL | Key facts |
 |---|---|---|
 | Linux | https://docs.ollama.com/linux | systemd service at `/etc/systemd/system/ollama.service`; customise via drop-in `…/ollama.service.d/override.conf` (same file `sudo systemctl edit ollama` creates); env vars as `Environment=` lines under `[Service]` |
 | macOS | https://docs.ollama.com/macos | App stores data in `~/.ollama`; env var docs sparse — current approach: export in `~/.zshrc`, quit menu bar app, run `ollama serve` from terminal |
 | Windows | https://docs.ollama.com/windows | Env vars via Settings → Environment Variables UI or `setx` from cmd/PowerShell; restart Ollama from system tray after |
+
+#### Ollama command intent
+
+The `ollama run <tag>` + `/set parameter num_ctx N` block shown in the config panels serves
+two purposes: it pulls the model if not already installed, and lets the user verify it runs at
+the target context in a local terminal session. It is **not** the live num_ctx setting for
+Cline/Continue — those editors send `num_ctx` automatically via their own config fields
+(Cline: Context Window; Continue: `contextLength`). A note in the config panel makes this clear.
 
 **Linux implementation note**: use the drop-in (`override.conf`) rather than editing
 `/etc/systemd/system/ollama.service` directly. The original service file is written by the

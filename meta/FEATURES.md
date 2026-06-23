@@ -158,3 +158,19 @@ As a Vibe Coder I want to see models that don't fit my GPU listed at the bottom 
 
 Implemented: OOM models are rendered muted with `✗ OOM` label, ranked below all fitting models,
 and non-clickable (no config panel expands).
+
+**US-29 — Capability-differentiated configs and curated model list** `done`
+As a Vibe Coder I want configs appropriate to each model's actual capability so I'm not shown Cline agentic settings for a code-chat model, or chat settings for an autocomplete model.
+
+Implemented: config output now branches on `coding_role`:
+
+- `agent` → Cline + Continue (unchanged)
+- `code` → Continue chat config only (Cline omitted — these models are not tuned for agent loops)
+- `fim` → Continue `tabAutocompleteModel` block with an explanatory note (completely different format)
+
+Section dividers updated: "Code chat & assistance — explanation, generation, review" and
+"Autocomplete — fill-in-the-middle IDE completion".
+
+Model list curated: added `phi4` and `mistral-small3.2` as `code`-role models (modern, non-CN,
+top-tier coders for their size). Removed `coding_role` from `phind-codellama`, `wizardcoder`, and
+`stable-code` (superseded, circa 2023). See SPEC §13.3 for updated curation principles.

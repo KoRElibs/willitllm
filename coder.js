@@ -43,7 +43,7 @@ function fmtCtxCoding(maxCtx) {
 // ── Ranking ───────────────────────────────────────────────────────────────────
 
 // Weighted coding score 0–1: speed 50%, context 30%, quality 20%.
-// Speed weighted highest because agentic loops chain 30–100 sequential tool calls.
+// Speed weighted highest because agentic coding sessions chain 30–100 sequential tool calls.
 function codingRank(genLo, maxCtx, quality) {
   const speedNorm = Math.min(1, (genLo || 0) / 30);
   const ctxNorm   = Math.min(1, maxCtx / 65536);
@@ -183,11 +183,10 @@ function kvSetupHtml(kvType) {
     </div>`;
 }
 
-// Renders one set of instructions for a given context size and optional KV type.
-// When kvType is set, shows a numbered "set KV cache" step before the run command.
-function modeHtml(runTag, maxCtx, kvType, baseUrl) {
-  const ollamaRun    = `ollama run ${runTag}\n>>> /set parameter num_ctx ${maxCtx}`;
-  // Cline uses a native Ollama provider configured through its UI — no JSON paste.
+// Renders one set of ollama + editor instructions for a given context size.
+// showCline: false for code-role models (Continue only — not designed for agentic loops).
+function modeHtml(runTag, maxCtx, kvType, baseUrl, showCline) {
+  const ollamaRun    = `ollama pull ${runTag}`;
   const clineFields  = [
     ['API Provider',   'Ollama'],
     ['Base URL',       baseUrl],
@@ -201,44 +200,123 @@ function modeHtml(runTag, maxCtx, kvType, baseUrl) {
   }, null, 2);
 
   const kvSection = kvType ? kvSetupHtml(kvType) : '';
-  const runLabel  = kvType ? '2. Run model' : 'Ollama';
+  const runLabel  = kvType ? '2. Pull model' : 'Ollama — pull model';
+
+  const clientTabs = showCline
+    ? `<button class="client-tab active" data-client="cline">Cline</button>
+       <button class="client-tab" data-client="continue">Continue</button>`
+    : `<button class="client-tab active" data-client="continue">Continue</button>`;
+
+  const clineBlock = showCline
+    ? `<div class="client-block" data-client="cline">
+        <div class="config-label"><span>Cline sidebar → ⚙️ → enter these values <a class="doc-link" href="https://docs.cline.bot/running-models-locally/ollama" target="_blank" rel="noopener">docs ↗</a></span><button class="copy-btn">copy</button></div>
+        <pre class="client-config">${esc(clineText)}</pre>
+        <div class="config-note">Model is a dropdown — it lists models already pulled to ollama. Also recommended: ⚙️ → Features → enable <strong>Use Compact Prompt</strong>.</div>
+      </div>`
+    : '';
 
   return `
     ${kvSection}
     <div class="config-section">
-      <div class="config-label">${runLabel} <button class="copy-btn">copy</button></div>
+      <div class="config-label"><span>${runLabel} <a class="doc-link" href="https://ollama.com" target="_blank" rel="noopener">ollama.com ↗</a></span><button class="copy-btn">copy</button></div>
       <pre class="ollama-cmd">${esc(ollamaRun)}</pre>
     </div>
     <div class="config-section">
       <div class="client-tabs-wrap">
-        <button class="client-tab active" data-client="cline">Cline</button>
-        <button class="client-tab" data-client="continue">Continue</button>
+        ${clientTabs}
       </div>
-      <div class="client-block" data-client="cline">
-        <div class="config-label">Enter in Cline settings <button class="copy-btn">copy</button></div>
-        <pre class="client-config">${esc(clineText)}</pre>
-      </div>
-      <div class="client-block" data-client="continue" hidden>
-        <div class="config-label">.continue/config.json — model entry <button class="copy-btn">copy</button></div>
+      ${clineBlock}
+      <div class="client-block" data-client="continue"${showCline ? ' hidden' : ''}>
+        <div class="config-label"><span>Continue config — add to the <code>models</code> array <a class="doc-link" href="https://docs.continue.dev" target="_blank" rel="noopener">docs ↗</a></span><button class="copy-btn">copy</button></div>
         <pre class="client-config">${esc(continueJson)}</pre>
+        <div class="config-note">Open Continue config: click the Continue icon in the sidebar → ⚙️ → <em>Open Config</em>. Paste this inside the <code>models: [ ]</code> array. Also works in Cursor, VSCodium, Windsurf, and JetBrains.</div>
       </div>
     </div>
   `;
 }
 
-// Two-mode config: "Quick start" (f16 KV, works now) vs "Optimized" (q8_0/q4_0, more context).
-// Shows a single mode when both would give the same context (arch-limited or no flash support).
-function makeConfigHtml(entry) {
+// Config for FIM / autocomplete models.
+// Ollama hosting (num_ctx, KV cache) works the same as any other model — the two-mode
+// Quick start / More context layout is preserved. Only the editor plugin section differs:
+// tabAutocompleteModel instead of Cline/Continue chat configs.
+function fimConfigHtml(entry) {
   const { model, variant, ctx, ctxF16, bpe } = entry;
+  const [library] = model.ollama_tag.split(':');
+  const runTag    = `${library}:${variant.tag}`;
+  const baseUrl   = getBaseUrl();
+  const kvType    = bpe === 1 ? 'q8_0' : bpe === 0.5 ? 'q4_0' : null;
+  const f16Ctx    = ctxF16?.maxCtx ?? ctx.maxCtx;
+  const hasOptimized = kvType !== null && ctx.maxCtx > f16Ctx;
+
+  const note = `<div class="config-section"><div class="config-note">FIM models use fill-in-the-middle tokens for cursor autocomplete — not for chat or agent loops. Add the block below to your <code>.continue/config.json</code> as <code>tabAutocompleteModel</code>.</div></div>`;
+
+  function fimMode(maxCtx, kv) {
+    const ollamaRun = `ollama pull ${runTag}`;
+    const tabJson   = JSON.stringify({
+      tabAutocompleteModel: {
+        title: runTag, provider: 'ollama', model: runTag,
+        apiBase: baseUrl, contextLength: maxCtx,
+      },
+    }, null, 2);
+    const kvSection = kv ? kvSetupHtml(kv) : '';
+    const runLabel  = kv ? '2. Pull model' : 'Ollama — pull model';
+    return `
+      ${kvSection}
+      <div class="config-section">
+        <div class="config-label">${runLabel} <button class="copy-btn">copy</button></div>
+        <pre class="ollama-cmd">${esc(ollamaRun)}</pre>
+      </div>
+      <div class="config-section">
+        <div class="config-label"><span>Continue config — set as <code>tabAutocompleteModel</code> <a class="doc-link" href="https://docs.continue.dev" target="_blank" rel="noopener">docs ↗</a></span><button class="copy-btn">copy</button></div>
+        <pre class="client-config">${esc(tabJson)}</pre>
+        <div class="config-note">Open Continue config: Continue sidebar → ⚙️ → <em>Open Config</em>. Paste this as a top-level key (not inside the <code>models</code> array).</div>
+      </div>
+    `;
+  }
+
+  if (!hasOptimized) return note + fimMode(ctx.maxCtx, null);
+
+  const gain        = Math.round((ctx.maxCtx / f16Ctx - 1) * 100);
+  const qualityNote = kvType === 'q8_0'
+    ? 'Quality: nearly lossless (~0.5% perplexity hit)'
+    : 'Quality: modest hit (~2–5% perplexity, degrades further at long contexts)';
+  return `
+    ${note}
+    <div class="mode-tabs-wrap">
+      <button class="mode-tab active" data-mode="quick"
+        data-tip="Full f16 KV quality. Works immediately — no server restart needed.">
+        Quick start · ${fmtCtxCoding(f16Ctx)}
+      </button>
+      <button class="mode-tab" data-mode="optimized"
+        data-tip="${qualityNote} · ~${gain}% more context than Quick start · needs OLLAMA_KV_CACHE_TYPE=${kvType} restart">
+        More context · ${fmtCtxCoding(ctx.maxCtx)}
+      </button>
+    </div>
+    <div class="mode-block" data-mode="quick">
+      ${fimMode(f16Ctx, null)}
+    </div>
+    <div class="mode-block" data-mode="optimized" hidden>
+      ${fimMode(ctx.maxCtx, kvType)}
+    </div>
+  `;
+}
+
+// Two-mode config for agent/code models: "Quick start" (f16 KV) vs "Optimized" (q8_0/q4_0).
+// Shows a single mode when both would give the same context (arch-limited or no flash support).
+// FIM models use fimConfigHtml() instead — this function is not called for them.
+function makeConfigHtml(entry) {
+  const { model, variant, ctx, ctxF16, bpe, lib } = entry;
   const [library] = model.ollama_tag.split(':');
   const runTag    = `${library}:${variant.tag}`;
   const kvType    = bpe === 1 ? 'q8_0' : bpe === 0.5 ? 'q4_0' : null;
   const f16Ctx    = ctxF16?.maxCtx ?? ctx.maxCtx;
   const hasOptimized = kvType !== null && ctx.maxCtx > f16Ctx;
 
-  const baseUrl = getBaseUrl();
+  // Code-role models: hide Cline — these are not designed for autonomous agent loops.
+  const showCline = lib.coding_role === 'agent';
+  const baseUrl   = getBaseUrl();
 
-  if (!hasOptimized) return modeHtml(runTag, ctx.maxCtx, null, baseUrl);
+  if (!hasOptimized) return modeHtml(runTag, ctx.maxCtx, null, baseUrl, showCline);
 
   const gain        = Math.round((ctx.maxCtx / f16Ctx - 1) * 100);
   const qualityNote = kvType === 'q8_0'
@@ -256,10 +334,10 @@ function makeConfigHtml(entry) {
       </button>
     </div>
     <div class="mode-block" data-mode="quick">
-      ${modeHtml(runTag, f16Ctx, null, baseUrl)}
+      ${modeHtml(runTag, f16Ctx, null, baseUrl, showCline)}
     </div>
     <div class="mode-block" data-mode="optimized" hidden>
-      ${modeHtml(runTag, ctx.maxCtx, kvType, baseUrl)}
+      ${modeHtml(runTag, ctx.maxCtx, kvType, baseUrl, showCline)}
     </div>
   `;
 }
@@ -276,8 +354,8 @@ function makeRow(entry) {
   const roleTip = lib.coding_role === 'agent'
     ? 'Purpose-built for tool-calling agent loops (Cline, Continue, Aider). Multi-step planning, file edits, shell commands.'
     : lib.coding_role === 'code'
-    ? 'Code-specialised model — trained on code for completion and edits. Good in IDE assistants; not tuned for autonomous tool-calling loops.'
-    : 'Fill-in-the-middle autocomplete — not for agent loops. Uses special FIM tokens; works in IDE autocomplete plugins.';
+    ? 'Code chat & generation — excellent for code explanation, review, and generation. Use with Continue for IDE coding assistance; not designed for autonomous agent loops.'
+    : 'Fill-in-the-middle autocomplete — uses FIM tokens for single-cursor completion in IDEs. Configure as tabAutocompleteModel in Continue; not for chat or agent use.';
 
   const flag      = flagFor(lib.origin);
   const speedText = speedEsts ? fmtSpeed(speedEsts.genLo, speedEsts.genHi) : '—';
@@ -292,6 +370,18 @@ function makeRow(entry) {
     ? '<span class="rec-tag" data-tip="Top-ranked agent model for this GPU — the recommended starting point.">★ recommended</span>'
     : '';
 
+  // FIM models get a different config panel (tabAutocomplete format).
+  const configHtml = lib.coding_role === 'fim'
+    ? fimConfigHtml(entry)
+    : makeConfigHtml(entry);
+
+  const editorLink  = `<a class="prereq-link" href="https://code.visualstudio.com" target="_blank" rel="noopener">VS Code</a> or <a class="prereq-link" href="https://cursor.com/download" target="_blank" rel="noopener">Cursor</a>`;
+  const ollamaLink  = `<a class="prereq-link" href="https://ollama.com" target="_blank" rel="noopener">Ollama</a>`;
+  const extLinks = lib.coding_role === 'agent'
+    ? `<a class="prereq-link" href="https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev" target="_blank" rel="noopener">Cline</a> or <a class="prereq-link" href="https://marketplace.visualstudio.com/items?itemName=Continue.continue" target="_blank" rel="noopener">Continue</a> extension`
+    : `<a class="prereq-link" href="https://marketplace.visualstudio.com/items?itemName=Continue.continue" target="_blank" rel="noopener">Continue</a> extension`;
+  const prereqStrip = `<div class="prereq-strip"><span class="prereq-step">① Get an editor — ${editorLink}</span><span class="prereq-sep">·</span><span class="prereq-step">② Install ${ollamaLink}</span><span class="prereq-sep">·</span><span class="prereq-step">③ Add the ${extLinks} — open Extensions in VS Code (<kbd>Ctrl+Shift+X</kbd>), search the name, click Install</span></div>`;
+
   row.innerHTML = `
     <div class="coder-row-header">
       <span class="coder-badge ${roleCls}" data-tip="${roleTip}">${role}</span>
@@ -303,7 +393,8 @@ function makeRow(entry) {
       <div class="coder-score-bar" data-tip="Coding rank: 50% speed + 30% context + 20% quality"><div class="coder-score-fill" style="width:${barPct}%"></div></div>
     </div>
     <div class="coder-config" hidden>
-      ${makeConfigHtml(entry)}
+      ${prereqStrip}
+      ${configHtml}
     </div>
   `;
 
@@ -391,12 +482,12 @@ function renderList(vramGB) {
   }
 
   if (code.length) {
-    list.appendChild(sectionDivider('Code models — completion &amp; edits, not agent loops'));
+    list.appendChild(sectionDivider('Code chat &amp; assistance — explanation, generation, review'));
     code.forEach(e => list.appendChild(makeRow(e)));
   }
 
   if (fim.length) {
-    list.appendChild(sectionDivider('Autocomplete / fill-in-the-middle — not for agent loops'));
+    list.appendChild(sectionDivider('Autocomplete — fill-in-the-middle IDE completion'));
     fim.forEach(e => list.appendChild(makeRow(e)));
   }
 }
