@@ -16,6 +16,7 @@ const FLAGS = {
   'Singapore':   '🇸🇬',
   'South Korea': '🇰🇷',
   'Spain':       '🇪🇸',
+  'UAE':         '🇦🇪',
 };
 
 // Returns the flag for an origin: a mapped emoji, 🌍 for an unmapped origin,

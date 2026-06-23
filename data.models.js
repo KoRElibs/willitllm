@@ -1841,6 +1841,164 @@ const MODELS = [
       {"tag": "34b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 28.0, "group": "instruct"},
       {"tag": "34b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 36.0, "group": "instruct"}
     ]
+  },
+  {
+    "ollama_tag": "gemma3n:e2b",
+    "context_length": 32768,
+    "params_b": 4.46,
+    "block_count": 30,
+    "head_count": 8,
+    "head_count_kv": 2,
+    "embedding_length": 2048,
+    "key_length": 256,
+    "sliding_window": 512,
+    "variants": [
+      {"tag": "e2b", "quantization": "Q4_K_M", "weights_gb": 5.6, "group": "e2b"},
+      {"tag": "e2b-it-q8_0", "quantization": "Q8_0", "weights_gb": 6.6, "group": "e2b-it"}
+    ]
+  },
+  {
+    "ollama_tag": "gemma3n:e4b",
+    "context_length": 32768,
+    "params_b": 6.87,
+    "block_count": 35,
+    "head_count": 8,
+    "head_count_kv": 2,
+    "embedding_length": 2048,
+    "key_length": 256,
+    "sliding_window": 512,
+    "variants": [
+      {"tag": "e4b", "quantization": "Q4_K_M", "weights_gb": 7.5, "group": "e4b"},
+      {"tag": "e4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 9.5, "group": "e4b-it"}
+    ]
+  },
+  {
+    "ollama_tag": "granite3.3:2b",
+    "context_length": 131072,
+    "params_b": 2.53,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 2048,
+    "key_length": 64,
+    "variants": [
+      {"tag": "2b", "quantization": "Q4_K_M", "weights_gb": 1.5, "group": "(default)"}
+    ]
+  },
+  {
+    "ollama_tag": "granite3.3:8b",
+    "context_length": 131072,
+    "params_b": 8.17,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
+    "variants": [
+      {"tag": "8b", "quantization": "Q4_K_M", "weights_gb": 4.9, "group": "(default)"}
+    ]
+  },
+  {
+    "ollama_tag": "llama3.2-vision:11b",
+    "context_length": 131072,
+    "params_b": 10.7,
+    "block_count": 40,
+    "head_count": 32,
+    "head_count_kv": 8,
+    "embedding_length": 4096,
+    "key_length": 128,
+    "variants": [
+      {"tag": "11b", "quantization": "Q4_K_M", "weights_gb": 7.8, "group": "(default)"},
+      {"tag": "11b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 12.0, "group": "instruct"}
+    ]
+  },
+  {
+    "ollama_tag": "llama3.2-vision:90b",
+    "context_length": 131072,
+    "params_b": 88.6,
+    "block_count": 100,
+    "head_count": 64,
+    "head_count_kv": 8,
+    "embedding_length": 8192,
+    "key_length": 128,
+    "variants": [
+      {"tag": "90b", "quantization": "Q4_K_M", "weights_gb": 55.0, "group": "(default)"},
+      {"tag": "90b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 95.0, "group": "instruct"}
+    ]
+  },
+  {
+    "ollama_tag": "phi4-mini:3.8b",
+    "context_length": 131072,
+    "params_b": 3.84,
+    "block_count": 32,
+    "head_count": 24,
+    "head_count_kv": 8,
+    "embedding_length": 3072,
+    "key_length": 128,
+    "sliding_window": 262144,
+    "variants": [
+      {"tag": "3.8b", "quantization": "Q4_K_M", "weights_gb": 2.5, "group": "(default)"},
+      {"tag": "3.8b-q8_0", "quantization": "Q8_0", "weights_gb": 4.1, "group": "q8_0"}
+    ]
+  },
+  {
+    "ollama_tag": "falcon3:1b",
+    "context_length": 8192,
+    "params_b": 1.67,
+    "block_count": 18,
+    "head_count": 8,
+    "head_count_kv": 4,
+    "embedding_length": 2048,
+    "key_length": 256,
+    "value_length": 256,
+    "variants": [
+      {"tag": "1b", "quantization": "Q8_0", "weights_gb": 1.8, "group": "(default)"},
+      {"tag": "1b-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 1.1, "group": "instruct"}
+    ]
+  },
+  {
+    "ollama_tag": "falcon3:3b",
+    "context_length": 32768,
+    "params_b": 3.23,
+    "block_count": 22,
+    "head_count": 12,
+    "head_count_kv": 4,
+    "embedding_length": 3072,
+    "key_length": 256,
+    "value_length": 256,
+    "variants": [
+      {"tag": "3b", "quantization": "Q4_K_M", "weights_gb": 2.0, "group": "(default)"},
+      {"tag": "3b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 3.4, "group": "instruct"}
+    ]
+  },
+  {
+    "ollama_tag": "falcon3:7b",
+    "context_length": 32768,
+    "params_b": 7.46,
+    "block_count": 28,
+    "head_count": 12,
+    "head_count_kv": 4,
+    "embedding_length": 3072,
+    "key_length": 256,
+    "value_length": 256,
+    "variants": [
+      {"tag": "7b", "quantization": "Q4_K_M", "weights_gb": 4.6, "group": "(default)"},
+      {"tag": "7b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 7.9, "group": "instruct"}
+    ]
+  },
+  {
+    "ollama_tag": "falcon3:10b",
+    "context_length": 32768,
+    "params_b": 10.3,
+    "block_count": 40,
+    "head_count": 12,
+    "head_count_kv": 4,
+    "embedding_length": 3072,
+    "key_length": 256,
+    "value_length": 256,
+    "variants": [
+      {"tag": "10b", "quantization": "Q4_K_M", "weights_gb": 6.3, "group": "(default)"},
+      {"tag": "10b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 11.0, "group": "instruct"}
+    ]
   }
-
 ];
