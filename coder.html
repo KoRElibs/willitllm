@@ -29,7 +29,7 @@
     </div>
   </div>
 
-  <div id="noGpu" class="no-model">Pick your GPU to see compatible coding models, ranked for vibe coding.</div>
+  <div id="noGpu" class="no-model">Pick your GPU to see compatible coding models, ranked for agentic performance.</div>
 
   <div id="coderList" hidden></div>
 
@@ -66,10 +66,10 @@
     <p>Models are ranked by a weighted score: <strong>50% generation speed</strong> (most important in sequential agent loops), <strong>30% context</strong> (more of the codebase visible at once), and <strong>20% quality</strong> (quantization sharpness). This is a heuristic — not a benchmark.</p>
 
     <h3>AGENT vs CODE vs FIM</h3>
-    <p><strong>AGENT</strong> — purpose-built for tool-calling agent loops (Devstral). Multi-step planning, file edits, shell commands. Use with Cline or Continue agentic workflows. The top-ranked agent is marked ★ recommended.</p>
-    <p><strong>CODE</strong> — models that excel at code chat, explanation, review, and generation (CodeLlama, CodeGemma, Granite Code, Phi-4, Mistral Small). Use with Continue for IDE coding assistance. Not designed for autonomous agent loops — Cline is not shown for these.</p>
-    <p><strong>FIM</strong> — fill-in-the-middle models (Codestral, StarCoder2) for IDE cursor autocomplete. These use special FIM tokens — configure as <code>tabAutocompleteModel</code> in Continue. Not for chat or agent use.</p>
-    <p>Only curated coding models appear here. General chat models that merely support tool-calling (Llama, Mistral, Mixtral…) are excluded unless they are among the best for coding specifically.</p>
+    <p><strong>AGENT</strong> — purpose-trained for agentic coding loops (Devstral, Devstral Small). These models are fine-tuned on software engineering tasks: multi-step planning, file edits, shell commands, tool calling. Use with Cline or Continue in agentic mode. The top-ranked agent is marked ★ recommended — start here for vibe coding.</p>
+    <p><strong>CODE</strong> — models that excel at code chat, explanation, review, and generation (CodeLlama, CodeGemma, Granite Code, Phi-4, Mistral Small). Use with Continue for IDE coding assistance. Some support tool-calling but are not optimized for autonomous coding agent loops — for that, choose an AGENT model. Cline is not shown for CODE models.</p>
+    <p><strong>FIM</strong> — fill-in-the-middle models (Codestral, StarCoder2) for IDE cursor autocomplete. These use special FIM tokens — configure as <code>tabAutocompleteModel</code> in Continue. Not for chat or autonomous agent use.</p>
+    <p>Only curated coding models appear here. General chat models that merely support tool-calling (Llama, Mistral, Mixtral…) are excluded — they are not specifically optimized for coding.</p>
 
     <h3>AI-generated content disclosure</h3>
     <p>Organisation names, country of origin, and role classifications were inferred by AI and have <strong>not been manually verified</strong>. This tool uses AI-assisted data processing in accordance with EU AI Act transparency requirements (Article 13).</p>
@@ -84,7 +84,7 @@
 <script src="data.quantizations.js?v=10"></script>
 <script src="data.models.js?v=10"></script>
 <script src="app.calc.js?v=10"></script>
-<script src="coder.js?v=10"></script>
+<script src="coder.js?v=11"></script>
 <script>
   // Info sheet wiring (same as index.html)
   const _open  = document.getElementById('infoSheetOpen');

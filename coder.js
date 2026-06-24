@@ -386,10 +386,10 @@ function makeRow(entry) {
   const role    = lib.coding_role === 'agent' ? 'AGENT' : lib.coding_role === 'code' ? 'CODE' : 'FIM';
   const roleCls = lib.coding_role === 'agent' ? 'badge-agent' : lib.coding_role === 'code' ? 'badge-code' : 'badge-fim';
   const roleTip = lib.coding_role === 'agent'
-    ? 'Purpose-built for tool-calling agent loops (Cline, Continue, Aider). Multi-step planning, file edits, shell commands.'
+    ? 'Purpose-trained for agentic coding loops — multi-step planning, file edits, shell commands, tool calling. The right choice for vibe coding with Cline or Continue.'
     : lib.coding_role === 'code'
-    ? 'Code chat & generation — excellent for code explanation, review, and generation. Use with Continue for IDE coding assistance; not designed for autonomous agent loops.'
-    : 'Fill-in-the-middle autocomplete — uses FIM tokens for single-cursor completion in IDEs. Configure as tabAutocompleteModel in Continue; not for chat or agent use.';
+    ? 'Code chat & generation — explanation, review, and generation. Great with Continue. Some support tool-calling but are not optimized for autonomous coding loops — use an AGENT model for that.'
+    : 'Fill-in-the-middle autocomplete — uses FIM tokens for single-cursor completion in IDEs. Configure as tabAutocompleteModel in Continue; not for chat or autonomous agent use.';
 
   const flag      = flagFor(lib.origin);
   const speedText = speedEsts ? fmtSpeed(speedEsts.genLo, speedEsts.genHi) : '—';
@@ -401,7 +401,7 @@ function makeRow(entry) {
   row.className = 'coder-row' + (recommended ? ' coder-row-recommended' : '');
 
   const recTag = recommended
-    ? '<span class="rec-tag" data-tip="Top-ranked agent model for this GPU — the recommended starting point.">★ recommended</span>'
+    ? '<span class="rec-tag" data-tip="Top-ranked coding agent for this GPU — best starting point for vibe coding.">★ recommended</span>'
     : '';
 
   // FIM models get a different config panel (tabAutocomplete format).
@@ -493,9 +493,9 @@ function makeRow(entry) {
 
 // ── List render ───────────────────────────────────────────────────────────────
 
-function sectionDivider(text) {
+function sectionDivider(text, extraClass) {
   const d = document.createElement('div');
-  d.className = 'fim-divider';
+  d.className = 'section-divider' + (extraClass ? ' ' + extraClass : '');
   d.innerHTML = `<span>${text}</span>`;
   return d;
 }
@@ -511,6 +511,7 @@ function renderList(vramGB) {
   }
 
   if (agent.length) {
+    list.appendChild(sectionDivider('Coding agents — autonomous planning, file edits, shell commands', 'divider-agent'));
     agent[0].recommended = true;   // top-ranked agent = recommended starting point
     agent.forEach(e => list.appendChild(makeRow(e)));
   }
