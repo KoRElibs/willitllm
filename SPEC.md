@@ -41,6 +41,7 @@ global variables.
 index.html               — fit checker page, all structure, no logic
 coder.html               — vibe coder page, all structure, no logic
 styles.css               — all styling (shared between both pages)
+data.calc-constants.js   — formula constants shared between browser and Python tooling (const CALC_CONSTANTS)
 data.gpus.js             — GPU database (const GPUS)
 data.libraries.js        — model library metadata (const LIBRARIES)
 data.quantizations.js    — quantization quality/speed ratings (const QUANT_INFO)
@@ -53,11 +54,23 @@ app.ui.js                — UI helpers: dropdowns, combobox, nudge buttons (ind
 app.js                   — entry point for index.html: shared state, render orchestrator, init
 coder.js                 — entry point for coder.html: ranking, config output, init
 meta/
-  SPEC.md                    — this file
-  scripts/update-models.md   — scraper workflow instructions (AI-readable)
-  todo.md                    — development todo list
+  FEATURES.md                — feature backlog and done list
+  BUGS.md                    — bug tracker (open / fixed)
+  UX-FINDINGS.md             — design and UX research findings
+  knowledge/
+    external-tools.md        — Cline, Continue, Ollama, editor ecosystem reference
+    nvidia-geforce-compare.md — NVIDIA compare page verbatim source data (read-only)
+    nvidia-tflops-derived.md  — derived FP16 TFLOPS values and conversion formulas
+  benchmarks/                — empirical benchmark result files
   scripts/
+    update-models.md         — scraper workflow instructions (AI-readable)
     update_models.py         — Python scraper that maintains data.models.js and data.libraries.js
+    benchmark.py             — benchmark runner
+  skills/
+    browser-verifier.md      — Playwright + Firefox visual verification skill
+  deploy/
+    deploy.sh                — production deployment script
+    deploy.cfg.example       — config template (deploy.cfg is gitignored)
 ```
 
 All JS files are loaded via `<script src="file.js?v=N">` tags in dependency order (data files
@@ -107,7 +120,7 @@ the user to select their exact card for a tighter estimate.
 
 #### Adding or updating GPU specs (procedure for AI assistant)
 
-NVIDIA GeForce specs are maintained in `sources/nvidia-tflops-derived.md`, built from
+NVIDIA GeForce specs are maintained in `meta/knowledge/nvidia-tflops-derived.md`, built from
 screenshots of the official NVIDIA compare pages (`https://www.nvidia.com/nb-no/geforce/graphics-cards/compare/`).
 The NVIDIA compare pages require JavaScript and cannot be fetched directly — the user provides
 screenshots and the AI reads them, then updates both the source file and `data.gpus.js`.
@@ -122,7 +135,7 @@ For older series (RTX 30/20, GTX 16/10), no AI TOPS is shown — use TechPowerUp
 
 **Deriving `bandwidth` (not shown on compare pages — separate source required):**
 Read from TechPowerUp "Memory Bandwidth" or the NVIDIA nb-no compare page bandwidth row.
-Record the source and date in `sources/nvidia-tflops-derived.md`.
+Record the source and date in `meta/knowledge/nvidia-tflops-derived.md`.
 
 **Laptop variants always get a separate entry:**
 Laptop GPUs have lower bandwidth (narrower bus, lower TDP) than desktop — never share an entry.
@@ -267,7 +280,7 @@ const DECODE_ATTN_EFF = 0.015; // batch-1 decode attention: fraction of fp16 TFL
 
 `OVERHEAD_GB` was raised 0.5 → 0.8 after a GTX 1660 Super spilled to system RAM at a context
 the 0.5 value predicted would fit: rated VRAM overstates usable VRAM (driver/system reserve
-~4–6%) and runtime overhead alone can reach ~0.8 GB. See `meta/knowledge/benchmark-rtx3090-devstral.md`.
+~4–6%) and runtime overhead alone can reach ~0.8 GB. See `meta/benchmarks/README.md`.
 
 ### 4.2 KV cache encoding
 
@@ -1019,6 +1032,6 @@ Every code change must keep the following three files in sync with the codebase.
 |---|---|
 | `meta/FEATURES.md` | A feature is implemented (`backlog` → `done`), a new feature is planned (add as `backlog`), or an existing feature's behaviour changes |
 | `meta/BUGS.md` | A bug is discovered (add as `open`) or fixed (`open` → `fixed` with a description of the root cause and fix) |
-| `meta/SPEC.md` | Any described behaviour changes — data structures, formulas, UI layout, constants, file paths, or interaction rules |
+| `SPEC.md` | Any described behaviour changes — data structures, formulas, UI layout, constants, file paths, or interaction rules |
 
 The rule: if you changed the code, you changed at least one of these files.

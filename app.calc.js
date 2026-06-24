@@ -7,14 +7,11 @@
 // Globals:     GPUS, QUANT_INFO                             (data files)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const OVERHEAD_GB    = 0.8;  // fixed reservation: CUDA context, driver, ollama runtime + driver-reserved
-                            // VRAM. Raised 0.5→0.8 after a GTX 1660S spill at a context the old value
-                            // predicted would fit (real usable VRAM < rated; see meta/knowledge/).
-const SAFETY_FACTOR  = 0.9;  // 10% margin — overhead estimate is imprecise (0.5–1.0 GB in practice)
-const CTX_ROUND      = 128;  // round down to nearest 128 (natural head-dimension granularity)
-const DECODE_ATTN_EFF = 0.015; // batch-1 decode attention: fraction of fp16 TFLOPS reached by the
-                               // per-token attention GEMV. Calibrated against RTX 3090 + GTX 1660S
-                               // sweeps (meta/benchmarks/); see meta/knowledge/benchmark-rtx3090-devstral.md
+// Constants sourced from data.calc-constants.js — edit there, not here.
+const OVERHEAD_GB     = CALC_CONSTANTS.overhead_gb;
+const SAFETY_FACTOR   = CALC_CONSTANTS.safety_factor;
+const CTX_ROUND       = CALC_CONSTANTS.ctx_round;
+const DECODE_ATTN_EFF = CALC_CONSTANTS.decode_attn_eff;
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 

@@ -57,8 +57,11 @@ await page.click('.combobox-item:not([hidden])')
 # Select variant
 await page.select_option('#variantSelect', index=0)
 
-# Screenshot
-await page.screenshot(path='/tmp/shot.png', full_page=False)
+# Screenshot — always save to meta/cache/screenshots/ (gitignored, persists locally)
+# Name descriptively: index_baseline.png, coder_after_refactor.png, etc.
+# This lets you compare before/after across sessions.
+SHOTS = '/home/kare/repos/willitllm/meta/cache/screenshots'
+await page.screenshot(path=f'{SHOTS}/index_baseline.png', full_page=False)
 
 # Read element text
 text = await page.text_content('#verdict')
@@ -75,8 +78,8 @@ await page.goto(f'http://localhost:{PORT}/#g=RTX+3090&m=llama3.2%3A3b&v=3b&t=320
 
 ## Reading screenshots
 
-After `await page.screenshot(path='/tmp/shot.png')`, read `/tmp/shot.png`.
+Read the file at `meta/cache/screenshots/<name>.png` after saving.
 
 ## Quick one-shot script template
 
-Write the script to `/tmp/pw_test.py`, run it with `python3 /tmp/pw_test.py`, then read the screenshot.
+Write a temp script (use the session scratchpad or any `/tmp` path), run it with `python3`, then read the screenshot from `meta/cache/screenshots/`.

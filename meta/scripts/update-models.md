@@ -18,7 +18,7 @@ Run these steps in order when adding models or refreshing data. All commands run
 |---|---|---|
 | `data.libraries.js` | yes | library metadata — organization, origin, multimodal flag. Dual-use: browser + scraper (all keys quoted). |
 | `data.models.js` | no | model architecture and variants — maintained by scraper |
-| `dev/scripts/update_models.py` | no | scraper |
+| `meta/scripts/update_models.py` | no | scraper |
 
 Organization and origin are stored **only** in `data.libraries.js`, not in `data.models.js`.
 
@@ -27,7 +27,7 @@ Organization and origin are stored **only** in `data.libraries.js`, not in `data
 ## 1. Discover new models
 
 ```bash
-python dev/scripts/update_models.py --discover --apply
+python meta/scripts/update_models.py --discover --apply
 ```
 
 Reads `data.libraries.js`, scrapes ollama.com, inserts missing entries into `data.models.js`.
@@ -42,9 +42,9 @@ Watch the output for:
 ## 2. Refresh quantization variants
 
 ```bash
-python dev/scripts/update_models.py --variants --apply
+python meta/scripts/update_models.py --variants --apply
 # or for a single model:
-python dev/scripts/update_models.py --variants --apply --tag llama3.1:8b
+python meta/scripts/update_models.py --variants --apply --tag llama3.1:8b
 ```
 
 Adds new variants and updates `weights_gb` if changed beyond tolerance. Does not remove disappeared variants.
@@ -90,7 +90,7 @@ If an entry is missing architecture fields, fill them in directly in `data.model
 Verify all entries before committing — read-only, prints status of every entry:
 
 ```bash
-python dev/scripts/update_models.py --verify
+python meta/scripts/update_models.py --verify
 git add data.models.js data.libraries.js
 git commit -m "Update model database"
 ```

@@ -30,25 +30,46 @@ import urllib.request
 REPO_ROOT    = os.path.join(os.path.dirname(__file__), '..', '..')
 BENCH_DIR    = os.path.join(REPO_ROOT, 'meta', 'benchmarks')
 
-# gen_eff [lo, hi] per quantization — mirrors data.quantizations.js
-GEN_EFF = {
-    'Q2_K':   (0.38, 0.75),
-    'Q3_K_S': (0.40, 0.78), 'Q3_K_M': (0.40, 0.78), 'Q3_K_L': (0.40, 0.78),
-    'Q4_0':   (0.43, 0.82), 'Q4_1':   (0.43, 0.82),
-    'Q4_K_S': (0.43, 0.82), 'Q4_K_M': (0.43, 0.82),
-    'IQ4_XS': (0.43, 0.82), 'IQ4_NL': (0.43, 0.82),
-    'Q5_0':   (0.45, 0.85), 'Q5_1':   (0.45, 0.85),
-    'Q5_K_S': (0.45, 0.85), 'Q5_K_M': (0.45, 0.85),
-    'Q6_K':   (0.48, 0.88),
-    'Q8_0':   (0.50, 0.90),
-    'F16':    (0.55, 0.92), 'BF16':   (0.55, 0.92),
-}
 
-KV_BPE = {'f16': 2.0, 'q8_0': 1.0, 'q4_0': 0.5}
+def _load_calc_constants():
+    """Parse data.calc-constants.js — extract the object literal, parse as JSON."""
+    text = open(os.path.join(REPO_ROOT, 'data.calc-constants.js'), encoding='utf-8').read()
+    m = re.search(r'^\s*const CALC_CONSTANTS\s*=\s*(\{.*?\});', text, re.DOTALL | re.MULTILINE)
+    if not m:
+        raise RuntimeError('Could not parse data.calc-constants.js')
+    return json.loads(m.group(1))
 
-OVERHEAD_GB = 0.5   # CUDA context + driver + ollama overhead
-SAFETY      = 0.9   # 10% margin, same as willitllm
-CTX_ROUND   = 128
+
+def _load_gen_eff():
+    """Parse gen_eff [lo, hi] per quant from data.quantizations.js."""
+    text = open(os.path.join(REPO_ROOT, 'data.quantizations.js'), encoding='utf-8').read()
+    result = {}
+    for m in re.finditer(
+        r"'([A-Z0-9_]+)'\s*:\s*\{[^}]*?gen_eff\s*:\s*\[([0-9.]+),\s*([0-9.]+)\]",
+        text, re.DOTALL
+    ):
+        result[m.group(1)] = (float(m.group(2)), float(m.group(3)))
+    return result
+
+
+def _load_kv_bpe():
+    """Parse bytesPerElement per label from data.kv-cache.js."""
+    text = open(os.path.join(REPO_ROOT, 'data.kv-cache.js'), encoding='utf-8').read()
+    result = {}
+    for m in re.finditer(
+        r'bytesPerElement\s*:\s*([0-9.]+).*?label\s*:\s*[\'"]([^\'"]+)[\'"]',
+        text, re.DOTALL
+    ):
+        result[m.group(2)] = float(m.group(1))
+    return result
+
+
+_C          = _load_calc_constants()
+OVERHEAD_GB = _C['overhead_gb']
+SAFETY      = _C['safety_factor']
+CTX_ROUND   = int(_C['ctx_round'])
+GEN_EFF     = _load_gen_eff()
+KV_BPE      = _load_kv_bpe()
 
 # Short coding prompt (~50 tokens). With --fill this becomes a suffix.
 BASE_PROMPT = (
