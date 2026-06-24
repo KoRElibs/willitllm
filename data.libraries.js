@@ -5,11 +5,15 @@
 //
 // capabilities  — sourced exclusively from ollama.com/library x-test-capability badges.
 //                  Values: tools | vision | thinking | embedding | audio
+//                  "tools" displays as "AGENT" in the UI (index.html capability pill + coder.html badge).
 //                  Omitted when empty. Do NOT set manually — run --capabilities to refresh.
 // pulls         — download count string from ollama.com/library x-test-pull-count.
 //                  Omitted when not available. Do NOT set manually.
 // coding_role   — agent | code | fim. Curated by hand (human judgement); drives the
 //                  coder.html model list. Preserved across scraper runs. Omit for non-coding libs.
+//                  Note: coding_role:"agent" and capabilities:["tools"] are related but NOT the same.
+//                  A model can have tools capability without being a coding agent (e.g. command-r).
+//                  Set coding_role:"agent" only for models purpose-trained for coding agent loops.
 // (flag emoji lives in data.flags.js, keyed by `origin` — not stored per-library.)
 const LIBRARIES = [
   { "library": "starcoder2", "organization": "BigCode", "origin": "France", "source": null, "coding_role": "fim", "pulls": "2.9M" },

@@ -40,7 +40,7 @@
       <label>Capability</label>
       <div class="cap-pills" id="capFilter">
         <button class="cap-pill active" data-cap="" data-tip="No filter — show all models.">any</button>
-        <button class="cap-pill" data-cap="tools" data-tip="Function / tool calling — the model can invoke external APIs and take actions, not just answer questions.">tools</button>
+        <button class="cap-pill" data-cap="coding" data-tip="Coding models — curated for vibe coding: agents for autonomous loops, code chat models, and autocomplete. For the full ranked list with editor setup, see the vibe coder page.">coding</button>
         <button class="cap-pill" data-cap="vision" data-tip="Multimodal input — the model can read and describe images alongside text.">vision</button>
         <button class="cap-pill" data-cap="thinking" data-tip="Extended reasoning — the model thinks step-by-step before answering, trading speed for accuracy on hard problems.">thinking</button>
       </div>
@@ -314,7 +314,7 @@
   <div class="info-sheet-body">
     <h3>Data sources</h3>
     <p>Architecture parameters (weights, quantization, layer count, KV heads, head dimensions, context length) are scraped directly from <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a> and reflect what ollama actually serves — not the original upstream model releases. Run <code>ollama show &lt;model&gt;</code> to verify values for your installed variant.</p>
-    <p>Model capabilities (tools, vision, thinking) are read from the capability badges on ollama.com/library. GPU specifications are sourced from publicly available manufacturer data.</p>
+    <p>Model capabilities (vision, thinking) are read from the capability badges on ollama.com/library. The coding filter covers models curated by hand for coding use. GPU specifications are sourced from publicly available manufacturer data.</p>
 
     <h3>AI-generated content disclosure</h3>
     <p>Organisation names, country of origin, and community/organisation classification were inferred by AI and have <strong>not been manually verified</strong>. This tool uses AI-assisted data processing in accordance with the EU AI Act transparency requirements (Article 13).</p>
@@ -336,7 +336,7 @@
 <script src="data.models.js?v=10"></script>
 <script src="app.calc.js?v=10"></script>
 <script src="app.render.js?v=10"></script>
-<script src="app.ui.js?v=10"></script>
+<script src="app.ui.js?v=11"></script>
 <script src="app.js?v=10"></script>
 </body>
 </html>

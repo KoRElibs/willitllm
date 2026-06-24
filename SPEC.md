@@ -174,6 +174,12 @@ source of truth; see §3.6), so adding a model needs only `origin`.
 Possible values: `tools` | `vision` | `thinking` | `embedding` | `audio`. Omit the field when empty.
 Do **not** set manually — run `python scripts/update_models.py --capabilities --apply` to refresh.
 
+`tools` displays as **"agent"** in the UI (index.html capability pill label and coder.html badge).
+The internal value stays `tools` to match the ollama.com badge. `tools` capability and
+`coding_role: "agent"` are **not** the same: a model can have `tools` without being a coding agent
+(e.g. command-r). The AGENT cap pill filters on `tools`; the coder.html AGENTS section filters on
+`coding_role: "agent"`. See `meta/scripts/update-models.md §5` for the workflow to add a new agent model.
+
 `pulls` is sourced from the `x-test-pull-count` element on `ollama.com/library`. Omit when not
 available. Do **not** set manually — refreshed by `--capabilities`.
 
@@ -496,7 +502,7 @@ Headline class (drives border colour and verdict glow):
 |----------|-------|---------|-----------|
 | top-left | Your GPU | `<select id="vramInput">` | Grouped by vendor: NVIDIA GeForce → NVIDIA Professional → AMD Radeon → Generic |
 | top-right | Model | Custom combobox (`#modelComboWrap`) | Searchable: face button (`#modelFace`) opens a panel (`#modelPanel`) with a text filter (`#modelSearch`) and a scrollable list (`#modelList`). Models grouped by organization with flag emoji. A hidden `<select id="modelSelect">` is kept in sync for form compatibility. Embedding models are hidden from the list entirely. |
-| bottom-left | Capability | `<div id="capFilter">` pill row | Pills: `any` · `tools` · `vision` · `thinking`. Multi-select AND — active pills highlighted; list shows only models whose library has **all** selected caps. `any` (`data-cap=""`) clears the filter. On change, auto-selects first fitting model. `embedding` has no pill — those models are hidden from the list entirely (not chat models). `audio` has no pill — no current library carries it. Cap membership is stored in `item.dataset.caps` at list-build time and checked as `[..._activeCaps].every(c => itemCaps.has(c))`. |
+| bottom-left | Capability | `<div id="capFilter">` pill row | Pills: `any` · `agent` · `vision` · `thinking`. The `agent` pill has `data-cap="tools"` internally (matches the `tools` capability value in data.libraries.js) but displays as "agent" — see §3.2. Multi-select AND — active pills highlighted; list shows only models whose library has **all** selected caps. `any` (`data-cap=""`) clears the filter. On change, auto-selects first fitting model. `embedding` has no pill — those models are hidden from the list entirely (not chat models). `audio` has no pill — no current library carries it. Cap membership is stored in `item.dataset.caps` at list-build time and checked as `[..._activeCaps].every(c => itemCaps.has(c))`. |
 | bottom-right | Context | `<select id="targetCtx">` | Presets for common context sizes; drives model colour coding |
 
 Variant (`<select id="variantSelect">`) and KV Cache are auto-managed and shown in geek mode only (see §7.3).

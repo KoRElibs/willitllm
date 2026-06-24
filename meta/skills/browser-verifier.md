@@ -82,18 +82,22 @@ Read the file at `meta/cache/screenshots/<name>.png` after saving.
 
 ## Before/after convention
 
-For any feature change or refactor, always capture a before AND after screenshot:
+For every change, follow this order exactly — order matters:
+
+1. `rm meta/cache/screenshots/*.png` — wipe first
+2. Take **before** shots — current state, before any code change
+3. Make the code changes
+4. Take **after** shots
 
 ```text
-meta/cache/screenshots/<page>_before_<feature>.png   ← take BEFORE making changes
-meta/cache/screenshots/<page>_after_<feature>.png    ← take AFTER changes are applied
+meta/cache/screenshots/<page>_before_<feature>.png
+meta/cache/screenshots/<page>_after_<feature>.png
 ```
 
-Example: `coder_before_agent-pill.png` / `coder_after_agent-pill.png`
+Example: `index_before_coding-pill.png` / `index_after_coding-pill.png`
 
-Take the before shot first, make the code changes, then take the after shot. Read both to
-verify the change looks right and nothing else broke. These stay in `meta/cache/screenshots/`
-as a visual audit trail across sessions.
+The folder then contains exactly two shots per page per change — easy to compare,
+easy to show the user before committing. Never wipe after taking before shots.
 
 ## Quick one-shot script template
 

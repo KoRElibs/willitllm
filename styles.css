@@ -121,6 +121,9 @@ header p {
 }
 .cap-pill:hover { color: var(--text); border-color: var(--text); }
 .cap-pill.active { color: var(--accent); border-color: var(--accent); }
+.cap-pill[data-cap="coding"]         { color: var(--green); border-color: rgba(86,216,138,0.35); }
+.cap-pill[data-cap="coding"]:hover  { color: var(--green); border-color: var(--green); }
+.cap-pill[data-cap="coding"].active { color: var(--bg);    border-color: var(--green); background: var(--green); }
 .cap-pill[data-tip] { cursor: pointer; }
 
 /* ── Geek variant field ── */
@@ -746,7 +749,7 @@ header p {
   flex-shrink: 0;
   cursor: help;
 }
-.badge-agent { color: var(--amber);  border-color: var(--amber);  background: rgba(245,166,35,0.13); font-weight: 600; letter-spacing: 0.09em; }
+.badge-agent { color: var(--bg);     border-color: var(--green);  background: var(--green); font-weight: 700; letter-spacing: 0.09em; }
 .badge-code  { color: var(--green);  border-color: var(--green);  background: rgba(86,216,138,0.06); }
 .badge-fim   { color: var(--muted);  border-color: var(--border); }
 
@@ -826,9 +829,9 @@ header p {
 .section-divider::before,
 .section-divider::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
 
-.divider-agent { color: var(--amber); }
+.divider-agent { color: var(--green); }
 .divider-agent::before,
-.divider-agent::after { border-top-color: rgba(245,166,35,0.3); }
+.divider-agent::after { border-top-color: rgba(86,216,138,0.3); }
 
 .config-section { margin-bottom: 14px; }
 .config-section:last-child { margin-bottom: 0; }

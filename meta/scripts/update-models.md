@@ -85,7 +85,29 @@ If an entry is missing architecture fields, fill them in directly in `data.model
 
 ---
 
-## 5. Commit
+## 5. Adding a new agent model
+
+A model qualifies as an agent model if it was purpose-trained for agentic coding loops (tool
+calling, multi-step planning, file edits). Example: devstral, devstral-small-2.
+
+Two independent steps — both are required for the model to appear everywhere correctly:
+
+**Step A — capability (automatic):** Run `--capabilities --apply`. If the model has the `tools`
+badge on ollama.com, it will appear in the AGENT filter on index.html automatically.
+
+**Step B — coding role (manual):** Open `data.libraries.js` and set `"coding_role": "agent"` on
+the library entry. This makes the model appear in the AGENTS section on coder.html with Cline +
+Continue agentic config. Do this only for models purpose-trained for coding agent loops — do not
+set it for general tool-calling models (e.g. command-r) that happen to support function calling.
+
+After both steps, verify:
+- index.html AGENT filter shows the model
+- coder.html shows the model in the top AGENTS section with ★ recommended eligibility
+- Tooltip on the badge says "AGENT" (not CODE or FIM)
+
+---
+
+## 6. Commit
 
 Verify all entries before committing — read-only, prints status of every entry:
 

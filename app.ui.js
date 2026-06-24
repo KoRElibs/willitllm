@@ -306,8 +306,9 @@ function buildModelCombobox() {
   MODELS.forEach((m, i) => {
     const [library] = m.ollama_tag.split(':');
     const info  = LIB_META[library];
-    const caps  = info?.capabilities || [];
+    const caps  = [...(info?.capabilities || [])];
     if (caps.includes('embedding')) return;   // embedding models are not for chat — hide entirely
+    if (info?.coding_role) caps.push('coding'); // synthetic: any coding_role (agent/code/fim)
     const flag  = flagFor(info?.origin);
     const label = `${flag} ${m.ollama_tag}`;
     const item  = document.createElement('div');
