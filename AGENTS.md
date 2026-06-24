@@ -93,6 +93,20 @@ Consult these before changing anything that touches their domain:
 
 ---
 
+## Commit conventions
+
+Always credit everyone who contributed to a commit:
+
+```text
+Co-Authored-By: Name <email>
+Co-Authored-By: Name <email>
+```
+
+Include the human who directed the work, any AI agent that produced the code, and any other
+contributor involved. No contributor should be invisible in the git history.
+
+---
+
 ## Maintenance rules
 
 Every code change must update at least one of:
