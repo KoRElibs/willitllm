@@ -138,7 +138,7 @@ function renderOom(vramGB, weightsGB) {
   const labelOom = document.getElementById('resultLabelOom');
   labelOom.textContent = `Model weights (${fmtGB(weightsGB)}) exceed available VRAM (${fmtGB(vramGB - OVERHEAD_GB)} usable). This model will not load.`;
   labelOom.hidden = false;
-  document.getElementById('ollamaCmd').hidden   = true;
+  document.getElementById('codeVerdict').hidden = true;
   document.getElementById('osTabs').hidden      = true;
   document.getElementById('ollamaSetup').hidden = true;
   document.getElementById('resultAside').hidden = true;
@@ -208,48 +208,37 @@ function renderAside(speedEsts, ctxResult, contextFitPct) {
   document.getElementById('resultAside').hidden = false;
 }
 
-function renderCmd(model, libInfo, ctxResult, kvLabel, bytesPerElement) {
+function renderCmd(model, libInfo, ctxResult, kvLabel) {
   document.getElementById('resultLabelOom').hidden = true;
 
-  const muted      = s => `<span class="cmd-muted">${s}</span>`;
-  const variantIdx = getSelectedVariantIdx(model);
-  const runTag     = variantOllamaTag(model, variantIdx);
-  const isCoding   = !!libInfo.coding_role;
-  const ollamaCmd  = document.getElementById('ollamaCmd');
+  const idx      = getSelectedVariantIdx(model);
+  const runTag   = variantOllamaTag(model, idx);
+  const isCoding = !!libInfo.coding_role;
+  const pull     = `ollama pull ${runTag}`;
 
-  ollamaCmd.innerHTML = isCoding
-    ? `ollama pull ${runTag}\n${muted('# then set contextLength in your editor config (see vibe coder →)')}`
-    : `ollama pull ${runTag}\nOLLAMA_NUM_CTX=${ctxResult.maxCtx} ollama run ${runTag}`;
-  ollamaCmd.hidden = false;
+  const runLinux = isCoding
+    ? muted('# then set contextLength in your editor config (see vibe coder →)')
+    : `OLLAMA_NUM_CTX=${ctxResult.maxCtx} ollama run ${runTag}`;
+  const runWin = isCoding
+    ? muted('# then set contextLength in your editor config (see vibe coder →)')
+    : `$env:OLLAMA_NUM_CTX=${ctxResult.maxCtx}; ollama run ${runTag}`;
 
-  const osTabs = document.getElementById('osTabs');
-  if (bytesPerElement < 2) {
-    const afterSetup = muted('# then run the command above');
-    setupContent.linux = [
-      muted('# First — stop ollama, restart with the KV cache setting:'),
-      `OLLAMA_KV_CACHE_TYPE=${kvLabel} ollama serve`,
-      muted('# In a new terminal:'),
-      afterSetup,
+  const transition = { generic: '# in a new terminal:', linux: '# in a new terminal:',
+    'linux-service': '# in a new terminal:', macos: '# in a new terminal:', windows: '# in PowerShell:' };
+
+  ['generic', 'linux', 'linux-service', 'macos', 'windows'].forEach(tab => {
+    setupContent[tab] = [
+      osKvContent(tab, kvLabel),
+      muted(transition[tab]),
+      pull,
+      tab === 'windows' ? runWin : runLinux,
     ].join('\n');
-    setupContent.windows = [
-      muted('# 1. Open: System Properties → Environment Variables → New user variable'),
-      muted('#    Name:  OLLAMA_KV_CACHE_TYPE'),
-      muted(`#    Value: ${kvLabel}`),
-      muted('# 2. Right-click Ollama in system tray → Quit, then relaunch Ollama'),
-      muted('# 3. In a new terminal:'),
-      afterSetup,
-    ].join('\n');
-    if (activeOsTab) document.getElementById('ollamaSetup').innerHTML = setupContent[activeOsTab];
-    osTabs.hidden = false;
-  } else {
-    osTabs.hidden = true;
-    document.getElementById('ollamaSetup').hidden = true;
-    activeOsTab = null;
-    document.getElementById('tabLinux').textContent   = '▶ Linux / Mac';
-    document.getElementById('tabWindows').textContent = '▶ Windows';
-    document.getElementById('tabLinux').classList.remove('active');
-    document.getElementById('tabWindows').classList.remove('active');
-  }
+  });
+
+  document.getElementById('ollamaSetup').innerHTML = setupContent[activeOsTab];
+  document.getElementById('ollamaSetup').hidden = false;
+  document.getElementById('osTabs').hidden = false;
+  syncOsTabs();
 }
 
 function renderDetails(model, libInfo, variant, weightsGB, quantization, bytesPerElement, kvLabel) {

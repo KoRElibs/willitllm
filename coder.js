@@ -85,8 +85,7 @@ function fitCheckerUrl() {
   return 'index.html#' + p.toString();
 }
 
-// ── GPU selector ──────────────────────────────────────────────────────────────
-// Mirrors the GPU selector in app.js — same optgroup structure.
+// ── GPU selector helpers ──────────────────────────────────────────────────────
 
 function getFlashOk() {
   const opt = document.getElementById('vramInput').selectedOptions[0];
@@ -95,57 +94,6 @@ function getFlashOk() {
 
 function getBaseUrl() {
   return document.getElementById('baseUrlInput')?.value.trim() || 'http://localhost:11434';
-}
-
-function buildGpuSelector() {
-  const vramSel = document.getElementById('vramInput');
-
-  const ph = document.createElement('option');
-  ph.value = ''; ph.disabled = true; ph.selected = true;
-  ph.textContent = 'Select your GPU...';
-  vramSel.appendChild(ph);
-
-  const isGeForce = name => /^(GTX |RTX \d{4})/.test(name) && !name.includes('Ada');
-  const groups = [
-    { label: 'NVIDIA GeForce',      match: (g, n) => !g.vendor && isGeForce(n) },
-    { label: 'NVIDIA Professional', match: (g, n) => !g.vendor && !isGeForce(n) },
-    { label: 'AMD Radeon',          match: (g)    => g.vendor === 'AMD' },
-    { label: 'Apple',               match: (g)    => g.vendor === 'Apple' },
-  ];
-
-  groups.forEach(({ label, match }) => {
-    const cards = [];
-    GPUS.forEach((gpu, idx) => {
-      gpu.names.forEach(name => {
-        if (match(gpu, name)) cards.push({ name, vram: gpu.vram, flash: gpu.flash, idx });
-      });
-    });
-    if (!cards.length) return;
-    cards.sort((a, b) => a.name.localeCompare(b.name));
-    const group = document.createElement('optgroup');
-    group.label = label;
-    cards.forEach(({ name, vram, flash, idx }) => {
-      const opt = document.createElement('option');
-      opt.value = vram; opt.dataset.flash = flash; opt.dataset.gpuIdx = idx;
-      opt.textContent = name;
-      group.appendChild(opt);
-    });
-    vramSel.appendChild(group);
-  });
-
-  const sizes = [...new Set(GPUS.map(g => g.vram))].sort((a, b) => b - a);
-  const genericGroup = document.createElement('optgroup');
-  genericGroup.label = 'Generic';
-  sizes.forEach(vram => {
-    const entries   = GPUS.filter(g => g.vram === vram);
-    const flashVals = [...new Set(entries.map(g => g.flash))];
-    const opt = document.createElement('option');
-    opt.value = vram;
-    opt.dataset.flash = flashVals.length === 1 ? flashVals[0] : 'mixed';
-    opt.textContent = `${vram} GB`;
-    genericGroup.appendChild(opt);
-  });
-  vramSel.appendChild(genericGroup);
 }
 
 // ── Data / ranking ────────────────────────────────────────────────────────────
@@ -188,38 +136,26 @@ function buildEntries(vramGB, flashOk) {
 
 // ── Config HTML ───────────────────────────────────────────────────────────────
 
-// OS-specific instructions for setting the KV cache env var permanently.
-// Linux is split into write (idempotent) + apply (restarts ollama) so users can
-// re-run the write step without unnecessarily bouncing the service.
-function kvSetupHtml(kvType) {
-  const linuxWrite = `sudo mkdir -p /etc/systemd/system/ollama.service.d && printf '[Service]\\nEnvironment="OLLAMA_KV_CACHE_TYPE=${kvType}"\\n' | sudo tee /etc/systemd/system/ollama.service.d/override.conf`;
-  const linuxApply = `sudo systemctl daemon-reload && sudo systemctl restart ollama`;
-  const macos      = `# Quit the Ollama menu bar app first (⌘Q)\necho 'export OLLAMA_KV_CACHE_TYPE=${kvType}' >> ~/.zshrc && source ~/.zshrc\nollama serve`;
-  const win        = `setx OLLAMA_KV_CACHE_TYPE ${kvType}\n# Restart Ollama: right-click tray icon → Quit, then reopen`;
-
-  const cmd = (label, text) =>
-    `<div class="kv-cmd"><div class="config-label">${label} <button class="copy-btn">copy</button></div><pre class="ollama-cmd">${esc(text)}</pre></div>`;
-
+function kvSetupHtml(kvLabel) {
+  const initOs = localStorage.getItem('osTab') || 'generic';
+  const tabs = ['generic', 'linux', 'linux-service', 'macos', 'windows'];
+  const tabLabels = { generic: 'Generic', linux: 'Linux', 'linux-service': 'Linux service', macos: 'macOS', windows: 'Windows' };
+  const tabHtml = tabs.map(os =>
+    `<button class="os-tab${os === initOs ? ' active' : ''}" data-os="${os}">${tabLabels[os]}</button>`
+  ).join('\n        ');
   return `
     <div class="config-section">
-      <div class="config-label">1. Set KV cache type — permanent</div>
-      <div class="kv-os-tabs-wrap">
-        <button class="kv-os-tab active" data-kvos="linux">Linux</button>
-        <button class="kv-os-tab" data-kvos="macos">macOS</button>
-        <button class="kv-os-tab" data-kvos="windows">Windows</button>
+      <div class="config-label">1. Start Ollama with KV cache type (${kvLabel}) <button class="copy-btn">copy</button></div>
+      <div class="os-tabs">
+        ${tabHtml}
       </div>
-      <div class="kv-os-block" data-kvos="linux">
-        ${cmd('Write config (safe to re-run)', linuxWrite)}
-        ${cmd('Apply — restarts ollama', linuxApply)}
-      </div>
-      <div class="kv-os-block" data-kvos="macos" hidden>${cmd('Add to shell + restart', macos)}</div>
-      <div class="kv-os-block" data-kvos="windows" hidden>${cmd('Set env var + restart', win)}</div>
+      <pre class="ollama-cmd ollama-setup" data-kv="${kvLabel}">${osKvContent(initOs, kvLabel)}</pre>
     </div>`;
 }
 
 // Renders one set of ollama + editor instructions for a given context size.
 // showCline: false for code-role models (Continue only — not designed for agentic loops).
-function modeHtml(runTag, maxCtx, kvType, baseUrl, showCline) {
+function modeHtml(runTag, maxCtx, kvLabel, baseUrl, showCline) {
   const ollamaRun    = `ollama pull ${runTag}`;
   const clineFields  = [
     ['API Provider',   'Ollama'],
@@ -233,8 +169,8 @@ function modeHtml(runTag, maxCtx, kvType, baseUrl, showCline) {
     apiBase: baseUrl, contextLength: maxCtx,
   }, null, 2);
 
-  const kvSection = kvType ? kvSetupHtml(kvType) : '';
-  const runLabel  = kvType ? '2. Pull model' : 'Ollama — pull model';
+  const kvSection = kvSetupHtml(kvLabel);
+  const runLabel  = '2. Pull model';
 
   const clientTabs = showCline
     ? `<button class="client-tab active" data-client="cline">Cline</button>
@@ -292,12 +228,10 @@ function fimConfigHtml(entry) {
         apiBase: baseUrl, contextLength: maxCtx,
       },
     }, null, 2);
-    const kvSection = kv ? kvSetupHtml(kv) : '';
-    const runLabel  = kv ? '2. Pull model' : 'Ollama — pull model';
     return `
-      ${kvSection}
+      ${kvSetupHtml(kv)}
       <div class="config-section">
-        <div class="config-label">${runLabel} <button class="copy-btn">copy</button></div>
+        <div class="config-label">2. Pull model <button class="copy-btn">copy</button></div>
         <pre class="ollama-cmd">${esc(ollamaRun)}</pre>
       </div>
       <div class="config-section">
@@ -308,7 +242,7 @@ function fimConfigHtml(entry) {
     `;
   }
 
-  if (!hasOptimized) return note + fimMode(ctx.maxCtx, null);
+  if (!hasOptimized) return note + fimMode(ctx.maxCtx, kvType || 'f16');
 
   const gain        = Math.round((ctx.maxCtx / f16Ctx - 1) * 100);
   const qualityNote = kvType === 'q8_0'
@@ -327,7 +261,7 @@ function fimConfigHtml(entry) {
       </button>
     </div>
     <div class="mode-block" data-mode="quick">
-      ${fimMode(f16Ctx, null)}
+      ${fimMode(f16Ctx, 'f16')}
     </div>
     <div class="mode-block" data-mode="optimized" hidden>
       ${fimMode(ctx.maxCtx, kvType)}
@@ -350,7 +284,7 @@ function makeConfigHtml(entry) {
   const showCline = lib.coding_role === 'agent';
   const baseUrl   = getBaseUrl();
 
-  if (!hasOptimized) return modeHtml(runTag, ctx.maxCtx, null, baseUrl, showCline);
+  if (!hasOptimized) return modeHtml(runTag, ctx.maxCtx, kvType || 'f16', baseUrl, showCline);
 
   const gain        = Math.round((ctx.maxCtx / f16Ctx - 1) * 100);
   const qualityNote = kvType === 'q8_0'
@@ -368,7 +302,7 @@ function makeConfigHtml(entry) {
       </button>
     </div>
     <div class="mode-block" data-mode="quick">
-      ${modeHtml(runTag, f16Ctx, null, baseUrl, showCline)}
+      ${modeHtml(runTag, f16Ctx, 'f16', baseUrl, showCline)}
     </div>
     <div class="mode-block" data-mode="optimized" hidden>
       ${modeHtml(runTag, ctx.maxCtx, kvType, baseUrl, showCline)}
@@ -441,14 +375,18 @@ function makeRow(entry) {
     if (!wasOpen) { config.hidden = false; row.classList.add('open'); }
   });
 
-  // KV OS tab switching (Linux / macOS / Windows) — scoped to the containing config-section
-  row.querySelectorAll('.kv-os-tab').forEach(btn => {
+  // OS tab switching (Generic / Linux / Linux service / macOS / Windows) — scoped to the containing config-section
+  row.querySelectorAll('.os-tab[data-os]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      const kvos    = btn.dataset.kvos;
+      const os      = btn.dataset.os;
       const section = btn.closest('.config-section');
-      section.querySelectorAll('.kv-os-tab').forEach(b => b.classList.toggle('active', b === btn));
-      section.querySelectorAll('.kv-os-block').forEach(b => b.hidden = b.dataset.kvos !== kvos);
+      const pre     = section.querySelector('.ollama-setup');
+      if (!pre) return;
+      const kvLabel = pre.dataset.kv;
+      localStorage.setItem('osTab', os);
+      section.querySelectorAll('.os-tab[data-os]').forEach(b => b.classList.toggle('active', b === btn));
+      pre.innerHTML = osKvContent(os, kvLabel);
     });
   });
 
@@ -550,20 +488,8 @@ function init() {
   document.getElementById('baseUrlInput').addEventListener('change', render);
   window.addEventListener('hashchange', () => { applyHashState(); render(); });
 
-  // Tooltip — same pattern as index.html
-  const tip = document.getElementById('tooltip');
-  document.addEventListener('mouseover', e => {
-    const el = e.target.closest('[data-tip]');
-    if (!el || !el.dataset.tip) { tip.hidden = true; return; }
-    tip.textContent = el.dataset.tip;
-    tip.hidden = false;
-    const rect = el.getBoundingClientRect();
-    tip.style.top  = (rect.bottom + 8) + 'px';
-    tip.style.left = Math.min(rect.left, window.innerWidth - 276) + 'px';
-  });
-  document.addEventListener('mouseout', e => {
-    if (!e.target.closest('[data-tip]')) tip.hidden = true;
-  });
+  initTooltip();
+  initInfoSheet();
 
   render();
 }

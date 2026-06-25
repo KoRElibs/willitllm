@@ -370,6 +370,7 @@ header p {
   flex-direction: column;
   gap: 5px;
   margin-top: 6px;
+  width: 100%;
 }
 .score-row {
   display: flex;
@@ -377,6 +378,7 @@ header p {
   gap: 8px;
   font-family: var(--mono);
   font-size: 13px;
+  width: 100%;
 }
 .score-icon  { width: 1.2em; text-align: center; color: var(--text); }
 .score-label { min-width: 9em; color: var(--muted); cursor: help; }
@@ -519,23 +521,16 @@ header p {
   color: var(--text);
 }
 .provenance-alert--community strong { color: var(--amber); }
-/* ── Coding model hint (index.html → coder.html bridge) ── */
-.coder-hint {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-  margin-bottom: 16px;
-  padding: 7px 12px;
-  background: rgba(79,195,247,0.04);
-  border: 1px solid rgba(79,195,247,0.12);
-  border-radius: 4px;
-}
-.coder-hint a {
-  color: var(--accent);
-  text-decoration: none;
-}
-.coder-hint a:hover { text-decoration: underline; }
+/* ── Coding capability verdict ── */
+.code-verdict { font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em; }
+.code-verdict a { text-decoration: none; }
+.code-verdict--agent { color: var(--accent); font-size: 13px; }
+.code-verdict--agent:hover { text-decoration: underline; }
+.code-verdict--code { color: var(--muted); }
+.code-verdict--code:hover { text-decoration: underline; }
+.code-verdict--fim { color: var(--muted); }
+.code-verdict--fim:hover { text-decoration: underline; }
+.code-verdict--none { color: var(--text); opacity: 0.12; }
 
 /* ── Page footer ── */
 .page-footer {
@@ -950,26 +945,6 @@ kbd {
 .mode-tab:hover { color: var(--text); border-color: var(--text); }
 .mode-tab.active { color: var(--green); border-color: var(--green); }
 
-.kv-os-tabs-wrap {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.kv-os-tab {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 11px;
-  padding: 4px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-.kv-os-tab:hover { color: var(--text); border-color: var(--text); }
-.kv-os-tab.active { color: var(--accent); border-color: var(--accent); }
-
-.kv-cmd + .kv-cmd { margin-top: 12px; }
 
 .client-config {
   background: var(--bg3);

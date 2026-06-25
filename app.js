@@ -11,8 +11,8 @@ function getKvCache(bytesPerElement) {
   return KV_CACHE.find(k => k.bytesPerElement === bytesPerElement) || KV_CACHE[0];
 }
 
-let activeOsTab = null;                   // 'linux' | 'windows' | null
-const setupContent = { linux: '', windows: '' };
+let activeOsTab = localStorage.getItem('osTab') || 'generic';
+const setupContent = { generic: '', linux: '', 'linux-service': '', macos: '', windows: '' };
 
 function getTargetCtx() {
   const v = document.getElementById('targetCtx').value;
@@ -111,13 +111,11 @@ function render() {
   const model    = MODELS[modelIdx];
   updateSelectionSummary(model);
 
-  const noModel   = document.getElementById('noModel');
-  const results   = document.getElementById('results');
-  const coderHint = document.getElementById('coderHint');
+  const noModel = document.getElementById('noModel');
+  const results = document.getElementById('results');
   if (!model || isNaN(vramGB) || vramGB <= 0) {
     noModel.hidden = false;
     results.hidden = true;
-    if (coderHint) coderHint.hidden = true;
     return;
   }
   noModel.hidden = true;
@@ -138,16 +136,27 @@ function render() {
   const scores    = computeScores(quantInfo, bytesPerElement, ctxResult, noFit, model, getTargetCtx());
   const { contextFitPct, scoreClass } = scores;
 
-  // Show contextual vibe-coder hint for coding models that fit
-  if (coderHint) {
-    if (libInfo.coding_role && !noFit) {
-      const roleText = libInfo.coding_role === 'agent' ? 'agent'
-                     : libInfo.coding_role === 'fim'   ? 'autocomplete (FIM)'
-                     : 'code';
-      coderHint.innerHTML = `${roleText} model — <a href="${coderUrl}">ready-to-paste IDE config in vibe coder →</a>`;
-      coderHint.hidden = false;
+  // Coding capability verdict — degrees of "it will code!"
+  const codeVerdictEl = document.getElementById('codeVerdict');
+  if (codeVerdictEl) {
+    if (noFit) {
+      codeVerdictEl.hidden = true;
+    } else if (libInfo.coding_role === 'agent') {
+      codeVerdictEl.innerHTML = `<a href="${coderUrl}" class="code-verdict--agent">it will code!</a>`;
+      codeVerdictEl.className = 'code-verdict';
+      codeVerdictEl.hidden = false;
+    } else if (libInfo.coding_role === 'code') {
+      codeVerdictEl.innerHTML = `<a href="${coderUrl}" class="code-verdict--code">it will code</a>`;
+      codeVerdictEl.className = 'code-verdict';
+      codeVerdictEl.hidden = false;
+    } else if (libInfo.coding_role === 'fim') {
+      codeVerdictEl.innerHTML = `<a href="${coderUrl}" class="code-verdict--fim">it will autocomplete</a>`;
+      codeVerdictEl.className = 'code-verdict';
+      codeVerdictEl.hidden = false;
     } else {
-      coderHint.hidden = true;
+      codeVerdictEl.textContent = 'it will not code';
+      codeVerdictEl.className = 'code-verdict code-verdict--none';
+      codeVerdictEl.hidden = false;
     }
   }
 
@@ -165,7 +174,7 @@ function render() {
   } else {
     speedEsts = calcSpeedEstimates(model, variant, vramGB, quantInfo, ctxResult.maxCtx, ctxResult.kvCacheGB, bytesPerElement);
     renderAside(speedEsts, ctxResult, contextFitPct);
-    renderCmd(model, libInfo, ctxResult, kvLabel, bytesPerElement);
+    renderCmd(model, libInfo, ctxResult, kvLabel);
   }
 
   populateGpuTab(vramGB, speedEsts);
@@ -178,77 +187,8 @@ function render() {
 // INIT
 // ─────────────────────────────────────────────────────────────────────────────
 function init() {
-  document.getElementById('overheadReservedSheet').textContent = fmtGB(OVERHEAD_GB);
-
-  // Info sheet
-  const openBtn   = document.getElementById('infoSheetOpen');
-  const closeBtn  = document.getElementById('infoSheetClose');
-  const backdrop  = document.getElementById('infoSheetBackdrop');
-  const sheet     = document.getElementById('infoSheet');
-  function openSheet()  { sheet.hidden = false; backdrop.hidden = false; }
-  function closeSheet() { sheet.hidden = true;  backdrop.hidden = true; }
-  openBtn.addEventListener('click', openSheet);
-  closeBtn.addEventListener('click', closeSheet);
-  backdrop.addEventListener('click', closeSheet);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
-
-  // GPU dropdown
-  const vramSel = document.getElementById('vramInput');
-
-  const vramPlaceholder = document.createElement('option');
-  vramPlaceholder.value       = '';
-  vramPlaceholder.disabled    = true;
-  vramPlaceholder.selected    = true;
-  vramPlaceholder.textContent = 'Select your GPU...';
-  vramSel.appendChild(vramPlaceholder);
-
-  // Helper: append an option to a group
-  function addOpt(group, name, vram, flash, gpuIdx) {
-    const opt          = document.createElement('option');
-    opt.value          = vram;
-    opt.dataset.flash  = flash;
-    if (gpuIdx !== undefined) opt.dataset.gpuIdx = gpuIdx;
-    opt.textContent    = name;
-    group.appendChild(opt);
-  }
-
-  // GeForce = consumer GTX/RTX (4-digit model), excluding professional Ada/A-series
-  const isGeForce = name => /^(GTX |RTX \d{4})/.test(name) && !name.includes('Ada');
-
-  const groups = [
-    { label: 'NVIDIA GeForce',     match: (gpu, name) => !gpu.vendor && isGeForce(name) },
-    { label: 'NVIDIA Professional',match: (gpu, name) => !gpu.vendor && !isGeForce(name) },
-    { label: 'AMD Radeon',         match: (gpu)       => gpu.vendor === 'AMD' },
-    { label: 'Apple',              match: (gpu)       => gpu.vendor === 'Apple' },
-  ];
-
-  groups.forEach(({ label, match }) => {
-    const cards = [];
-    GPUS.forEach((gpu, gpuIdx) => {
-      gpu.names.forEach(name => {
-        if (match(gpu, name)) cards.push({ name, vram: gpu.vram, flash: gpu.flash, gpuIdx });
-      });
-    });
-    if (!cards.length) return;
-
-    cards.sort((a, b) => a.name.localeCompare(b.name));
-    const group = document.createElement('optgroup');
-    group.label = label;
-    cards.forEach(({ name, vram, flash, gpuIdx }) => addOpt(group, name, vram, flash, gpuIdx));
-    vramSel.appendChild(group);
-  });
-
-  // Generic entries — one per unique VRAM size, sorted descending
-  const sizes = [...new Set(GPUS.map(g => g.vram))].sort((a, b) => b - a);
-  const genericGroup       = document.createElement('optgroup');
-  genericGroup.label       = 'Generic';
-  sizes.forEach(vram => {
-    const entries     = GPUS.filter(g => g.vram === vram);
-    const flashValues = [...new Set(entries.map(g => g.flash))];
-    const flash       = flashValues.length === 1 ? flashValues[0] : 'mixed';
-    addOpt(genericGroup, `${vram} GB`, vram, flash);
-  });
-  vramSel.appendChild(genericGroup);
+  initInfoSheet();
+  buildGpuSelector();
 
   // Model dropdown (hidden — combobox is the visible control)
   MODELS.sort((a, b) => a.ollama_tag.localeCompare(b.ollama_tag));
@@ -311,8 +251,9 @@ function init() {
     }
   });
 
-  document.getElementById('tabLinux').addEventListener('click',   () => setOsTab('linux'));
-  document.getElementById('tabWindows').addEventListener('click', () => setOsTab('windows'));
+  document.querySelectorAll('#osTabs .os-tab').forEach(btn => {
+    btn.addEventListener('click', () => setOsTab(btn.dataset.os));
+  });
 
   document.getElementById('nudge-speed').addEventListener('click',   () => nudgeVariant('speed'));
   document.getElementById('nudge-quality').addEventListener('click', () => nudgeVariant('quality'));
@@ -326,17 +267,7 @@ function init() {
     });
   });
 
-  // Tooltip
-  const tip = document.getElementById('tooltip');
-  document.addEventListener('mouseover', e => {
-    const el = e.target.closest('[data-tip]');
-    if (!el) { tip.hidden = true; return; }
-    tip.textContent = el.dataset.tip;
-    tip.hidden = false;
-    const rect = el.getBoundingClientRect();
-    tip.style.top  = (rect.bottom + 8) + 'px';
-    tip.style.left = Math.min(rect.left, window.innerWidth - 276) + 'px';
-  });
+  initTooltip();
 
   // Details toggle — persistent via localStorage, collapsed by default
   const geekToggle  = document.getElementById('geekToggle');

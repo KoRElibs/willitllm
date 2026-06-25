@@ -363,25 +363,17 @@ function updateNudgeButtons(vramGB) {
 
 // ── OS tab toggle ─────────────────────────────────────────────────────────────
 
-function setOsTab(os) {
-  const setupEl    = document.getElementById('ollamaSetup');
-  const tabLinux   = document.getElementById('tabLinux');
-  const tabWindows = document.getElementById('tabWindows');
+function syncOsTabs() {
+  document.querySelectorAll('#osTabs .os-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.os === activeOsTab);
+  });
+}
 
-  if (activeOsTab === os) {
-    activeOsTab = null;
-    setupEl.hidden = true;
-    tabLinux.textContent   = '▶ Linux / Mac';
-    tabWindows.textContent = '▶ Windows';
-    tabLinux.classList.remove('active');
-    tabWindows.classList.remove('active');
-  } else {
-    activeOsTab = os;
-    setupEl.innerHTML = setupContent[os];
-    setupEl.hidden = false;
-    tabLinux.textContent   = os === 'linux'   ? '▼ Linux / Mac' : '▶ Linux / Mac';
-    tabWindows.textContent = os === 'windows' ? '▼ Windows'     : '▶ Windows';
-    tabLinux.classList.toggle('active',   os === 'linux');
-    tabWindows.classList.toggle('active', os === 'windows');
-  }
+function setOsTab(os) {
+  activeOsTab = os;
+  localStorage.setItem('osTab', os);
+  const setupEl = document.getElementById('ollamaSetup');
+  setupEl.innerHTML = setupContent[os];
+  setupEl.hidden = false;
+  syncOsTabs();
 }

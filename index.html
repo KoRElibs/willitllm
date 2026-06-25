@@ -79,14 +79,17 @@
           <div class="score-row"><span class="score-icon">★</span><span class="score-label" data-tip="How sharp and accurate the model's answers are — like IQ relative to its full potential. Higher quantization = closer to the model's true capability but slower. Trade-off: sharpness vs. speed (quantization level).">Sharpness</span><span class="score-stars" id="scoreQuality"></span><button class="score-nudge" id="nudge-quality" hidden>better</button></div>
           <div class="score-row"><span class="score-icon">■</span><span class="score-label" data-tip="How crisply the model recalls what was said earlier. Automatically set to the highest quality KV cache precision that still meets your target context — f16 first, then q8_0, then q4_0 on Flash-capable GPUs.">Memory clarity</span><span class="score-stars" id="scorePrecision"></span></div>
           <div class="score-row"><span class="score-icon">◎</span><span class="score-label" data-tip="How well this model meets your context target. 10/10 means it fully covers what you need — shown as achieved / target pages in the panel beside. Set your target using the Context dropdown above.">Context fit</span><span class="score-stars" id="scoreContext"></span></div>
+          <span id="codeVerdict" class="code-verdict" hidden></span>
         </div>
         <span class="result-label" id="resultLabelOom" hidden></span>
       </div>
       <div class="result-cmd">
-        <pre class="ollama-cmd" id="ollamaCmd" hidden></pre>
         <div class="os-tabs" id="osTabs" hidden>
-          <button class="os-tab" id="tabLinux">▶ Linux / Mac</button>
-          <button class="os-tab" id="tabWindows">▶ Windows</button>
+          <button class="os-tab" data-os="generic">Generic</button>
+          <button class="os-tab" data-os="linux">Linux</button>
+          <button class="os-tab" data-os="linux-service">Linux service</button>
+          <button class="os-tab" data-os="macos">macOS</button>
+          <button class="os-tab" data-os="windows">Windows</button>
         </div>
         <pre class="ollama-cmd ollama-setup" id="ollamaSetup" hidden></pre>
       </div>
@@ -108,7 +111,6 @@
       </div>
     </div>
 
-    <div id="coderHint" class="coder-hint" hidden></div>
     <div class="provenance-alert" id="provenanceAlert" hidden></div>
 
     <div class="bar-section">
@@ -296,8 +298,8 @@
   </div> <!-- /results -->
 
   <div class="page-footer">
-    AI-assisted data · source: <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a> · treat as a guide
-    · <button class="footer-info-btn" id="infoSheetOpen" aria-label="About this tool and data disclaimer">about &amp; disclaimer</button>
+    <span data-tip="Organisation names and country of origin were inferred by AI and not manually verified.">AI-assisted data ⓘ</span> · source: <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a> · treat as a guide
+    · <button class="footer-info-btn" id="infoSheetOpen" aria-label="About this tool">about</button>
     · <a href="coder.html">vibe coder</a>
   </div>
 
@@ -305,28 +307,17 @@
 
 <!-- Info / disclaimer sheet -->
 <div id="infoSheetBackdrop" class="info-sheet-backdrop" hidden></div>
-<div id="infoSheet" class="info-sheet" hidden role="dialog" aria-modal="true" aria-label="About & Disclaimer">
+<div id="infoSheet" class="info-sheet" hidden role="dialog" aria-modal="true" aria-label="About">
   <div class="info-sheet-header">
-    <span>About &amp; Disclaimer</span>
+    <span>About</span>
     <button class="info-sheet-close" id="infoSheetClose" aria-label="Close">✕</button>
   </div>
   <div class="info-sheet-body">
-    <h3>Getting started</h3>
-    <p>You need <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> — it runs AI models locally on your GPU. Download and install it from ollama.com. Once installed, the <code>ollama</code> command is available in your terminal and Ollama runs in the background automatically.</p>
-    <p>Pick your GPU above, choose a model, then copy the two-line command — it downloads the model and runs it with the right context size for your hardware.</p>
-
     <h3>Data sources</h3>
-    <p>Architecture parameters (weights, quantization, layer count, KV heads, head dimensions, context length) are scraped directly from <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a> and reflect what ollama actually serves — not the original upstream model releases. Run <code>ollama show &lt;model&gt;</code> to verify values for your installed variant.</p>
-    <p>Model capabilities (vision, thinking) are read from the capability badges on ollama.com/library. The coding filter covers models curated by hand for coding use. GPU specifications are sourced from publicly available manufacturer data.</p>
+    <p>Architecture parameters are scraped from <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a> and reflect what Ollama actually serves. Run <code>ollama show &lt;model&gt;</code> to verify values for your installed variant. GPU specifications are from public manufacturer data.</p>
 
-    <h3>AI-generated content disclosure</h3>
-    <p>Organisation names, country of origin, and community/organisation classification were inferred by AI and have <strong>not been manually verified</strong>. This tool uses AI-assisted data processing in accordance with the EU AI Act transparency requirements (Article 13).</p>
-
-    <h3>VRAM estimates</h3>
-    <p>Estimates reserve <span id="overheadReservedSheet"></span> for driver and runtime overhead. Results are a guide — actual VRAM usage depends on your OS, driver version, and concurrent processes.</p>
-
-    <h3>Scores</h3>
-    <p>The overall score averages four dimensions: inference speed, sharpness (quantization quality), memory clarity (KV cache precision), and attention span (context fit). <span style="color:var(--green)">Green</span> = good, <span style="color:var(--amber)">amber</span> = acceptable, <span style="color:var(--orange)">orange</span> = degraded.</p>
+    <h3>AI-generated content</h3>
+    <p>Organisation names and country of origin were inferred by AI and have <strong>not been manually verified</strong>.</p>
   </div>
 </div>
 <div id="tooltip" class="tooltip" hidden></div>
@@ -337,8 +328,9 @@
 <script src="data.kv-cache.js?v=10"></script>
 <script src="data.models.js?v=10"></script>
 <script src="app.calc.js?v=11"></script>
-<script src="app.render.js?v=13"></script>
-<script src="app.ui.js?v=14"></script>
-<script src="app.js?v=12"></script>
+<script src="app.shared.js?v=2"></script>
+<script src="app.render.js?v=17"></script>
+<script src="app.ui.js?v=16"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>

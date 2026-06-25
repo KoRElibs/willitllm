@@ -83,19 +83,7 @@
 <script src="data.quantizations.js?v=10"></script>
 <script src="data.models.js?v=10"></script>
 <script src="app.calc.js?v=11"></script>
-<script src="coder.js?v=11"></script>
-<script>
-  // Info sheet wiring (same as index.html)
-  const _open  = document.getElementById('infoSheetOpen');
-  const _close = document.getElementById('infoSheetClose');
-  const _back  = document.getElementById('infoSheetBackdrop');
-  const _sheet = document.getElementById('infoSheet');
-  function openSheet()  { _sheet.hidden = false; _back.hidden = false; }
-  function closeSheet() { _sheet.hidden = true;  _back.hidden = true; }
-  _open.addEventListener('click', openSheet);
-  _close.addEventListener('click', closeSheet);
-  _back.addEventListener('click', closeSheet);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
-</script>
+<script src="app.shared.js?v=2"></script>
+<script src="coder.js?v=13"></script>
 </body>
 </html>
