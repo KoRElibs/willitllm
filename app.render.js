@@ -217,26 +217,19 @@ function renderCmd(model, libInfo, ctxResult, kvLabel, bytesPerElement) {
   const isCoding   = !!libInfo.coding_role;
   const ollamaCmd  = document.getElementById('ollamaCmd');
 
-  if (isCoding) {
-    // Coding models: pull to make available for editor API — num_ctx set in editor config
-    ollamaCmd.textContent = `ollama pull ${runTag}`;
-  } else {
-    // General models: single-line run with num_ctx env var — no REPL needed
-    ollamaCmd.textContent = `OLLAMA_NUM_CTX=${ctxResult.maxCtx} ollama run ${runTag}`;
-  }
+  ollamaCmd.innerHTML = isCoding
+    ? `ollama pull ${runTag}\n${muted('# then set contextLength in your editor config (see vibe coder →)')}`
+    : `ollama pull ${runTag}\nOLLAMA_NUM_CTX=${ctxResult.maxCtx} ollama run ${runTag}`;
   ollamaCmd.hidden = false;
-
-  const nextStep = isCoding
-    ? muted('# then set contextLength in your editor config (see vibe coder →)')
-    : muted(`# sets context to ${ctxResult.maxCtx.toLocaleString()} tokens`);
 
   const osTabs = document.getElementById('osTabs');
   if (bytesPerElement < 2) {
+    const afterSetup = muted('# then run the command above');
     setupContent.linux = [
-      muted('# Stop ollama if running, then restart with the KV cache setting:'),
+      muted('# First — stop ollama, restart with the KV cache setting:'),
       `OLLAMA_KV_CACHE_TYPE=${kvLabel} ollama serve`,
       muted('# In a new terminal:'),
-      nextStep,
+      afterSetup,
     ].join('\n');
     setupContent.windows = [
       muted('# 1. Open: System Properties → Environment Variables → New user variable'),
@@ -244,7 +237,7 @@ function renderCmd(model, libInfo, ctxResult, kvLabel, bytesPerElement) {
       muted(`#    Value: ${kvLabel}`),
       muted('# 2. Right-click Ollama in system tray → Quit, then relaunch Ollama'),
       muted('# 3. In a new terminal:'),
-      nextStep,
+      afterSetup,
     ].join('\n');
     if (activeOsTab) document.getElementById('ollamaSetup').innerHTML = setupContent[activeOsTab];
     osTabs.hidden = false;

@@ -311,6 +311,10 @@
     <button class="info-sheet-close" id="infoSheetClose" aria-label="Close">✕</button>
   </div>
   <div class="info-sheet-body">
+    <h3>Getting started</h3>
+    <p>You need <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> — it runs AI models locally on your GPU. Download and install it from ollama.com. Once installed, the <code>ollama</code> command is available in your terminal and Ollama runs in the background automatically.</p>
+    <p>Pick your GPU above, choose a model, then copy the two-line command — it downloads the model and runs it with the right context size for your hardware.</p>
+
     <h3>Data sources</h3>
     <p>Architecture parameters (weights, quantization, layer count, KV heads, head dimensions, context length) are scraped directly from <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a> and reflect what ollama actually serves — not the original upstream model releases. Run <code>ollama show &lt;model&gt;</code> to verify values for your installed variant.</p>
     <p>Model capabilities (vision, thinking) are read from the capability badges on ollama.com/library. The coding filter covers models curated by hand for coding use. GPU specifications are sourced from publicly available manufacturer data.</p>
@@ -333,7 +337,7 @@
 <script src="data.kv-cache.js?v=10"></script>
 <script src="data.models.js?v=10"></script>
 <script src="app.calc.js?v=11"></script>
-<script src="app.render.js?v=11"></script>
+<script src="app.render.js?v=12"></script>
 <script src="app.ui.js?v=14"></script>
 <script src="app.js?v=12"></script>
 </body>
