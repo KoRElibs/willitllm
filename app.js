@@ -165,7 +165,7 @@ function render() {
   } else {
     speedEsts = calcSpeedEstimates(model, variant, vramGB, quantInfo, ctxResult.maxCtx, ctxResult.kvCacheGB, bytesPerElement);
     renderAside(speedEsts, ctxResult, contextFitPct);
-    renderCmd(model, ctxResult, kvLabel, bytesPerElement);
+    renderCmd(model, libInfo, ctxResult, kvLabel, bytesPerElement);
   }
 
   populateGpuTab(vramGB, speedEsts);
@@ -338,11 +338,11 @@ function init() {
     tip.style.left = Math.min(rect.left, window.innerWidth - 276) + 'px';
   });
 
-  // Geek mode — persistent via localStorage, off by default
+  // Details toggle — persistent via localStorage, collapsed by default
   const geekToggle  = document.getElementById('geekToggle');
   const geekSection = document.getElementById('geekSection');
   const applyGeek = on => {
-    geekSection.hidden    = !on;
+    geekSection.hidden     = !on;
     geekToggle.textContent = on ? '▾ details' : '▸ details';
   };
   applyGeek(localStorage.getItem('geekMode') === 'true');

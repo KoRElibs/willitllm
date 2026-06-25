@@ -208,29 +208,43 @@ function renderAside(speedEsts, ctxResult, contextFitPct) {
   document.getElementById('resultAside').hidden = false;
 }
 
-function renderCmd(model, ctxResult, kvLabel, bytesPerElement) {
+function renderCmd(model, libInfo, ctxResult, kvLabel, bytesPerElement) {
   document.getElementById('resultLabelOom').hidden = true;
 
   const muted      = s => `<span class="cmd-muted">${s}</span>`;
   const variantIdx = getSelectedVariantIdx(model);
   const runTag     = variantOllamaTag(model, variantIdx);
+  const isCoding   = !!libInfo.coding_role;
   const ollamaCmd  = document.getElementById('ollamaCmd');
-  ollamaCmd.textContent = `ollama run ${runTag}\n>>> /set parameter num_ctx ${ctxResult.maxCtx}`;
+
+  if (isCoding) {
+    // Coding models: pull to make available for editor API — num_ctx set in editor config
+    ollamaCmd.textContent = `ollama pull ${runTag}`;
+  } else {
+    // General models: single-line run with num_ctx env var — no REPL needed
+    ollamaCmd.textContent = `OLLAMA_NUM_CTX=${ctxResult.maxCtx} ollama run ${runTag}`;
+  }
   ollamaCmd.hidden = false;
+
+  const nextStep = isCoding
+    ? muted('# then set contextLength in your editor config (see vibe coder →)')
+    : muted(`# sets context to ${ctxResult.maxCtx.toLocaleString()} tokens`);
 
   const osTabs = document.getElementById('osTabs');
   if (bytesPerElement < 2) {
     setupContent.linux = [
       muted('# Stop ollama if running, then restart with the KV cache setting:'),
       `OLLAMA_KV_CACHE_TYPE=${kvLabel} ollama serve`,
-      muted('# In a new terminal, run the command above'),
+      muted('# In a new terminal:'),
+      nextStep,
     ].join('\n');
     setupContent.windows = [
       muted('# 1. Open: System Properties → Environment Variables → New user variable'),
       muted('#    Name:  OLLAMA_KV_CACHE_TYPE'),
       muted(`#    Value: ${kvLabel}`),
       muted('# 2. Right-click Ollama in system tray → Quit, then relaunch Ollama'),
-      muted('# 3. Run the command above'),
+      muted('# 3. In a new terminal:'),
+      nextStep,
     ].join('\n');
     if (activeOsTab) document.getElementById('ollamaSetup').innerHTML = setupContent[activeOsTab];
     osTabs.hidden = false;
