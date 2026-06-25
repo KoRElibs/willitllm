@@ -207,8 +207,8 @@ function filterModelList(query, autoSelect = false) {
     if (!currentFits) {
       const items    = Array.from(list.querySelectorAll('.combobox-item'));
       const firstFit = items.find(el => !el.hidden && parseInt(el.dataset.fit) < 4);
-      sel.value = firstFit ? firstFit.dataset.idx : '';
-      sel.dispatchEvent(new Event('change'));
+      const newVal   = firstFit ? firstFit.dataset.idx : '';
+      if (sel.value !== newVal) { sel.value = newVal; sel.dispatchEvent(new Event('change')); }
     }
   }
 }
@@ -269,9 +269,8 @@ function markComboboxItems(vramGB, targetCtx, flashOk) {
   const currentFits = currentItem && parseInt(currentItem.dataset.fit) < 4 && !currentItem.hidden;
   if (!currentFits) {
     const firstFit = items.find(el => !el.hidden && parseInt(el.dataset.fit) < 4);
-    sel.value = firstFit ? firstFit.dataset.idx : '';
-    sel.dispatchEvent(new Event('change'));
-    return;
+    const newVal   = firstFit ? firstFit.dataset.idx : '';
+    if (sel.value !== newVal) { sel.value = newVal; sel.dispatchEvent(new Event('change')); return; }
   }
   syncComboboxFace();
 }
