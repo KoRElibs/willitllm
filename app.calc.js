@@ -7,11 +7,10 @@
 // Globals:     GPUS, QUANT_INFO                             (data files)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Constants sourced from data.calc-constants.js — edit there, not here.
-const OVERHEAD_GB     = CALC_CONSTANTS.overhead_gb;
-const SAFETY_FACTOR   = CALC_CONSTANTS.safety_factor;
-const CTX_ROUND       = CALC_CONSTANTS.ctx_round;
-const DECODE_ATTN_EFF = CALC_CONSTANTS.decode_attn_eff;
+const OVERHEAD_GB     = 0.8;
+const SAFETY_FACTOR   = 0.9;
+const CTX_ROUND       = 128;
+const DECODE_ATTN_EFF = 0.015;
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
