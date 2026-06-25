@@ -59,6 +59,12 @@
       </div>
       <select id="modelSelect" hidden></select>
     </div>
+    <div class="field field-secondary">
+      <label>Variant</label>
+      <div class="select-wrap">
+        <select id="variantSelect"></select>
+      </div>
+    </div>
   </div>
 
   <div id="noModel" class="no-model">Pick your GPU above — models will sort by fit, with VRAM breakdown, context window, and speed estimates.</div>
@@ -105,43 +111,36 @@
     <div id="coderHint" class="coder-hint" hidden></div>
     <div class="provenance-alert" id="provenanceAlert" hidden></div>
 
+    <div class="bar-section">
+      <div class="bar-label-row">
+        <span id="selectionSummary">VRAM allocation</span>
+        <span class="total" id="barTotal"></span>
+      </div>
+      <div class="membar">
+        <div class="membar-seg seg-model"    id="segModel"></div>
+        <div class="membar-seg seg-context"  id="segContext"></div>
+        <div class="membar-seg seg-overhead" id="segOverhead"></div>
+        <div class="membar-seg seg-safety"   id="segSafety"></div>
+        <div class="membar-seg seg-free"     id="segFree"></div>
+      </div>
+      <div class="bar-legend">
+        <div class="legend-item"><div class="legend-dot dot-model"></div><span id="legendModel"></span></div>
+        <div class="legend-item"><div class="legend-dot dot-context"></div><span id="legendContext"></span></div>
+        <div class="legend-item"><div class="legend-dot dot-overhead"></div><span id="legendOverhead"></span></div>
+        <div class="legend-item" id="legendSafetyItem"><div class="legend-dot dot-safety"></div><span id="legendSafety"></span></div>
+        <div class="legend-item" id="legendFreeItem"><div class="legend-dot dot-free"></div><span id="legendFree"></span></div>
+      </div>
+    </div>
+
     <button class="geek-toggle" id="geekToggle">▸ details</button>
 
     <div id="geekSection" hidden>
-
-      <div class="field geek-variant-field">
-        <label>Variant</label>
-        <div class="select-wrap">
-          <select id="variantSelect"></select>
-        </div>
-      </div>
-
-      <div class="bar-section">
-        <div class="bar-label-row">
-          <span id="selectionSummary">VRAM allocation</span>
-          <span class="total" id="barTotal"></span>
-        </div>
-        <div class="membar">
-          <div class="membar-seg seg-model"    id="segModel"></div>
-          <div class="membar-seg seg-context"  id="segContext"></div>
-          <div class="membar-seg seg-overhead" id="segOverhead"></div>
-          <div class="membar-seg seg-safety"   id="segSafety"></div>
-          <div class="membar-seg seg-free"     id="segFree"></div>
-        </div>
-        <div class="bar-legend">
-          <div class="legend-item"><div class="legend-dot dot-model"></div><span id="legendModel"></span></div>
-          <div class="legend-item"><div class="legend-dot dot-context"></div><span id="legendContext"></span></div>
-          <div class="legend-item"><div class="legend-dot dot-overhead"></div><span id="legendOverhead"></span></div>
-          <div class="legend-item" id="legendSafetyItem"><div class="legend-dot dot-safety"></div><span id="legendSafety"></span></div>
-          <div class="legend-item" id="legendFreeItem"><div class="legend-dot dot-free"></div><span id="legendFree"></span></div>
-        </div>
-      </div>
 
     <div class="info-tabs">
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="tabModel">Model</button>
         <button class="tab-btn" data-tab="tabGpu">GPU</button>
-        <button class="tab-btn" data-tab="tabFormula">Details</button>
+        <button class="tab-btn" data-tab="tabFormula">Estimates</button>
       </div>
 
       <div class="tab-panel active" id="tabModel">
@@ -335,8 +334,8 @@
 <script src="data.kv-cache.js?v=10"></script>
 <script src="data.models.js?v=10"></script>
 <script src="app.calc.js?v=10"></script>
-<script src="app.render.js?v=10"></script>
-<script src="app.ui.js?v=11"></script>
-<script src="app.js?v=10"></script>
+<script src="app.render.js?v=11"></script>
+<script src="app.ui.js?v=12"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

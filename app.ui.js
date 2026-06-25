@@ -34,15 +34,14 @@ function updateSelectionSummary(model) {
 }
 
 function populateVariants(model) {
-  const sel = document.getElementById('variantSelect');
+  const sel   = document.getElementById('variantSelect');
+  const field = sel.closest('.field-secondary');
   sel.innerHTML = '';
   if (!model) {
-    const opt = document.createElement('option');
-    opt.value = ''; opt.disabled = true; opt.selected = true;
-    opt.textContent = 'select a model first';
-    sel.appendChild(opt);
+    if (field) field.hidden = true;
     return;
   }
+  if (field) field.hidden = false;
   if (!model.variants || model.variants.length === 0) {
     const opt = document.createElement('option');
     opt.textContent = 'no variants';
