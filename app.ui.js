@@ -106,33 +106,28 @@ function variantOllamaTag(model, variantIdx) {
 
 // ── Model dropdown ────────────────────────────────────────────────────────────
 
-// Returns the colour for a model that fits in VRAM, based on target context.
-// targetCtx=null means "model max" (legacy % behaviour).
-function modelCtxColor(ctxResult, model, targetCtx) {
-  if (targetCtx === null) {
-    const pct = model.context_length ? Math.round((ctxResult.maxCtx / model.context_length) * 100) : 100;
-    return pct >= 66 ? '#56d88a' : pct >= 33 ? '#f5a623' : '#f07418';
-  }
-  return ctxResult.maxCtx >= targetCtx ? '#56d88a' : ctxResult.maxCtx >= targetCtx * 0.5 ? '#f5a623' : '#f07418';
+// Unified colour + sort priority using the same formula as the result headline.
+// fit: 0=green 1=amber 2=orange 3=red(poor) 4=OOM(excluded from auto-select)
+function modelScoreColor(m, vramGB, targetCtx, flashOk) {
+  const weightsGB = m.variants?.length ? m.variants[0].weights_gb : 0;
+  if (weightsGB >= vramGB - OVERHEAD_GB) return { color: '#f06464', fit: 4 };
+  const bpe        = autoKvBpe(m, vramGB, weightsGB, targetCtx, flashOk);
+  const ctxResult  = calcMaxContext(m, vramGB, bpe, weightsGB);
+  const quantInfo  = QUANT_INFO[m.variants?.[0]?.quantization];
+  const { scoreClass } = computeScores(quantInfo, bpe, ctxResult, false, m, targetCtx);
+  return { 'score-high': { color: '#56d88a', fit: 0 },
+           'score-mid':  { color: '#f5a623', fit: 1 },
+           'score-low':  { color: '#f07418', fit: 2 },
+           'score-poor': { color: '#f06464', fit: 3 } }[scoreClass] ?? { color: '#f07418', fit: 2 };
 }
 
-// Marks OOM models red and colours in-VRAM models by target context fit.
-// Each model's optimal KV type is auto-selected before colouring.
 function markModelOptions(vramGB, targetCtx, flashOk) {
   const sel = document.getElementById('modelSelect');
-  Array.from(sel.options).forEach((opt) => {
+  Array.from(sel.options).forEach(opt => {
     const m = MODELS[parseInt(opt.value)];
     if (!m) return;
-    const weightsGB = m.variants && m.variants.length ? m.variants[0].weights_gb : 0;
-    if (weightsGB >= vramGB - OVERHEAD_GB) {
-      opt.textContent = `✗  ${m.ollama_tag}`;
-      opt.style.color = '#f06464';
-      return;
-    }
-    const bpe       = autoKvBpe(m, vramGB, weightsGB, targetCtx, flashOk);
-    const ctxResult = calcMaxContext(m, vramGB, bpe, weightsGB);
-    const color     = modelCtxColor(ctxResult, m, targetCtx);
-    opt.textContent = m.ollama_tag;
+    const { color, fit } = modelScoreColor(m, vramGB, targetCtx, flashOk);
+    opt.textContent = fit === 4 ? `✗  ${m.ollama_tag}` : m.ollama_tag;
     opt.style.color = color;
   });
   markComboboxItems(vramGB, targetCtx, flashOk);
@@ -208,10 +203,10 @@ function filterModelList(query, autoSelect = false) {
     const currentItem = currentIdx !== '' && currentIdx !== undefined
       ? list.querySelector(`.combobox-item[data-idx="${currentIdx}"]`)
       : null;
-    const currentFits = currentItem && !currentItem.hidden && currentItem.dataset.fit !== '3';
+    const currentFits = currentItem && !currentItem.hidden && parseInt(currentItem.dataset.fit) < 4;
     if (!currentFits) {
-      const items   = Array.from(list.querySelectorAll('.combobox-item'));
-      const firstFit = items.find(el => !el.hidden && el.dataset.fit !== '3');
+      const items    = Array.from(list.querySelectorAll('.combobox-item'));
+      const firstFit = items.find(el => !el.hidden && parseInt(el.dataset.fit) < 4);
       sel.value = firstFit ? firstFit.dataset.idx : '';
       sel.dispatchEvent(new Event('change'));
     }
@@ -251,25 +246,14 @@ function syncComboboxFace() {
 function markComboboxItems(vramGB, targetCtx, flashOk) {
   const list = document.getElementById('modelList');
   if (!list) return;
-  const colorPriority = { '#56d88a': 0, '#f5a623': 1, '#f07418': 2, '#f06464': 3 };
   list.querySelectorAll('.combobox-item').forEach(item => {
     const m = MODELS[parseInt(item.dataset.idx)];
     if (!m) return;
-    const weightsGB = m.variants && m.variants.length ? m.variants[0].weights_gb : 0;
-    if (weightsGB >= vramGB - OVERHEAD_GB) {
-      item.textContent   = '✗  ' + m.ollama_tag;
-      item.style.color   = '#f06464';
-      item.dataset.fit   = '3';
-      return;
-    }
-    const bpe       = autoKvBpe(m, vramGB, weightsGB, targetCtx, flashOk);
-    const ctxResult = calcMaxContext(m, vramGB, bpe, weightsGB);
-    const color     = modelCtxColor(ctxResult, m, targetCtx);
-    item.style.color   = color;
-    item.dataset.fit   = colorPriority[color] ?? 4;
-    item.textContent   = item.dataset.label;
+    const { color, fit } = modelScoreColor(m, vramGB, targetCtx, flashOk);
+    item.style.color = color;
+    item.dataset.fit = fit;
+    item.textContent = fit === 4 ? '✗  ' + m.ollama_tag : item.dataset.label;
   });
-  // Sort by fit tier (data-fit), then alphabetically within tier
   const items = Array.from(list.querySelectorAll('.combobox-item'));
   items.sort((a, b) => {
     const pa = parseInt(a.dataset.fit ?? 4);
@@ -277,24 +261,17 @@ function markComboboxItems(vramGB, targetCtx, flashOk) {
     return pa !== pb ? pa - pb : a.dataset.tag.localeCompare(b.dataset.tag);
   });
   items.forEach(item => list.appendChild(item));
-  const sel        = document.getElementById('modelSelect');
-  const currentIdx = sel?.value;
+  const sel         = document.getElementById('modelSelect');
+  const currentIdx  = sel?.value;
   const currentItem = currentIdx !== '' && currentIdx !== undefined
     ? list.querySelector(`.combobox-item[data-idx="${currentIdx}"]`)
     : null;
-  const currentFits = currentItem && currentItem.dataset.fit !== '3' && !currentItem.hidden;
+  const currentFits = currentItem && parseInt(currentItem.dataset.fit) < 4 && !currentItem.hidden;
   if (!currentFits) {
-    // Auto-select the first visible green (fit=0) model; fall back to amber/orange
-    const firstFit = items.find(el => !el.hidden && el.dataset.fit !== '3');
-    if (firstFit) {
-      sel.value = firstFit.dataset.idx;
-      sel.dispatchEvent(new Event('change'));
-      return;
-    } else {
-      sel.value = '';
-      sel.dispatchEvent(new Event('change'));
-      return;
-    }
+    const firstFit = items.find(el => !el.hidden && parseInt(el.dataset.fit) < 4);
+    sel.value = firstFit ? firstFit.dataset.idx : '';
+    sel.dispatchEvent(new Event('change'));
+    return;
   }
   syncComboboxFace();
 }
