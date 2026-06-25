@@ -1,12 +1,25 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// APP.MAIN — shared state, render orchestrator, initialisation
+// ─── INDEX.JS — fit checker orchestrator and initialisation
 //
-// Entry point. Loaded last — all data files and app files must precede it.
+// Entry point for index.html. Loaded last — all data and app files must precede it.
 //
-// Globals:     GPUS, LIBRARIES, MODELS, QUANT_INFO, KV_CACHE (data files)
-// ─────────────────────────────────────────────────────────────────────────────
+// Depends on:  MODELS, QUANT_INFO, KV_CACHE (data files),
+//              app.calc.js (OVERHEAD_GB, autoKvBpe, calcMaxContext,
+//                           calcSpeedEstimates, computeScores),
+//              app.util.js (getLibMeta, getFlashOk),
+//              app.shared.js (buildGpuSelector, initTooltip, initInfoSheet,
+//                             osKvContent, muted),
+//              index.combobox.js (buildModelCombobox, markComboboxItems,
+//                                 syncComboboxFace, filterModelList),
+//              index.variants.js (populateVariants, getSelectedVariant,
+//                                 updateNudgeButtons, nudgeVariant),
+//              index.ui.js (markModelOptions, applyCap, setOsTab, syncOsTabs,
+//                           updateSelectionSummary),
+//              index.render.js (renderMembar, renderBudget, renderScorecard,
+//                               renderVerdict, renderOom, renderAside, renderCmd),
+//              index.details.js (renderDetails, populateGpuTab, renderFormula)
+// Provides:    activeOsTab, setupContent, getTargetCtx, getKvCache,
+//              coderPageUrl, render (called by all ui files)
 
-// Lookup helpers derived from data files
 function getKvCache(bytesPerElement) {
   return KV_CACHE.find(k => k.bytesPerElement === bytesPerElement) || KV_CACHE[0];
 }
@@ -19,20 +32,7 @@ function getTargetCtx() {
   return v === 'max' ? null : parseInt(v);
 }
 
-function getFlashOk() {
-  const opt = document.getElementById('vramInput').selectedOptions[0];
-  return opt?.dataset.flash === 'yes' || opt?.dataset.flash === 'mixed';
-}
-
-const LIB_META = Object.fromEntries(LIBRARIES.map(l => [l.library, l]));
-
-function getLibMeta(m) {
-  return LIB_META[m.ollama_tag.split(':')[0]] || {};
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// URL STATE — encode/restore selections in the URL hash for shareability
-// ─────────────────────────────────────────────────────────────────────────────
+// ── URL state ─────────────────────────────────────────────────────────────────
 
 function coderPageUrl() {
   const gpuOpt = document.getElementById('vramInput').selectedOptions[0];
@@ -91,17 +91,16 @@ function applyHashState() {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RENDER — orchestrator
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Render orchestrator ───────────────────────────────────────────────────────
+
 function render() {
   const vramGB    = parseFloat(document.getElementById('vramInput').value);
   const targetCtx = getTargetCtx();
   const flashOk   = getFlashOk();
 
   // Keep cross-page nav link in sync with current GPU selection
-  const coderUrl     = coderPageUrl();
-  const vibeNavLink  = document.getElementById('vibeNavLink');
+  const coderUrl    = coderPageUrl();
+  const vibeNavLink = document.getElementById('vibeNavLink');
   if (vibeNavLink) vibeNavLink.href = coderUrl;
 
   if (!isNaN(vramGB) && vramGB > 0) markModelOptions(vramGB, targetCtx, flashOk);
@@ -183,9 +182,8 @@ function render() {
   pushHashState();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INIT
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
+
 function init() {
   initInfoSheet();
   buildGpuSelector();
