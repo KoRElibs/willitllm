@@ -60,6 +60,9 @@ function renderList(vramGB) {
     return;
   }
 
+  // Attach the plain-language "why" clause to every entry, relative to its bucket.
+  [agent, code, fim].forEach(bucket => bucket.forEach(e => { e.why = whyLine(e, bucket); }));
+
   if (agent.length) {
     list.appendChild(sectionDivider('Coding agents — autonomous planning, file edits, shell commands', 'divider-agent'));
     agent[0].recommended = true;

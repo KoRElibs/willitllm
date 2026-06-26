@@ -333,7 +333,7 @@ header p {
   border-left: 1px solid var(--border);
   min-width: 110px;
 }
-.aside-stat  { display: flex; flex-direction: column; gap: 2px; cursor: help; }
+.aside-stat  { display: flex; flex-direction: column; gap: 2px; }
 .aside-val   { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--text); }
 .aside-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
 .aside-divider { border-top: 1px solid var(--border); }
@@ -381,8 +381,9 @@ header p {
   width: 100%;
 }
 .score-icon  { width: 1.2em; text-align: center; color: var(--text); }
-.score-label { min-width: 9em; color: var(--muted); cursor: help; }
-.score-stars { letter-spacing: 0.05em; cursor: help; }
+.score-label { min-width: 9em; color: var(--muted); }
+.score-stars { letter-spacing: 0.05em; }
+.score-bench-val { color: var(--accent); font-size: 12px; }
 .score-nudge {
   margin-left: auto;
   padding: 1px 7px;
@@ -650,7 +651,6 @@ header p {
   pointer-events: none;
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
 }
-[data-tip] { cursor: help; }
 
 /* ── Detail helpers ── */
 .gqa-note    { color: var(--accent); font-size: 11px; }
@@ -723,10 +723,11 @@ header p {
   margin-bottom: 8px;
   transition: border-color 0.15s;
 }
-.coder-row:not(.coder-row-oom) { cursor: pointer; }
-.coder-row:not(.coder-row-oom):hover { border-color: var(--accent); }
+.coder-row { cursor: pointer; }
+.coder-row:hover { border-color: var(--accent); }
 .coder-row.open { border-color: var(--accent); }
-.coder-row-oom  { opacity: 0.4; }
+/* Expanded setup panel isn't a toggle target — read as normal content. */
+.coder-config { cursor: default; }
 .coder-row-recommended {
   border-color: var(--green);
   background: linear-gradient(var(--bg2), var(--bg2)) padding-box,
@@ -748,7 +749,6 @@ header p {
   border-radius: 3px;
   border: 1px solid;
   flex-shrink: 0;
-  cursor: help;
 }
 .badge-agent { color: var(--bg);     border-color: var(--green);  background: var(--green); font-weight: 700; letter-spacing: 0.09em; }
 .badge-code  { color: var(--green);  border-color: var(--green);  background: rgba(86,216,138,0.06); }
@@ -757,7 +757,6 @@ header p {
 .coder-flag {
   font-size: 14px;
   flex-shrink: 0;
-  cursor: help;
 }
 
 .rec-tag {
@@ -771,7 +770,6 @@ header p {
   padding: 1px 6px;
   flex-shrink: 0;
   background: rgba(86,216,138,0.07);
-  cursor: help;
 }
 
 .coder-name {
@@ -795,14 +793,41 @@ header p {
 }
 .coder-ctx { min-width: 7em; text-align: right; }
 
+.coder-bench {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: rgba(120,170,255,0.06);
+}
+
+.coder-why {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 0 16px 10px 16px;
+  margin-top: -4px;
+}
+.coder-row-recommended .coder-why { color: var(--green); }
+
 .coder-score-bar {
   width: 56px;
   height: 4px;
   background: var(--bg3);
   border-radius: 2px;
   flex-shrink: 0;
-  cursor: help;
 }
+.coder-caret {
+  color: var(--muted);
+  font-size: 11px;
+  flex-shrink: 0;
+  transition: transform 0.15s, color 0.15s;
+}
+.coder-row.open .coder-caret { transform: rotate(90deg); color: var(--accent); }
 .coder-score-fill {
   height: 100%;
   background: var(--accent);

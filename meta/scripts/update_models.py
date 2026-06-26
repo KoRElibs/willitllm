@@ -440,6 +440,14 @@ def write_libraries_js(libs: list[dict]) -> None:
         "//                  Omitted when not available. Do NOT set manually.\n"
         "// coding_role   — agent | code | fim. Curated by hand (human judgement); drives the\n"
         "//                  coder.html model list. Preserved across scraper runs. Omit for non-coding libs.\n"
+        "// capability    — headline benchmark score (0-100). RESEARCHED & CITED, never from chat/LLM\n"
+        "//   capability_metric    memory. Ranking uses it ONLY when {metric, protocol} match the\n"
+        "//   capability_protocol  role's canonical pair (ROLE_CANONICAL in coder.rank.js): agent →\n"
+        "//   capability_ref       swe-bench-verified/pass@1, code → humaneval/pass@1, general →\n"
+        "//   capability_source    mmlu/5-shot. FIM is NEVER scored. A non-canonical score (e.g.\n"
+        "//                  humaneval-plus or pass@5) is left OUT, not recorded. capability_protocol\n"
+        "//                  is mandatory when capability is set; capability_source is a mandatory URL.\n"
+        "//                  See meta/scripts/update-models.md §'Capability scoring'. Preserved across runs.\n"
         "// (flag emoji lives in data.flags.js, keyed by `origin` — not stored per-library.)\n"
     )
 
@@ -458,6 +466,13 @@ def write_libraries_js(libs: list[dict]) -> None:
             fields.append(("capabilities", caps))
         if role:                                   # hand-curated; must survive rewrites
             fields.append(("coding_role", role))
+        # Capability benchmark — researched & cited (see update-models.md). Hand-
+        # curated with a mandatory source URL; must survive rewrites.
+        if lib.get("capability") is not None:
+            fields.append(("capability", lib["capability"]))
+            for k in ("capability_metric", "capability_protocol", "capability_ref", "capability_source"):
+                if lib.get(k):
+                    fields.append((k, lib[k]))
         if pulls:
             fields.append(("pulls", pulls))
 

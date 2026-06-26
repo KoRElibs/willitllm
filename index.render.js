@@ -8,6 +8,7 @@
 //                          fmtTokensHuman, fmtSpeechPace, fmtSpeedHuman,
 //                          fmtSpeed, bar10, colorForScore),
 //              app.shared.js (osKvContent, muted),
+//              app.util.js (metricLabel),
 //              index.variants.js (getSelectedVariantIdx, variantOllamaTag),
 //              index.ui.js (syncOsTabs),
 //              index.js (activeOsTab, setupContent, getTargetCtx — at runtime)
@@ -110,6 +111,22 @@ function renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, c
     el.textContent = bar10(Math.round(n10));
     el.style.color = colorForScore(n5);
   });
+
+  // Benchmark row — cited model-capability score (distinct from quant "Sharpness").
+  const benchRow = document.getElementById('scoreBenchRow');
+  if (libInfo && libInfo.capability != null) {
+    const label = metricLabel(libInfo.capability_metric);
+    const proto = libInfo.capability_protocol ? ` ${libInfo.capability_protocol}` : '';
+    document.getElementById('scoreBench').textContent = `${label} ${libInfo.capability}%`;
+    document.getElementById('scoreBenchLabel').dataset.tip =
+      `${label}${proto} ${libInfo.capability}% — model-capability benchmark (not quantization). `
+      + (libInfo.capability_ref ? `Measured on ${libInfo.capability_ref}; family-level, so smaller sizes score lower. ` : '')
+      + (libInfo.capability_source ? `Source: ${libInfo.capability_source}` : '');
+    benchRow.hidden = false;
+  } else if (benchRow) {
+    benchRow.hidden = true;
+  }
+
   scorecard.hidden = false;
 
   const ctxTradeoff = 'Memory clarity vs. context fit: crisper recall (f16) costs more VRAM per token, leaving less room for a long conversation.';

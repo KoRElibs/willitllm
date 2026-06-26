@@ -2,6 +2,7 @@
 //
 // Depends on:  app.shared.js (osKvContent),
 //              app.fmt.js (fmtSpeed),
+//              app.util.js (metricLabel, metricLabelShort),
 //              data.flags.js (flagFor),
 //              coder.rank.js (fmtCtxCoding),
 //              coder.js (getBaseUrl — at runtime)
@@ -202,6 +203,21 @@ function makeRow(entry) {
   const ctxTip    = `${ctx.maxCtx.toLocaleString()} tokens · ~${Math.round(ctx.maxCtx / 3).toLocaleString()} lines · ~${Math.round(ctx.maxCtx / 1000)} avg files`;
   const barPct    = Math.round(Math.max(0, score) * 100);
 
+  // Capability benchmark chip (cited) — names the metric+protocol, shows %, source in
+  // tooltip. Absent for unscored libs (FIM, and any model without a canonical score).
+  const cap        = lib.capability;
+  const protoTip   = lib.capability_protocol ? ' ' + esc(lib.capability_protocol) : '';
+  const benchHtml  = cap != null
+    ? `<span class="coder-bench" data-tip="${esc(metricLabel(lib.capability_metric))}${protoTip} · ${cap}%${lib.capability_ref ? ' · measured on ' + esc(lib.capability_ref) + ' (family score; smaller sizes score lower)' : ''}${lib.capability_source ? ' · source: ' + esc(lib.capability_source) : ''}">${esc(metricLabelShort(lib.capability_metric))} ${cap}%</span>`
+    : '';
+  const whyHtml    = entry.why ? `<div class="coder-why">${esc(entry.why)}</div>` : '';
+
+  // Score-bar tooltip reflects the active per-role weights (see coder.rank.js).
+  const weightTip = { agent: '45% capability · 30% speed · 25% context',
+                      code:  '50% capability · 25% speed · 25% context',
+                      fim:   '40% capability · 40% speed · 20% context' }[lib.coding_role]
+                  || '45% capability · 30% speed · 25% context';
+
   const row = document.createElement('div');
   row.className = 'coder-row' + (recommended ? ' coder-row-recommended' : '');
 
@@ -228,15 +244,21 @@ function makeRow(entry) {
       <span class="coder-name">${esc(runTag)}</span>
       <span class="coder-speed" data-tip="Est. generation speed (lower bound). Speed matters most in agentic loops — tool calls chain sequentially.">${speedText}</span>
       <span class="coder-ctx" data-tip="${ctxTip}">${ctxText}</span>
-      <div class="coder-score-bar" data-tip="Coding rank: 50% speed + 30% context + 20% quality"><div class="coder-score-fill" style="width:${barPct}%"></div></div>
+      ${benchHtml}
+      <div class="coder-score-bar" data-tip="Coding rank: ${weightTip}. Capability = published benchmark for this role; speed saturates at ~30 tok/s; ties broken by release date."><div class="coder-score-fill" style="width:${barPct}%"></div></div>
+      <span class="coder-caret" aria-hidden="true">▸</span>
     </div>
+    ${whyHtml}
     <div class="coder-config" hidden>
       ${prereqStrip}
       ${configHtml}
     </div>
   `;
 
-  row.querySelector('.coder-row-header').addEventListener('click', () => {
+  // Whole row toggles the setup panel — except clicks inside the panel itself,
+  // which drive its own controls (tabs, copy) without collapsing the row.
+  row.addEventListener('click', e => {
+    if (e.target.closest('.coder-config')) return;
     const config  = row.querySelector('.coder-config');
     const wasOpen = !config.hidden;
     document.querySelectorAll('.coder-config').forEach(c => c.hidden = true);
@@ -245,8 +267,7 @@ function makeRow(entry) {
   });
 
   row.querySelectorAll('.os-tab[data-os]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
+    btn.addEventListener('click', () => {
       const os      = btn.dataset.os;
       const section = btn.closest('.config-section');
       const pre     = section.querySelector('.ollama-setup');
@@ -259,8 +280,7 @@ function makeRow(entry) {
   });
 
   row.querySelectorAll('.mode-tab').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
+    btn.addEventListener('click', () => {
       const mode = btn.dataset.mode;
       row.querySelectorAll('.mode-tab').forEach(b => b.classList.toggle('active', b === btn));
       row.querySelectorAll('.mode-block').forEach(b => b.hidden = b.dataset.mode !== mode);
@@ -268,8 +288,7 @@ function makeRow(entry) {
   });
 
   row.querySelectorAll('.client-tab').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
+    btn.addEventListener('click', () => {
       const client  = btn.dataset.client;
       const section = btn.closest('.config-section');
       section.querySelectorAll('.client-tab').forEach(b => b.classList.toggle('active', b === btn));
@@ -278,8 +297,7 @@ function makeRow(entry) {
   });
 
   row.querySelectorAll('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
+    btn.addEventListener('click', () => {
       const scope = btn.closest('.kv-cmd') ?? btn.closest('.config-section');
       const pre   = scope?.querySelector('pre');
       if (!pre) return;

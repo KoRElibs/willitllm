@@ -77,6 +77,7 @@
         <div class="scorecard" id="scorecard" hidden>
           <div class="score-row"><span class="score-icon">▶</span><span class="score-label" data-tip="How fast the model thinks — like reaction time. Lighter quantization = faster responses but less sharp thinking. Trade-off: speed vs. sharpness (quantization level).">Thinking speed</span><span class="score-stars" id="scoreSpeed"></span><button class="score-nudge" id="nudge-speed" hidden>faster</button></div>
           <div class="score-row"><span class="score-icon">★</span><span class="score-label" data-tip="How sharp and accurate the model's answers are — like IQ relative to its full potential. Higher quantization = closer to the model's true capability but slower. Trade-off: sharpness vs. speed (quantization level).">Sharpness</span><span class="score-stars" id="scoreQuality"></span><button class="score-nudge" id="nudge-quality" hidden>better</button></div>
+          <div class="score-row" id="scoreBenchRow" hidden><span class="score-icon">✸</span><span class="score-label" id="scoreBenchLabel" data-tip="Independent benchmark score for this model family, from a cited source. Unlike Sharpness (which measures quantization fidelity), this measures the model's actual demonstrated capability.">Benchmark</span><span class="score-bench-val" id="scoreBench"></span></div>
           <div class="score-row"><span class="score-icon">■</span><span class="score-label" data-tip="How crisply the model recalls what was said earlier. Automatically set to the highest quality KV cache precision that still meets your target context — f16 first, then q8_0, then q4_0 on Flash-capable GPUs.">Memory clarity</span><span class="score-stars" id="scorePrecision"></span></div>
           <div class="score-row"><span class="score-icon">◎</span><span class="score-label" data-tip="How well this model meets your context target. 10/10 means it fully covers what you need — shown as achieved / target pages in the panel beside. Set your target using the Context dropdown above.">Context fit</span><span class="score-stars" id="scoreContext"></span></div>
           <span id="codeVerdict" class="code-verdict" hidden></span>
@@ -322,19 +323,19 @@
 </div>
 <div id="tooltip" class="tooltip" hidden></div>
 <script src="data.gpus.js?v=10"></script>
-<script src="data.libraries.js?v=10"></script>
+<script src="data.libraries.js?v=13"></script>
 <script src="data.flags.js?v=10"></script>
 <script src="data.quantizations.js?v=10"></script>
 <script src="data.kv-cache.js?v=10"></script>
 <script src="data.models.js?v=10"></script>
 <script src="app.fmt.js?v=1"></script>
 <script src="app.calc.js?v=12"></script>
-<script src="app.shared.js?v=2"></script>
-<script src="app.util.js?v=1"></script>
+<script src="app.shared.js?v=3"></script>
+<script src="app.util.js?v=2"></script>
 <script src="index.combobox.js?v=1"></script>
 <script src="index.variants.js?v=1"></script>
 <script src="index.ui.js?v=1"></script>
-<script src="index.render.js?v=1"></script>
+<script src="index.render.js?v=4"></script>
 <script src="index.details.js?v=1"></script>
 <script src="index.js?v=1"></script>
 </body>

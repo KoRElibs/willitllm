@@ -55,19 +55,35 @@ function buildGpuSelector() {
 }
 
 function initTooltip() {
-  const tip = document.getElementById('tooltip');
-  document.addEventListener('mouseover', e => {
-    const el = e.target.closest('[data-tip]');
-    if (!el || !el.dataset.tip) { tip.hidden = true; return; }
+  const tip  = document.getElementById('tooltip');
+  const hide = () => { tip.hidden = true; };
+  const show = el => {
     tip.textContent = el.dataset.tip;
     tip.hidden = false;
     const rect = el.getBoundingClientRect();
     tip.style.top  = (rect.bottom + 8) + 'px';
     tip.style.left = Math.min(rect.left, window.innerWidth - 276) + 'px';
+  };
+
+  // Desktop: follow the pointer on hover.
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest('[data-tip]');
+    el && el.dataset.tip ? show(el) : hide();
   });
   document.addEventListener('mouseout', e => {
-    if (!e.target.closest('[data-tip]')) tip.hidden = true;
+    if (!e.target.closest('[data-tip]')) hide();
   });
+
+  // Touch (no hover): tap an info element to reveal its tip — and swallow that
+  // tap so it doesn't also toggle the row it sits in. Interactive controls
+  // (buttons/links) keep their normal action; tapping elsewhere dismisses.
+  // Capture phase so stopPropagation beats the row's own click handler.
+  document.addEventListener('click', e => {
+    if (!matchMedia('(hover: none)').matches) return;
+    const el = e.target.closest('[data-tip]');
+    if (el && el.dataset.tip && !el.closest('button, a')) { e.stopPropagation(); show(el); }
+    else hide();
+  }, true);
 }
 
 function initInfoSheet() {
