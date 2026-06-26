@@ -93,6 +93,30 @@ Consult these before changing anything that touches their domain:
 
 ---
 
+## Change workflow & commit discipline
+
+Work in **small, self-contained increments** — not large multi-feature diffs. Each logically
+complete change should be testable, reviewable, and committable on its own. If a diff starts
+spanning several unrelated concerns, it has already grown too large — split it. A commit that
+touches a dozen files across multiple features is a smell, not a milestone.
+
+The loop for every change:
+
+1. **Make one focused change** — one feature, fix, or refactor at a time, not a session's worth
+   of work batched together.
+2. **Test it before showing it.** Verify the change actually works — browser-verify any
+   HTML/CSS/JS change (see *Browser verification*; screenshots → `meta/cache/screenshots/`), and
+   sanity-check data/logic (`node --check`, data-integrity checks, scraper `--verify`). Never
+   present an untested change as done, and never claim it works without having run it.
+3. **Show the user and wait.** Describe what changed and how you verified it. Do **not** commit yet.
+4. **Commit only after the user confirms.** The user tests/approves first; then commit *that*
+   increment. Do not commit unprompted, and do not let several confirmed changes pile up into one
+   oversized commit — commit each unit as it is confirmed.
+
+Branch before the first commit if on the default branch; keep `main` clean.
+
+---
+
 ## Commit conventions
 
 Always credit everyone who contributed to a commit:
