@@ -113,6 +113,9 @@ function renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, c
   });
 
   // Benchmark row — cited model-capability score (distinct from quant "Sharpness").
+  // This row also hosts the coding verdict (set in render()), so it's shown for every
+  // fitting model; the `has-bench` class drives whether the benchmark parts appear and
+  // whether the verdict is pushed to the right (CSS). noFit already returned above.
   const benchRow = document.getElementById('scoreBenchRow');
   if (libInfo && libInfo.capability != null) {
     const label = metricLabel(libInfo.capability_metric);
@@ -122,10 +125,11 @@ function renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, c
       `${label}${proto} ${libInfo.capability}% — model-capability benchmark (not quantization). `
       + (libInfo.capability_ref ? `Measured on ${libInfo.capability_ref}; family-level, so smaller sizes score lower. ` : '')
       + (libInfo.capability_source ? `Source: ${libInfo.capability_source}` : '');
-    benchRow.hidden = false;
-  } else if (benchRow) {
-    benchRow.hidden = true;
+    benchRow.classList.add('has-bench');
+  } else {
+    benchRow.classList.remove('has-bench');
   }
+  benchRow.hidden = false;
 
   scorecard.hidden = false;
 

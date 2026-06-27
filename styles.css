@@ -384,6 +384,15 @@ header p {
 .score-label { min-width: 9em; color: var(--muted); }
 .score-stars { letter-spacing: 0.05em; }
 .score-bench-val { color: var(--accent); font-size: 12px; }
+/* Benchmark row doubles as the host for the coding verdict (#codeVerdict). With a
+   benchmark, push the verdict to the right edge; without one, hide the benchmark
+   label/value so the verdict reads as a plain left-aligned line. Wrap on narrow
+   screens so a long verdict drops below instead of overflowing. */
+.score-row--bench { flex-wrap: wrap; row-gap: 2px; }
+.score-row--bench.has-bench #codeVerdict { margin-left: auto; }
+.score-row--bench:not(.has-bench) .score-icon,
+.score-row--bench:not(.has-bench) #scoreBenchLabel,
+.score-row--bench:not(.has-bench) #scoreBench { display: none; }
 .score-nudge {
   margin-left: auto;
   padding: 1px 7px;

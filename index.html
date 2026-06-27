@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>willitllm.com</title>
-<link rel="stylesheet" href="styles.css?v=1">
+<link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 <div class="page">
@@ -81,9 +81,10 @@
           <div class="score-row"><span class="score-icon">◎</span><span class="score-label" data-tip="How well this model meets your context target. 10/10 means it fully covers what you need — shown as achieved / target pages in the panel beside. Set your target using the Context dropdown above.">Context fit</span><span class="score-stars" id="scoreContext"></span></div>
           <!-- Benchmark + coding verdict are the coding-only signals — kept together at the
                bottom so they append when a coding model is picked, instead of the benchmark
-               row injecting into the middle and reshuffling the always-present rows above. -->
-          <div class="score-row" id="scoreBenchRow" hidden><span class="score-icon">✸</span><span class="score-label" id="scoreBenchLabel" data-tip="Independent benchmark score for this model family, from a cited source. Unlike Sharpness (which measures quantization fidelity), this measures the model's actual demonstrated capability.">Benchmark</span><span class="score-bench-val" id="scoreBench"></span></div>
-          <span id="codeVerdict" class="code-verdict" hidden></span>
+               row injecting into the middle and reshuffling the always-present rows above.
+               The verdict lives inside this row: pushed right beside the benchmark when one
+               exists, or left-aligned on its own when there's no benchmark (e.g. fim models). -->
+          <div class="score-row score-row--bench" id="scoreBenchRow" hidden><span class="score-icon">✸</span><span class="score-label" id="scoreBenchLabel" data-tip="Independent benchmark score for this model family, from a cited source. Unlike Sharpness (which measures quantization fidelity), this measures the model's actual demonstrated capability.">Benchmark</span><span class="score-bench-val" id="scoreBench"></span><span id="codeVerdict" class="code-verdict" hidden></span></div>
         </div>
         <span class="result-label" id="resultLabelOom" hidden></span>
       </div>
@@ -338,7 +339,7 @@
 <script src="index.combobox.js?v=2"></script>
 <script src="index.variants.js?v=1"></script>
 <script src="index.ui.js?v=1"></script>
-<script src="index.render.js?v=4"></script>
+<script src="index.render.js?v=5"></script>
 <script src="index.details.js?v=1"></script>
 <script src="index.js?v=2"></script>
 </body>
