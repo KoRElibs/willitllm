@@ -524,13 +524,14 @@ header p {
 .provenance-alert--community strong { color: var(--amber); }
 /* ── Coding capability verdict ── */
 .code-verdict { font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em; }
-.code-verdict a { text-decoration: none; }
-.code-verdict--agent { color: var(--accent); font-size: 13px; }
-.code-verdict--agent:hover { text-decoration: underline; }
-.code-verdict--code { color: var(--muted); }
-.code-verdict--code:hover { text-decoration: underline; }
-.code-verdict--fim { color: var(--muted); }
-.code-verdict--fim:hover { text-decoration: underline; }
+/* Positive verdicts link to the coder page — a persistent dotted underline gives
+   a clickable affordance at rest (solid on hover), accent colour makes them read
+   as interactive rather than fading into muted grey. */
+.code-verdict a { text-decoration: none; cursor: pointer; border-bottom: 1px dotted currentColor; }
+.code-verdict a:hover { border-bottom-style: solid; }
+.code-verdict--agent { color: var(--accent); font-size: 13px; font-weight: 600; }
+.code-verdict--code { color: var(--accent); font-size: 12px; }
+.code-verdict--fim { color: var(--accent); opacity: 0.8; }
 .code-verdict--none { color: var(--text); opacity: 0.12; }
 
 /* ── Page footer ── */
