@@ -188,8 +188,10 @@ function init() {
   initInfoSheet();
   buildGpuSelector();
 
-  // Model dropdown (hidden — combobox is the visible control)
-  MODELS.sort((a, b) => a.ollama_tag.localeCompare(b.ollama_tag));
+  // Fixed model order: most capable (largest params) first, by tag for ties. Set once
+  // here and never re-sorted — the combobox keeps this order and only recolours rows by
+  // fit, so the list is stable and never reshuffles when the card or context changes.
+  MODELS.sort((a, b) => modelParamSize(b) - modelParamSize(a) || a.ollama_tag.localeCompare(b.ollama_tag));
   const sel = document.getElementById('modelSelect');
   const modelPlaceholder = document.createElement('option');
   modelPlaceholder.value = ''; modelPlaceholder.disabled = true; modelPlaceholder.selected = true;

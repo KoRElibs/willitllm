@@ -109,23 +109,17 @@ function markComboboxItems(vramGB, targetCtx, flashOk) {
     item.dataset.fit = fit;
     item.textContent = fit === 4 ? '✗  ' + m.ollama_tag : item.dataset.label;
   });
+  // The list ORDER is fixed (capability/size, set once at build in MODELS order) —
+  // we deliberately do NOT re-sort here, so it never reshuffles when the card or
+  // context changes. Only the colours above update; fit drives colour, not position.
   const items = Array.from(list.querySelectorAll('.combobox-item'));
-  items.sort((a, b) => {
-    const pa = parseInt(a.dataset.fit ?? 4);
-    const pb = parseInt(b.dataset.fit ?? 4);
-    return pa !== pb ? pa - pb : a.dataset.tag.localeCompare(b.dataset.tag);
-  });
-  items.forEach(item => list.appendChild(item));
-  const sel         = document.getElementById('modelSelect');
-  const currentIdx  = sel?.value;
-  const currentItem = currentIdx !== '' && currentIdx !== undefined
-    ? list.querySelector(`.combobox-item[data-idx="${currentIdx}"]`)
-    : null;
-  const currentFits = currentItem && parseInt(currentItem.dataset.fit) < 4 && !currentItem.hidden;
-  if (!currentFits) {
+  const sel   = document.getElementById('modelSelect');
+  // Auto-fill a fitting model ONLY when nothing is chosen yet. Never override an
+  // explicit pick — if the user selects a model that doesn't fit, show its honest
+  // OOM result rather than silently swapping to a different model.
+  if (sel.value === '' || sel.value == null) {
     const firstFit = items.find(el => !el.hidden && parseInt(el.dataset.fit) < 4);
-    const newVal   = firstFit ? firstFit.dataset.idx : '';
-    if (sel.value !== newVal) { sel.value = newVal; sel.dispatchEvent(new Event('change')); return; }
+    if (firstFit) { sel.value = firstFit.dataset.idx; sel.dispatchEvent(new Event('change')); return; }
   }
   syncComboboxFace();
 }
