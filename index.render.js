@@ -136,8 +136,9 @@ function renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, c
   const ctxTradeoff = 'Memory clarity vs. context fit: crisper recall (f16) costs more VRAM per token, leaving less room for a long conversation.';
   if (quantInfo) {
     const tradeoff = 'Thinking speed and sharpness trade off — a lighter quantization means faster responses but a duller mind. You cannot have both at maximum. (Technical: quantization level)';
-    document.getElementById('scoreSpeed').dataset.tip   = `${variant.quantization} · ${quantInfo.summary} · ${tradeoff}`;
-    document.getElementById('scoreQuality').dataset.tip = `${variant.quantization} · ${quantInfo.summary} · ${tradeoff}`;
+    const quantLabel = `${quantInfo.approx ? '~' : ''}${variant.quantization || variant.format || '?'}`;
+    document.getElementById('scoreSpeed').dataset.tip   = `${quantLabel} · ${quantInfo.summary} · ${tradeoff}`;
+    document.getElementById('scoreQuality').dataset.tip = `${quantLabel} · ${quantInfo.summary} · ${tradeoff}`;
   }
   if (kvInfo) {
     document.getElementById('scorePrecision').dataset.tip = `${kvLabel} · ${ctxTradeoff}`;

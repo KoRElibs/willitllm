@@ -5,7 +5,7 @@
 //
 // Depends on:  GPUS, QUANT_INFO (data files), app.fmt.js (formatters)
 // Provides:    OVERHEAD_GB, SAFETY_FACTOR, CTX_ROUND, DECODE_ATTN_EFF,
-//              getGpuSpecs, calcMaxContext, calcSpeedEstimates,
+//              getGpuSpecs, variantRatings, calcMaxContext, calcSpeedEstimates,
 //              autoKvBpe, computeScores
 
 const OVERHEAD_GB     = 0.8;
@@ -40,6 +40,48 @@ function getGpuSpecs(vramGB) {
     tflopsLo: Math.min(...entries.map(g => g.tflops_fp16)),
     tflopsHi: Math.max(...entries.map(g => g.tflops_fp16)),
     isExact:  false,
+  };
+}
+
+// ── Variant ratings ─────────────────────────────────────────────────────────────
+
+// Speed/quality/efficiency ratings for a variant. GGUF variants carry a `quantization`
+// label that keys directly into QUANT_INFO (empirical, benchmark-backed — reliable across
+// model sizes). Non-GGUF formats (mlx/nvfp4/mxfp8) have `quantization: null`; ollama
+// exposes no quant metadata for them. Rather than guess from bits-per-weight (which is
+// contaminated by high-precision embedding/output tensors — badly wrong on small models),
+// estimate by interpolating from THIS model's own labelled variants ordered by weights_gb.
+// Relative-within-model, so immune to cross-model contamination. Result carries approx:true
+// so the UI can mark it as an estimate. Returns null only when there is nothing to go on.
+function variantRatings(model, variant) {
+  if (!variant) return null;
+  const known = QUANT_INFO[variant.quantization];
+  if (known) return known;
+
+  const anchors = (model.variants || [])
+    .map(v => ({ gb: v.weights_gb, qi: QUANT_INFO[v.quantization] }))
+    .filter(a => a.qi)
+    .sort((a, b) => a.gb - b.gb);
+  if (anchors.length === 0) return null;
+
+  const gb = variant.weights_gb;
+  if (gb <= anchors[0].gb)                  return { ...anchors[0].qi, approx: true };
+  if (gb >= anchors[anchors.length - 1].gb) return { ...anchors[anchors.length - 1].qi, approx: true };
+
+  let lo = anchors[0], hi = anchors[anchors.length - 1];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    if (gb >= anchors[i].gb && gb <= anchors[i + 1].gb) { lo = anchors[i]; hi = anchors[i + 1]; break; }
+  }
+  const t     = (gb - lo.gb) / ((hi.gb - lo.gb) || 1);
+  const lerp  = (a, b) => a + (b - a) * t;
+  const pair  = (a, b) => [lerp(a[0], b[0]), lerp(a[1], b[1])];
+  return {
+    speed:       Math.round(lerp(lo.qi.speed,   hi.qi.speed)),
+    quality:     Math.round(lerp(lo.qi.quality, hi.qi.quality)),
+    gen_eff:     pair(lo.qi.gen_eff,     hi.qi.gen_eff),
+    prefill_eff: pair(lo.qi.prefill_eff, hi.qi.prefill_eff),
+    summary:     `Estimated from download size — ollama publishes no quant metadata for ${variant.format || 'this'} format.`,
+    approx:      true,
   };
 }
 

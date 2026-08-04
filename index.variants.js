@@ -44,18 +44,19 @@ function populateVariants(model) {
     items.forEach(({ variant, i }) => {
       const opt       = document.createElement('option');
       opt.value       = i;
-      const quantInfo = QUANT_INFO[variant.quantization];
-      const quant     = variant.quantization || '?';
+      const quantInfo = variantRatings(model, variant);
+      const approx    = quantInfo && quantInfo.approx ? '~' : '';
+      const quant     = variant.quantization || variant.format || '?';
       const gb        = variant.weights_gb.toFixed(1);
       const defMark   = i === 0 ? ' ← default' : '';
       if (window.innerWidth <= 600) {
         const s = quantInfo ? quantInfo.speed   : '?';
         const q = quantInfo ? quantInfo.quality : '?';
-        opt.textContent = `${s}S ${q}Q  ${quant}${defMark}`;
+        opt.textContent = `${approx}${s}S ${q}Q  ${quant}${defMark}`;
       } else {
         const speedRating   = quantInfo ? buildRatingBar(quantInfo.speed,   '▶', '▷') : '▷▷▷▷▷';
         const qualityRating = quantInfo ? buildRatingBar(quantInfo.quality, '★', '☆') : '☆☆☆☆☆';
-        opt.textContent = `${speedRating} ${qualityRating}  ${gb} GB  ${quant}${defMark}`;
+        opt.textContent = `${approx}${speedRating} ${qualityRating}  ${gb} GB  ${quant}${defMark}`;
       }
       container.appendChild(opt);
     });
@@ -87,7 +88,7 @@ function variantOllamaTag(model, variantIdx) {
 // All variants sorted by quality ascending (lowest quality = fastest first).
 function variantsSortedByQuality(model) {
   return model.variants
-    .map((v, i) => ({ v, i, qi: QUANT_INFO[v.quantization] }))
+    .map((v, i) => ({ v, i, qi: variantRatings(model, v) }))
     .sort((a, b) => (a.qi?.quality ?? 5) - (b.qi?.quality ?? 5) || a.v.weights_gb - b.v.weights_gb);
 }
 

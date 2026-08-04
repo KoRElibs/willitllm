@@ -122,8 +122,8 @@ function render() {
 
   const variant         = getSelectedVariant(model);
   const weightsGB       = variant ? variant.weights_gb : 0;
-  const quantization    = variant ? variant.quantization : '—';
-  const quantInfo       = variant ? QUANT_INFO[variant.quantization] : null;
+  const quantization    = variant ? (variant.quantization || variant.format || '—') : '—';
+  const quantInfo       = variantRatings(model, variant);
   const libInfo         = getLibMeta(model);
   const bytesPerElement = autoKvBpe(model, vramGB, weightsGB, targetCtx, flashOk);
   const kvEntry         = getKvCache(bytesPerElement);

@@ -107,6 +107,15 @@ As an Optimizer I want generation-speed estimates that account for how speed cha
 **US-19 — Geek mode** `done`
 As an Optimizer I want to toggle detailed views (VRAM bar, model/GPU/formula tabs) on and off so the page stays clean for casual use but the full breakdown is one click away. Preference persists via localStorage. Default: off.
 
+**US-30 — Ratings for non-GGUF variants** `done`
+As an Optimizer I want mlx / nvfp4 / mxfp8 variants (which ollama publishes with no quant metadata)
+to still show speed/quality/efficiency ratings so I can compare them against the GGUF quants instead
+of seeing blanks. Implemented via `variantRatings()` (SPEC §5.5): GGUF variants key into `QUANT_INFO`
+directly; null-quant variants are estimated by interpolating from the model's own labelled variants
+by size, marked `~` in the variant dropdown and scorecard tooltips to flag the estimate. The 13 IQ
+importance-matrix `QUANT_INFO` entries were removed — ollama ships none. Routed through every
+consumer (index scorecard/dropdown/model-list colour, coder ranking, detail panel).
+
 ---
 
 ## Buyer — `buyer.html` `backlog`

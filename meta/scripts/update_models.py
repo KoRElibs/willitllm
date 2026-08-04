@@ -117,13 +117,25 @@ def _get_group(tag: str, quantization: str) -> str:
     if rest.lower().endswith(q_suffix):
         return rest[: -len(q_suffix)] or "(default)"
     return rest
+
+
+def _variant_format(tag: str) -> str:
+    """Cosmetic descriptor for a non-GGUF variant (no general.file_type), taken from the
+    tag suffix. e.g. '31b-nvfp4' -> 'nvfp4', '26b-mlx' -> 'mlx', '31b-mxfp8' -> 'mxfp8'."""
+    return tag.split("-")[-1]
+
+
+def _variant_key(v: dict) -> str:
+    """Dedup key for a variant: its quant label when GGUF, else its format/tag. Keeps the
+    historical collapse of same-quant tags while letting distinct non-GGUF formats coexist."""
+    return v.get("quantization") or v.get("format") or v.get("tag")
 GB_TOLERANCE   = 0.15
 
 # Version tags like v0.1 are not canonical size tags.
 _VERSION_RE = re.compile(r"^v\d", re.IGNORECASE)
 # Non-size word tags are not canonical size tags.
 _NONSIZE_RE = re.compile(
-    r"^(instruct|text|chat|base|code|vision|uncensored|abliterated|latest|python)$",
+    r"^(instruct|text|chat|base|code|vision|uncensored|abliterated|latest|python|cloud)$",
     re.IGNORECASE,
 )
 # Quant keywords — used to detect quant variant tags.
@@ -303,21 +315,29 @@ def cache_metadata(targets: list[tuple[str, dict]]) -> None:
 
 def fetch_variant_weights(library: str, tag: str) -> dict | None:
     """
-    Fetch weights_gb for a quant variant tag from its detail page.
-    Returns {"tag": tag, "quantization": "Q4_K_M", "weights_gb": 4.9} or None on failure.
-    tag is the raw ollama sub-tag (the part after the colon, e.g. "3b-q4_K_M").
+    Build the variant record for a sub-tag. tag is the raw ollama sub-tag (the part after
+    the colon, e.g. "3b-q4_K_M", "31b-it-qat", "31b-nvfp4").
+
+    A variant is NEVER dropped for want of a parseable name — the quant label is resolved
+    from the most reliable source available, in order:
+      1. the tag name        (specific: "bf16", "q8_0", "q4_K_M")
+      2. GGUF general.file_type from the blob metadata (catches "qat" -> "Q4_0")
+      3. neither             -> non-GGUF format (mlx/nvfp4/mxfp8): quantization=None,
+                                a cosmetic `format` label, rated by size in the app.
+    Returns {"tag", "quantization", "weights_gb", "group"} (+ "format" for non-GGUF),
+    or None when the page has no weight or the tag is not a local download (e.g. -cloud).
     """
-    quant = _quant_from_tag(tag)
-    if not quant:
+    if tag.split("-")[-1].lower() == "cloud":
+        return None  # hosted/cloud tag — runs server-side, not a local download
+    data = fetch_blob_data(library, tag)  # detail page (weights) + blob (file_type)
+    gb = data.get("weights_gb")
+    if gb is None:
         return None
-    try:
-        html = http_get(f"{OLLAMA_BASE}/library/{library}:{tag}").decode("utf-8", errors="replace")
-    except Exception:
-        return None
-    d = _parse_detail(html)
-    if "weights_gb" not in d:
-        return None
-    return {"tag": tag, "quantization": quant, "weights_gb": d["weights_gb"], "group": _get_group(tag, quant)}
+    quant = _quant_from_tag(tag) or data.get("default_quantization")
+    if quant:
+        return {"tag": tag, "quantization": quant, "weights_gb": gb, "group": _get_group(tag, quant)}
+    fmt = _variant_format(tag)
+    return {"tag": tag, "quantization": None, "format": fmt, "weights_gb": gb, "group": fmt}
 
 
 def _parse_detail(html: str) -> dict:
@@ -494,6 +514,22 @@ def _js_val(v) -> str:
     return str(v)
 
 
+def _variant_json(v: dict) -> str:
+    """Serialize one variant to a JS object literal. Order: tag, quantization, format?,
+    weights_gb, group? — GGUF variants (no format) match the historical layout exactly,
+    keeping regeneration diffs minimal. quantization may be null for non-GGUF formats."""
+    parts = []
+    if "tag" in v:
+        parts.append(f'"tag": "{v["tag"]}"')
+    parts.append(f'"quantization": {_js_val(v.get("quantization"))}')
+    if v.get("format"):
+        parts.append(f'"format": "{v["format"]}"')
+    parts.append(f'"weights_gb": {v["weights_gb"]}')
+    if v.get("group"):
+        parts.append(f'"group": "{v["group"]}"')
+    return "{" + ", ".join(parts) + "}"
+
+
 def _format_entry(entry: dict) -> str:
     fields = [f for f in _FIELD_ORDER if f in entry]
     lines = ["  {"]
@@ -504,9 +540,7 @@ def _format_entry(entry: dict) -> str:
             variants = entry[f]
             for j, v in enumerate(variants):
                 vc = "," if j < len(variants) - 1 else ""
-                tag_part   = f'"tag": "{v["tag"]}", ' if "tag" in v else ""
-                group_part = f', "group": "{v["group"]}"' if "group" in v else ""
-                lines.append(f'      {{{tag_part}"quantization": "{v["quantization"]}", "weights_gb": {v["weights_gb"]}{group_part}}}{vc}')
+                lines.append(f'      {_variant_json(v)}{vc}')
             lines.append(f'    ]{comma}')
         else:
             lines.append(f'    "{f}": {_js_val(entry[f])}{comma}')
@@ -599,13 +633,16 @@ def discover(libraries: list[dict], existing: set[str], apply: bool, path: Path)
             default_quant = data.pop("default_quantization", None)
             default_weights = data.pop("weights_gb", None)
             variants = []
+            seen_keys: set = set()
             if default_quant and default_weights is not None:
                 variants.append({"tag": tag, "quantization": default_quant, "weights_gb": default_weights, "group": _get_group(tag, default_quant)})
+                seen_keys.add(default_quant)
 
             for vtag in variants_map.get(tag, []):
                 vdata = fetch_variant_weights(library, vtag)
-                if vdata and vdata["quantization"] != default_quant:
+                if vdata and _variant_key(vdata) not in seen_keys:
                     variants.append(vdata)
+                    seen_keys.add(_variant_key(vdata))
 
             required = ("block_count", "head_count_kv", "key_length", "context_length")
             missing_fields = [f for f in required if f not in data]
@@ -747,9 +784,9 @@ def fetch_variants(targets: list[tuple[str, dict]], apply: bool, path: Path) -> 
         _, variants_map = fetch_tags(library)
         vtags = variants_map.get(canonical, [])
 
-        existing_tags   = {v.get("tag") for v in model.get("variants", [])}
-        existing_quants = {v["quantization"] for v in model.get("variants", [])}
-        new_variants    = list(model.get("variants", []))
+        existing_tags = {v.get("tag") for v in model.get("variants", [])}
+        existing_keys = {_variant_key(v) for v in model.get("variants", [])}
+        new_variants  = list(model.get("variants", []))
 
         # Ensure the default (canonical) variant exists at index 0.
         if canonical not in existing_tags:
@@ -757,14 +794,14 @@ def fetch_variants(targets: list[tuple[str, dict]], apply: bool, path: Path) -> 
             default_quant   = data.pop("default_quantization", None)
             default_weights = data.pop("weights_gb", None)
             if default_quant and default_weights is not None:
-                new_variants.insert(0, {"tag": canonical, "quantization": default_quant, "weights_gb": default_weights})
-                existing_quants.add(default_quant)
+                new_variants.insert(0, {"tag": canonical, "quantization": default_quant, "weights_gb": default_weights, "group": _get_group(canonical, default_quant)})
+                existing_keys.add(default_quant)
 
         for vtag in vtags:
             vdata = fetch_variant_weights(library, vtag)
-            if vdata and vdata["quantization"] not in existing_quants:
+            if vdata and _variant_key(vdata) not in existing_keys:
                 new_variants.append(vdata)
-                existing_quants.add(vdata["quantization"])
+                existing_keys.add(_variant_key(vdata))
 
         added = len(new_variants) - len(model.get("variants", []))
         if added == 0 and not vtags:
@@ -807,8 +844,7 @@ def _patch_variants(path: Path, tag: str, variants: list) -> None:
     var_lines = ['"variants": [']
     for j, v in enumerate(variants):
         vc = "," if j < len(variants) - 1 else ""
-        tag_part = f'"tag": "{v["tag"]}", ' if "tag" in v else ""
-        var_lines.append(f'      {{{tag_part}"quantization": "{v["quantization"]}", "weights_gb": {v["weights_gb"]}}}{vc}')
+        var_lines.append(f'      {_variant_json(v)}{vc}')
     var_lines.append("    ]")
     new_variants_str = "\n".join(var_lines)
 

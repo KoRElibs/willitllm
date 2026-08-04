@@ -33,7 +33,7 @@ function modelScoreColor(m, vramGB, targetCtx, flashOk) {
   if (weightsGB >= vramGB - OVERHEAD_GB) return { color: '#f06464', fit: 4 };
   const bpe        = autoKvBpe(m, vramGB, weightsGB, targetCtx, flashOk);
   const ctxResult  = calcMaxContext(m, vramGB, bpe, weightsGB);
-  const quantInfo  = QUANT_INFO[m.variants?.[0]?.quantization];
+  const quantInfo  = variantRatings(m, m.variants?.[0]);
   const { scoreClass } = computeScores(quantInfo, bpe, ctxResult, false, m, targetCtx);
   return { 'score-high': { color: '#56d88a', fit: 0 },
            'score-mid':  { color: '#f5a623', fit: 1 },

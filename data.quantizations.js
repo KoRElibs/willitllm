@@ -28,20 +28,12 @@
 // summary      One-line recommendation shown in the UI tooltip.
 //
 // ─────────────────────────────────────────────────────────────────────────────
+// NOTE: ollama's registry ships only the standard Q/K block quants plus F16/BF16 below —
+// no importance-matrix (IQ) types (verified: 0 of ~1000 variants). Those live in the
+// HuggingFace/llama.cpp GGUF world and are never produced by `ollama pull`, so they were
+// removed to keep this table to what the tool actually encounters. Non-GGUF formats
+// (mlx/nvfp4/mxfp8) carry no quant label and are rated by size in variantRatings().
 const QUANT_INFO = {
-  // IQ — importance-matrix quantization
-  'IQ1_S':   { speed: 10, quality:  1, gen_eff: [0.35, 0.70], prefill_eff: [0.04, 0.22], summary: 'Last resort — model barely fits; expect obvious quality loss.' },
-  'IQ1_M':   { speed: 10, quality:  2, gen_eff: [0.35, 0.70], prefill_eff: [0.04, 0.22], summary: 'Fractionally better than IQ1_S; still only when nothing else fits.' },
-  'IQ2_XXS': { speed:  9, quality:  2, gen_eff: [0.37, 0.72], prefill_eff: [0.05, 0.25], summary: 'Very tight VRAM; smarter compression than Q2_K at a similar size.' },
-  'IQ2_XS':  { speed:  9, quality:  3, gen_eff: [0.37, 0.72], prefill_eff: [0.05, 0.25], summary: 'A step up from IQ2_XXS when you have a little more room.' },
-  'IQ2_S':   { speed:  9, quality:  4, gen_eff: [0.37, 0.72], prefill_eff: [0.05, 0.25], summary: 'Approaches 3-bit results in a 2-bit file; good when VRAM is scarce.' },
-  'IQ2_M':   { speed:  9, quality:  4, gen_eff: [0.37, 0.72], prefill_eff: [0.05, 0.25], summary: 'Best 2-bit option; close to Q3_K_S quality in a smaller file.' },
-  'IQ3_XXS': { speed:  8, quality:  4, gen_eff: [0.40, 0.78], prefill_eff: [0.06, 0.30], summary: '3-bit size with better efficiency than plain Q3; use when size is the limit.' },
-  'IQ3_XS':  { speed:  8, quality:  5, gen_eff: [0.40, 0.78], prefill_eff: [0.06, 0.30], summary: 'Middle of the IQ3 family; more efficient than Q3_K_M at the same size.' },
-  'IQ3_S':   { speed:  8, quality:  5, gen_eff: [0.40, 0.78], prefill_eff: [0.06, 0.30], summary: 'Beats plain Q3 variants consistently; prefer over Q3_K_S or Q3_K_M.' },
-  'IQ3_M':   { speed:  8, quality:  6, gen_eff: [0.40, 0.78], prefill_eff: [0.06, 0.30], summary: 'Best 3-bit overall; approaches Q4_K_S results while staying small.' },
-  'IQ4_XS':  { speed:  7, quality:  6, gen_eff: [0.43, 0.82], prefill_eff: [0.07, 0.33], summary: 'Near Q4_K_M quality in a smaller file — often the smart 4-bit pick.' },
-  'IQ4_NL':  { speed:  7, quality:  7, gen_eff: [0.43, 0.82], prefill_eff: [0.07, 0.33], summary: 'Non-linear IQ4; marginal edge over IQ4_XS, use when available.' },
   // Q — standard block quantization
   'Q2_K':    { speed: 10, quality:  2, gen_eff: [0.38, 0.75], prefill_eff: [0.05, 0.27], summary: 'Use only when the model would not otherwise fit at all.' },
   'Q3_K_S':  { speed:  9, quality:  3, gen_eff: [0.40, 0.78], prefill_eff: [0.06, 0.30], summary: 'Fits on very limited VRAM; noticeable quality loss.' },

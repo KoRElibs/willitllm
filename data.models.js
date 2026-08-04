@@ -96,7 +96,8 @@ const MODELS = [
       {"tag": "8b-text-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 5.6, "group": "text"},
       {"tag": "8b-text-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 5.7, "group": "text"},
       {"tag": "8b-text-q6_K", "quantization": "Q6_K", "weights_gb": 6.6, "group": "text"},
-      {"tag": "8b-text-q8_0", "quantization": "Q8_0", "weights_gb": 8.5, "group": "text"}
+      {"tag": "8b-text-q8_0", "quantization": "Q8_0", "weights_gb": 8.5, "group": "text"},
+      {"tag": "8b-instruct-fp16", "quantization": "F16", "weights_gb": 16.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -134,7 +135,8 @@ const MODELS = [
       {"tag": "70b-text-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 49.0, "group": "text"},
       {"tag": "70b-text-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 50.0, "group": "text"},
       {"tag": "70b-text-q6_K", "quantization": "Q6_K", "weights_gb": 58.0, "group": "text"},
-      {"tag": "70b-text-q8_0", "quantization": "Q8_0", "weights_gb": 75.0, "group": "text"}
+      {"tag": "70b-text-q8_0", "quantization": "Q8_0", "weights_gb": 75.0, "group": "text"},
+      {"tag": "70b-instruct-fp16", "quantization": "F16", "weights_gb": 141.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -173,7 +175,8 @@ const MODELS = [
       {"tag": "405b-text-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 279.0, "group": "text"},
       {"tag": "405b-text-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 287.0, "group": "text"},
       {"tag": "405b-text-q6_K", "quantization": "Q6_K", "weights_gb": 333.0, "group": "text"},
-      {"tag": "405b-text-q8_0", "quantization": "Q8_0", "weights_gb": 431.0, "group": "text"}
+      {"tag": "405b-text-q8_0", "quantization": "Q8_0", "weights_gb": 431.0, "group": "text"},
+      {"tag": "405b-instruct-fp16", "quantization": "F16", "weights_gb": 812.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -201,7 +204,8 @@ const MODELS = [
       {"tag": "1b-instruct-q5_0", "quantization": "Q5_0", "weights_gb": 0.87},
       {"tag": "1b-instruct-q5_1", "quantization": "Q5_1", "weights_gb": 0.93},
       {"tag": "1b-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 0.87},
-      {"tag": "1b-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 0.89}
+      {"tag": "1b-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 0.89},
+      {"tag": "1b-instruct-fp16", "quantization": "F16", "weights_gb": 2.5, "group": "instruct-fp16"}
     ]
   },
   {
@@ -241,7 +245,8 @@ const MODELS = [
       {"tag": "3b-text-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 2.3, "group": "text"},
       {"tag": "3b-text-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 2.3, "group": "text"},
       {"tag": "3b-text-q6_K", "quantization": "Q6_K", "weights_gb": 2.6, "group": "text"},
-      {"tag": "3b-text-q8_0", "quantization": "Q8_0", "weights_gb": 3.4, "group": "text"}
+      {"tag": "3b-text-q8_0", "quantization": "Q8_0", "weights_gb": 3.4, "group": "text"},
+      {"tag": "3b-instruct-fp16", "quantization": "F16", "weights_gb": 6.4, "group": "instruct-fp16"}
     ]
   },
   {
@@ -257,7 +262,9 @@ const MODELS = [
     "variants": [
       {"tag": "270m", "quantization": "Q8_0", "weights_gb": 0.29, "group": "270m"},
       {"tag": "270m-it-q8_0", "quantization": "Q8_0", "weights_gb": 0.29, "group": "270m-it"},
-      {"tag": "270m-it-bf16", "quantization": "BF16", "weights_gb": 0.53, "group": "270m-it"}
+      {"tag": "270m-it-bf16", "quantization": "BF16", "weights_gb": 0.53, "group": "270m-it"},
+      {"tag": "270m-it-qat", "quantization": "Q4_0", "weights_gb": 0.24, "group": "270m-it-qat"},
+      {"tag": "270m-it-fp16", "quantization": "F16", "weights_gb": 0.53, "group": "270m-it-fp16"}
     ]
   },
   {
@@ -272,7 +279,9 @@ const MODELS = [
     "value_length": 256,
     "variants": [
       {"tag": "1b", "quantization": "Q4_K_M", "weights_gb": 0.8},
-      {"tag": "1b-it-q8_0", "quantization": "Q8_0", "weights_gb": 1.1}
+      {"tag": "1b-it-q8_0", "quantization": "Q8_0", "weights_gb": 1.1},
+      {"tag": "1b-it-qat", "quantization": "Q4_0", "weights_gb": 1.0, "group": "it-qat"},
+      {"tag": "1b-it-fp16", "quantization": "F16", "weights_gb": 2.0, "group": "it-fp16"}
     ]
   },
   {
@@ -288,7 +297,9 @@ const MODELS = [
     "value_length": 256,
     "variants": [
       {"tag": "4b", "quantization": "Q4_K_M", "weights_gb": 3.3, "group": "(default)"},
-      {"tag": "4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 5.0, "group": "it"}
+      {"tag": "4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 5.0, "group": "it"},
+      {"tag": "4b-it-qat", "quantization": "Q4_0", "weights_gb": 4.0, "group": "it-qat"},
+      {"tag": "4b-it-fp16", "quantization": "F16", "weights_gb": 8.6, "group": "it-fp16"}
     ]
   },
   {
@@ -304,7 +315,9 @@ const MODELS = [
     "value_length": 256,
     "variants": [
       {"tag": "12b", "quantization": "Q4_K_M", "weights_gb": 8.1, "group": "(default)"},
-      {"tag": "12b-it-q8_0", "quantization": "Q8_0", "weights_gb": 13.0, "group": "it"}
+      {"tag": "12b-it-q8_0", "quantization": "Q8_0", "weights_gb": 13.0, "group": "it"},
+      {"tag": "12b-it-qat", "quantization": "Q4_0", "weights_gb": 8.9, "group": "it-qat"},
+      {"tag": "12b-it-fp16", "quantization": "F16", "weights_gb": 24.0, "group": "it-fp16"}
     ]
   },
   {
@@ -320,7 +333,9 @@ const MODELS = [
     "value_length": 128,
     "variants": [
       {"tag": "27b", "quantization": "Q4_K_M", "weights_gb": 17.0, "group": "(default)"},
-      {"tag": "27b-it-q8_0", "quantization": "Q8_0", "weights_gb": 30.0, "group": "it"}
+      {"tag": "27b-it-q8_0", "quantization": "Q8_0", "weights_gb": 30.0, "group": "it"},
+      {"tag": "27b-it-qat", "quantization": "Q4_0", "weights_gb": 18.0, "group": "it-qat"},
+      {"tag": "27b-it-fp16", "quantization": "F16", "weights_gb": 55.0, "group": "it-fp16"}
     ]
   },
   {
@@ -398,7 +413,8 @@ const MODELS = [
       {"tag": "7b-text-q6_K", "quantization": "Q6_K", "weights_gb": 5.9, "group": "text"},
       {"tag": "7b-text-v0.2-q6_K", "quantization": "Q6_K", "weights_gb": 5.9, "group": "text-v0.2"},
       {"tag": "7b-text-q8_0", "quantization": "Q8_0", "weights_gb": 7.7, "group": "text"},
-      {"tag": "7b-text-v0.2-q8_0", "quantization": "Q8_0", "weights_gb": 7.7, "group": "text-v0.2"}
+      {"tag": "7b-text-v0.2-q8_0", "quantization": "Q8_0", "weights_gb": 7.7, "group": "text-v0.2"},
+      {"tag": "7b-instruct-v0.2-fp16", "quantization": "F16", "weights_gb": 14.0, "group": "instruct-v0.2-fp16"}
     ]
   },
   {
@@ -412,7 +428,8 @@ const MODELS = [
     "key_length": 128,
     "variants": [
       {"tag": "14b", "quantization": "Q4_K_M", "weights_gb": 9.1, "group": "(default)"},
-      {"tag": "14b-q8_0", "quantization": "Q8_0", "weights_gb": 16.0, "group": "q8_0"}
+      {"tag": "14b-q8_0", "quantization": "Q8_0", "weights_gb": 16.0, "group": "q8_0"},
+      {"tag": "14b-fp16", "quantization": "F16", "weights_gb": 29.0, "group": "fp16"}
     ]
   },
   {
@@ -464,7 +481,8 @@ const MODELS = [
       {"tag": "7b-python-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 4.7, "group": "python"},
       {"tag": "7b-python-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 4.8, "group": "python"},
       {"tag": "7b-python-q6_K", "quantization": "Q6_K", "weights_gb": 5.5, "group": "python"},
-      {"tag": "7b-python-q8_0", "quantization": "Q8_0", "weights_gb": 7.2, "group": "python"}
+      {"tag": "7b-python-q8_0", "quantization": "Q8_0", "weights_gb": 7.2, "group": "python"},
+      {"tag": "7b-code-fp16", "quantization": "F16", "weights_gb": 13.0, "group": "code-fp16"}
     ]
   },
   {
@@ -516,7 +534,8 @@ const MODELS = [
       {"tag": "13b-python-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 9.0, "group": "python"},
       {"tag": "13b-python-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 9.2, "group": "python"},
       {"tag": "13b-python-q6_K", "quantization": "Q6_K", "weights_gb": 11.0, "group": "python"},
-      {"tag": "13b-python-q8_0", "quantization": "Q8_0", "weights_gb": 14.0, "group": "python"}
+      {"tag": "13b-python-q8_0", "quantization": "Q8_0", "weights_gb": 14.0, "group": "python"},
+      {"tag": "13b-code-fp16", "quantization": "F16", "weights_gb": 26.0, "group": "code-fp16"}
     ]
   },
   {
@@ -568,7 +587,8 @@ const MODELS = [
       {"tag": "34b-python-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 23.0, "group": "python"},
       {"tag": "34b-python-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 24.0, "group": "python"},
       {"tag": "34b-python-q6_K", "quantization": "Q6_K", "weights_gb": 28.0, "group": "python"},
-      {"tag": "34b-python-q8_0", "quantization": "Q8_0", "weights_gb": 36.0, "group": "python"}
+      {"tag": "34b-python-q8_0", "quantization": "Q8_0", "weights_gb": 36.0, "group": "python"},
+      {"tag": "34b-instruct-fp16", "quantization": "F16", "weights_gb": 67.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -620,7 +640,8 @@ const MODELS = [
       {"tag": "70b-python-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 47.0, "group": "python"},
       {"tag": "70b-python-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 49.0, "group": "python"},
       {"tag": "70b-python-q6_K", "quantization": "Q6_K", "weights_gb": 57.0, "group": "python"},
-      {"tag": "70b-python-q8_0", "quantization": "Q8_0", "weights_gb": 73.0, "group": "python"}
+      {"tag": "70b-python-q8_0", "quantization": "Q8_0", "weights_gb": 73.0, "group": "python"},
+      {"tag": "70b-code-fp16", "quantization": "F16", "weights_gb": 138.0, "group": "code-fp16"}
     ]
   },
   {
@@ -659,7 +680,8 @@ const MODELS = [
       {"tag": "8x7b-text-v0.1-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 32.0, "group": "8x7b-text-v0.1"},
       {"tag": "8x7b-text-v0.1-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 33.0, "group": "8x7b-text-v0.1"},
       {"tag": "8x7b-text-v0.1-q6_K", "quantization": "Q6_K", "weights_gb": 38.0, "group": "8x7b-text-v0.1"},
-      {"tag": "8x7b-text-v0.1-q8_0", "quantization": "Q8_0", "weights_gb": 50.0, "group": "8x7b-text-v0.1"}
+      {"tag": "8x7b-text-v0.1-q8_0", "quantization": "Q8_0", "weights_gb": 50.0, "group": "8x7b-text-v0.1"},
+      {"tag": "8x7b-instruct-v0.1-fp16", "quantization": "F16", "weights_gb": 93.0, "group": "8x7b-instruct-v0.1-fp16"}
     ]
   },
   {
@@ -698,7 +720,8 @@ const MODELS = [
       {"tag": "8x22b-text-v0.1-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 97.0, "group": "8x22b-text-v0.1"},
       {"tag": "8x22b-text-v0.1-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 100.0, "group": "8x22b-text-v0.1"},
       {"tag": "8x22b-text-v0.1-q6_K", "quantization": "Q6_K", "weights_gb": 116.0, "group": "8x22b-text-v0.1"},
-      {"tag": "8x22b-text-v0.1-q8_0", "quantization": "Q8_0", "weights_gb": 149.0, "group": "8x22b-text-v0.1"}
+      {"tag": "8x22b-text-v0.1-q8_0", "quantization": "Q8_0", "weights_gb": 149.0, "group": "8x22b-text-v0.1"},
+      {"tag": "8x22b-instruct-v0.1-fp16", "quantization": "F16", "weights_gb": 281.0, "group": "8x22b-instruct-v0.1-fp16"}
     ]
   },
   {
@@ -724,7 +747,8 @@ const MODELS = [
       {"tag": "3b-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 2.1, "group": "q5_K_S"},
       {"tag": "3b-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 2.2, "group": "q5_K_M"},
       {"tag": "3b-q6_K", "quantization": "Q6_K", "weights_gb": 2.5, "group": "q6_K"},
-      {"tag": "3b-q8_0", "quantization": "Q8_0", "weights_gb": 3.2, "group": "q8_0"}
+      {"tag": "3b-q8_0", "quantization": "Q8_0", "weights_gb": 3.2, "group": "q8_0"},
+      {"tag": "3b-fp16", "quantization": "F16", "weights_gb": 6.1, "group": "fp16"}
     ]
   },
   {
@@ -750,7 +774,8 @@ const MODELS = [
       {"tag": "7b-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 4.9, "group": "q5_K_S"},
       {"tag": "7b-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 5.1, "group": "q5_K_M"},
       {"tag": "7b-q6_K", "quantization": "Q6_K", "weights_gb": 5.9, "group": "q6_K"},
-      {"tag": "7b-q8_0", "quantization": "Q8_0", "weights_gb": 7.6, "group": "q8_0"}
+      {"tag": "7b-q8_0", "quantization": "Q8_0", "weights_gb": 7.6, "group": "q8_0"},
+      {"tag": "7b-fp16", "quantization": "F16", "weights_gb": 14.0, "group": "fp16"}
     ]
   },
   {
@@ -789,7 +814,8 @@ const MODELS = [
       {"tag": "15b-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 11.0, "group": "q5_K_S"},
       {"tag": "15b-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 11.0, "group": "q5_K_M"},
       {"tag": "15b-q6_K", "quantization": "Q6_K", "weights_gb": 13.0, "group": "q6_K"},
-      {"tag": "15b-q8_0", "quantization": "Q8_0", "weights_gb": 17.0, "group": "q8_0"}
+      {"tag": "15b-q8_0", "quantization": "Q8_0", "weights_gb": 17.0, "group": "q8_0"},
+      {"tag": "15b-instruct-v0.1-fp16", "quantization": "F16", "weights_gb": 32.0, "group": "instruct-v0.1-fp16"}
     ]
   },
   {
@@ -827,7 +853,8 @@ const MODELS = [
       {"tag": "35b-v0.1-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 24.0, "group": "v0.1"},
       {"tag": "35b-v0.1-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 25.0, "group": "v0.1"},
       {"tag": "35b-v0.1-q6_K", "quantization": "Q6_K", "weights_gb": 29.0, "group": "v0.1"},
-      {"tag": "35b-v0.1-q8_0", "quantization": "Q8_0", "weights_gb": 37.0, "group": "v0.1"}
+      {"tag": "35b-v0.1-q8_0", "quantization": "Q8_0", "weights_gb": 37.0, "group": "v0.1"},
+      {"tag": "35b-08-2024-fp16", "quantization": "F16", "weights_gb": 65.0, "group": "08-2024-fp16"}
     ]
   },
   {
@@ -853,7 +880,8 @@ const MODELS = [
       {"tag": "2b-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 1.8, "group": "instruct"},
       {"tag": "2b-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 1.9, "group": "instruct"},
       {"tag": "2b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 2.2, "group": "instruct"},
-      {"tag": "2b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 2.8, "group": "instruct"}
+      {"tag": "2b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 2.8, "group": "instruct"},
+      {"tag": "2b-instruct-fp16", "quantization": "F16", "weights_gb": 5.3, "group": "instruct-fp16"}
     ]
   },
   {
@@ -879,7 +907,8 @@ const MODELS = [
       {"tag": "8b-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 5.6, "group": "instruct"},
       {"tag": "8b-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 5.8, "group": "instruct"},
       {"tag": "8b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 6.7, "group": "instruct"},
-      {"tag": "8b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 8.7, "group": "instruct"}
+      {"tag": "8b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 8.7, "group": "instruct"},
+      {"tag": "8b-instruct-fp16", "quantization": "F16", "weights_gb": 16.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -919,7 +948,8 @@ const MODELS = [
       {"tag": "2b-code-q6_K", "quantization": "Q6_K", "weights_gb": 2.1, "group": "code"},
       {"tag": "2b-code-v1.1-q6_K", "quantization": "Q6_K", "weights_gb": 2.1, "group": "code-v1.1"},
       {"tag": "2b-code-q8_0", "quantization": "Q8_0", "weights_gb": 2.7, "group": "code"},
-      {"tag": "2b-code-v1.1-q8_0", "quantization": "Q8_0", "weights_gb": 2.7, "group": "code-v1.1"}
+      {"tag": "2b-code-v1.1-q8_0", "quantization": "Q8_0", "weights_gb": 2.7, "group": "code-v1.1"},
+      {"tag": "2b-code-fp16", "quantization": "F16", "weights_gb": 5.0, "group": "code-fp16"}
     ]
   },
   {
@@ -972,7 +1002,8 @@ const MODELS = [
       {"tag": "7b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 7.0, "group": "instruct"},
       {"tag": "7b-instruct-v1.1-q6_K", "quantization": "Q6_K", "weights_gb": 7.0, "group": "instruct-v1.1"},
       {"tag": "7b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 9.1, "group": "instruct"},
-      {"tag": "7b-instruct-v1.1-q8_0", "quantization": "Q8_0", "weights_gb": 9.1, "group": "instruct-v1.1"}
+      {"tag": "7b-instruct-v1.1-q8_0", "quantization": "Q8_0", "weights_gb": 9.1, "group": "instruct-v1.1"},
+      {"tag": "7b-code-fp16", "quantization": "F16", "weights_gb": 17.0, "group": "code-fp16"}
     ]
   },
   {
@@ -998,7 +1029,8 @@ const MODELS = [
       {"tag": "1.8b-v2-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 1.9, "group": "v2"},
       {"tag": "1.8b-v2-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 2.0, "group": "v2"},
       {"tag": "1.8b-v2-q6_K", "quantization": "Q6_K", "weights_gb": 2.1, "group": "v2"},
-      {"tag": "1.8b-v2-q8_0", "quantization": "Q8_0", "weights_gb": 2.4, "group": "v2"}
+      {"tag": "1.8b-v2-q8_0", "quantization": "Q8_0", "weights_gb": 2.4, "group": "v2"},
+      {"tag": "1.8b-v2-fp16", "quantization": "F16", "weights_gb": 3.7, "group": "v2-fp16"}
     ]
   },
   {
@@ -1109,7 +1141,8 @@ const MODELS = [
       {"tag": "12b-instruct-2407-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 8.5, "group": "instruct-2407"},
       {"tag": "12b-instruct-2407-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 8.7, "group": "instruct-2407"},
       {"tag": "12b-instruct-2407-q6_K", "quantization": "Q6_K", "weights_gb": 10.0, "group": "instruct-2407"},
-      {"tag": "12b-instruct-2407-q8_0", "quantization": "Q8_0", "weights_gb": 13.0, "group": "instruct-2407"}
+      {"tag": "12b-instruct-2407-q8_0", "quantization": "Q8_0", "weights_gb": 13.0, "group": "instruct-2407"},
+      {"tag": "12b-instruct-2407-fp16", "quantization": "F16", "weights_gb": 25.0, "group": "instruct-2407-fp16"}
     ]
   },
   {
@@ -1133,7 +1166,8 @@ const MODELS = [
       {"tag": "70b-instruct-q5_1", "quantization": "Q5_1", "weights_gb": 53.0, "group": "instruct"},
       {"tag": "70b-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 50.0, "group": "instruct"},
       {"tag": "70b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 58.0, "group": "instruct"},
-      {"tag": "70b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 75.0, "group": "instruct"}
+      {"tag": "70b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 75.0, "group": "instruct"},
+      {"tag": "70b-instruct-fp16", "quantization": "F16", "weights_gb": 141.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -1174,7 +1208,8 @@ const MODELS = [
       {"tag": "2b-text-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 1.9, "group": "text"},
       {"tag": "2b-text-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 1.9, "group": "text"},
       {"tag": "2b-text-q6_K", "quantization": "Q6_K", "weights_gb": 2.2, "group": "text"},
-      {"tag": "2b-text-q8_0", "quantization": "Q8_0", "weights_gb": 2.8, "group": "text"}
+      {"tag": "2b-text-q8_0", "quantization": "Q8_0", "weights_gb": 2.8, "group": "text"},
+      {"tag": "2b-instruct-fp16", "quantization": "F16", "weights_gb": 5.2, "group": "instruct-fp16"}
     ]
   },
   {
@@ -1215,7 +1250,8 @@ const MODELS = [
       {"tag": "9b-text-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 6.5, "group": "text"},
       {"tag": "9b-text-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 6.6, "group": "text"},
       {"tag": "9b-text-q6_K", "quantization": "Q6_K", "weights_gb": 7.6, "group": "text"},
-      {"tag": "9b-text-q8_0", "quantization": "Q8_0", "weights_gb": 9.8, "group": "text"}
+      {"tag": "9b-text-q8_0", "quantization": "Q8_0", "weights_gb": 9.8, "group": "text"},
+      {"tag": "9b-instruct-fp16", "quantization": "F16", "weights_gb": 18.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -1256,7 +1292,8 @@ const MODELS = [
       {"tag": "27b-text-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 19.0, "group": "text"},
       {"tag": "27b-text-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 19.0, "group": "text"},
       {"tag": "27b-text-q6_K", "quantization": "Q6_K", "weights_gb": 22.0, "group": "text"},
-      {"tag": "27b-text-q8_0", "quantization": "Q8_0", "weights_gb": 29.0, "group": "text"}
+      {"tag": "27b-text-q8_0", "quantization": "Q8_0", "weights_gb": 29.0, "group": "text"},
+      {"tag": "27b-instruct-fp16", "quantization": "F16", "weights_gb": 54.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -1309,7 +1346,8 @@ const MODELS = [
       {"tag": "22b-instruct-2409-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 15.0, "group": "instruct-2409"},
       {"tag": "22b-instruct-2409-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 16.0, "group": "instruct-2409"},
       {"tag": "22b-instruct-2409-q6_K", "quantization": "Q6_K", "weights_gb": 18.0, "group": "instruct-2409"},
-      {"tag": "22b-instruct-2409-q8_0", "quantization": "Q8_0", "weights_gb": 24.0, "group": "instruct-2409"}
+      {"tag": "22b-instruct-2409-q8_0", "quantization": "Q8_0", "weights_gb": 24.0, "group": "instruct-2409"},
+      {"tag": "22b-instruct-2409-fp16", "quantization": "F16", "weights_gb": 44.0, "group": "instruct-2409-fp16"}
     ]
   },
   {
@@ -1324,7 +1362,8 @@ const MODELS = [
     "value_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 14.0, "group": "(default)"},
-      {"tag": "24b-instruct-2501-q8_0", "quantization": "Q8_0", "weights_gb": 25.0, "group": "instruct-2501"}
+      {"tag": "24b-instruct-2501-q8_0", "quantization": "Q8_0", "weights_gb": 25.0, "group": "instruct-2501"},
+      {"tag": "24b-instruct-2501-fp16", "quantization": "F16", "weights_gb": 47.0, "group": "instruct-2501-fp16"}
     ]
   },
   {
@@ -1339,7 +1378,8 @@ const MODELS = [
     "value_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 14.0, "group": "(default)"},
-      {"tag": "24b-small-2505-q8_0", "quantization": "Q8_0", "weights_gb": 25.0, "group": "small-2505"}
+      {"tag": "24b-small-2505-q8_0", "quantization": "Q8_0", "weights_gb": 25.0, "group": "small-2505"},
+      {"tag": "24b-small-2505-fp16", "quantization": "F16", "weights_gb": 47.0, "group": "small-2505-fp16"}
     ]
   },
   {
@@ -1354,7 +1394,8 @@ const MODELS = [
     "value_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 15.0, "group": "(default)"},
-      {"tag": "24b-instruct-2503-q8_0", "quantization": "Q8_0", "weights_gb": 26.0, "group": "instruct-2503"}
+      {"tag": "24b-instruct-2503-q8_0", "quantization": "Q8_0", "weights_gb": 26.0, "group": "instruct-2503"},
+      {"tag": "24b-instruct-2503-fp16", "quantization": "F16", "weights_gb": 48.0, "group": "instruct-2503-fp16"}
     ]
   },
   {
@@ -1369,7 +1410,8 @@ const MODELS = [
     "value_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 15.0, "group": "(default)"},
-      {"tag": "24b-instruct-2506-q8_0", "quantization": "Q8_0", "weights_gb": 26.0, "group": "instruct-2506"}
+      {"tag": "24b-instruct-2506-q8_0", "quantization": "Q8_0", "weights_gb": 26.0, "group": "instruct-2506"},
+      {"tag": "24b-instruct-2506-fp16", "quantization": "F16", "weights_gb": 48.0, "group": "instruct-2506-fp16"}
     ]
   },
   {
@@ -1409,7 +1451,8 @@ const MODELS = [
       {"tag": "123b-instruct-2411-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 84.0, "group": "instruct-2411"},
       {"tag": "123b-instruct-2411-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 86.0, "group": "instruct-2411"},
       {"tag": "123b-instruct-2411-q6_K", "quantization": "Q6_K", "weights_gb": 101.0, "group": "instruct-2411"},
-      {"tag": "123b-instruct-2411-q8_0", "quantization": "Q8_0", "weights_gb": 130.0, "group": "instruct-2411"}
+      {"tag": "123b-instruct-2411-q8_0", "quantization": "Q8_0", "weights_gb": 130.0, "group": "instruct-2411"},
+      {"tag": "123b-instruct-2407-fp16", "quantization": "F16", "weights_gb": 245.0, "group": "instruct-2407-fp16"}
     ]
   },
   {
@@ -1435,7 +1478,8 @@ const MODELS = [
       {"tag": "7b-v0.1-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 5.0, "group": "v0.1"},
       {"tag": "7b-v0.1-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 5.1, "group": "v0.1"},
       {"tag": "7b-v0.1-q6_K", "quantization": "Q6_K", "weights_gb": 5.9, "group": "v0.1"},
-      {"tag": "7b-v0.1-q8_0", "quantization": "Q8_0", "weights_gb": 7.7, "group": "v0.1"}
+      {"tag": "7b-v0.1-q8_0", "quantization": "Q8_0", "weights_gb": 7.7, "group": "v0.1"},
+      {"tag": "7b-v0.1-fp16", "quantization": "F16", "weights_gb": 14.0, "group": "v0.1-fp16"}
     ]
   },
   {
@@ -1450,7 +1494,8 @@ const MODELS = [
     "value_length": 128,
     "variants": [
       {"tag": "3b", "quantization": "Q4_K_M", "weights_gb": 3.0, "group": "(default)"},
-      {"tag": "3b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 4.5, "group": "instruct-2512"}
+      {"tag": "3b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 4.5, "group": "instruct-2512"},
+      {"tag": "3b-instruct-2512-fp16", "quantization": "F16", "weights_gb": 7.7, "group": "instruct-2512-fp16"}
     ]
   },
   {
@@ -1465,7 +1510,8 @@ const MODELS = [
     "value_length": 128,
     "variants": [
       {"tag": "8b", "quantization": "Q4_K_M", "weights_gb": 6.0, "group": "(default)"},
-      {"tag": "8b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 9.9, "group": "instruct-2512"}
+      {"tag": "8b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 9.9, "group": "instruct-2512"},
+      {"tag": "8b-instruct-2512-fp16", "quantization": "F16", "weights_gb": 18.0, "group": "instruct-2512-fp16"}
     ]
   },
   {
@@ -1480,7 +1526,8 @@ const MODELS = [
     "value_length": 128,
     "variants": [
       {"tag": "14b", "quantization": "Q4_K_M", "weights_gb": 9.1, "group": "(default)"},
-      {"tag": "14b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 15.0, "group": "instruct-2512"}
+      {"tag": "14b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 15.0, "group": "instruct-2512"},
+      {"tag": "14b-instruct-2512-fp16", "quantization": "F16", "weights_gb": 28.0, "group": "instruct-2512-fp16"}
     ]
   },
   {
@@ -1546,7 +1593,8 @@ const MODELS = [
     "value_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 14.0, "group": "(default)"},
-      {"tag": "24b-small-2506-q8_0", "quantization": "Q8_0", "weights_gb": 25.0, "group": "small-2506"}
+      {"tag": "24b-small-2506-q8_0", "quantization": "Q8_0", "weights_gb": 25.0, "group": "small-2506"},
+      {"tag": "24b-small-2506-fp16", "quantization": "F16", "weights_gb": 47.0, "group": "small-2506-fp16"}
     ]
   },
   {
@@ -1561,7 +1609,8 @@ const MODELS = [
     "value_length": 128,
     "variants": [
       {"tag": "24b", "quantization": "Q4_K_M", "weights_gb": 15.0, "group": "(default)"},
-      {"tag": "24b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 26.0, "group": "instruct-2512"}
+      {"tag": "24b-instruct-2512-q8_0", "quantization": "Q8_0", "weights_gb": 26.0, "group": "instruct-2512"},
+      {"tag": "24b-instruct-2512-fp16", "quantization": "F16", "weights_gb": 48.0, "group": "instruct-2512-fp16"}
     ]
   },
   {
@@ -1580,7 +1629,11 @@ const MODELS = [
       {"tag": "e2b", "quantization": "Q4_K_M", "weights_gb": 7.2, "group": "e2b"},
       {"tag": "e2b-it-q8_0", "quantization": "Q8_0", "weights_gb": 8.1, "group": "e2b-it"},
       {"tag": "e2b-it-bf16", "quantization": "BF16", "weights_gb": 10.0, "group": "e2b-it"},
-      {"tag": "e2b-mlx-bf16", "quantization": "BF16", "weights_gb": 10.0, "group": "e2b-mlx"}
+      {"tag": "e2b-mlx-bf16", "quantization": "BF16", "weights_gb": 10.0, "group": "e2b-mlx"},
+      {"tag": "e2b-it-qat", "quantization": "Q4_0", "weights_gb": 4.3, "group": "e2b-it-qat"},
+      {"tag": "e2b-mlx", "quantization": null, "format": "mlx", "weights_gb": 6.5, "group": "mlx"},
+      {"tag": "e2b-mxfp8", "quantization": null, "format": "mxfp8", "weights_gb": 8.1, "group": "mxfp8"},
+      {"tag": "e2b-nvfp4", "quantization": null, "format": "nvfp4", "weights_gb": 6.5, "group": "nvfp4"}
     ]
   },
   {
@@ -1599,7 +1652,11 @@ const MODELS = [
       {"tag": "e4b", "quantization": "Q4_K_M", "weights_gb": 9.6, "group": "e4b"},
       {"tag": "e4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 12.0, "group": "e4b-it"},
       {"tag": "e4b-it-bf16", "quantization": "BF16", "weights_gb": 16.0, "group": "e4b-it"},
-      {"tag": "e4b-mlx-bf16", "quantization": "BF16", "weights_gb": 16.0, "group": "e4b-mlx"}
+      {"tag": "e4b-mlx-bf16", "quantization": "BF16", "weights_gb": 16.0, "group": "e4b-mlx"},
+      {"tag": "e4b-it-qat", "quantization": "Q4_0", "weights_gb": 6.1, "group": "e4b-it-qat"},
+      {"tag": "e4b-mlx", "quantization": null, "format": "mlx", "weights_gb": 8.8, "group": "mlx"},
+      {"tag": "e4b-mxfp8", "quantization": null, "format": "mxfp8", "weights_gb": 12.0, "group": "mxfp8"},
+      {"tag": "e4b-nvfp4", "quantization": null, "format": "nvfp4", "weights_gb": 8.8, "group": "nvfp4"}
     ]
   },
   {
@@ -1617,7 +1674,11 @@ const MODELS = [
       {"tag": "12b", "quantization": "Q4_K_M", "weights_gb": 7.6, "group": "(default)"},
       {"tag": "12b-it-q8_0", "quantization": "Q8_0", "weights_gb": 13.0, "group": "it"},
       {"tag": "12b-it-bf16", "quantization": "BF16", "weights_gb": 24.0, "group": "it"},
-      {"tag": "12b-mlx-bf16", "quantization": "BF16", "weights_gb": 24.0, "group": "mlx"}
+      {"tag": "12b-mlx-bf16", "quantization": "BF16", "weights_gb": 24.0, "group": "mlx"},
+      {"tag": "12b-it-qat", "quantization": "Q4_0", "weights_gb": 7.2, "group": "it-qat"},
+      {"tag": "12b-mlx", "quantization": null, "format": "mlx", "weights_gb": 7.7, "group": "mlx"},
+      {"tag": "12b-mxfp8", "quantization": null, "format": "mxfp8", "weights_gb": 13.0, "group": "mxfp8"},
+      {"tag": "12b-nvfp4", "quantization": null, "format": "nvfp4", "weights_gb": 7.7, "group": "nvfp4"}
     ]
   },
   {
@@ -1637,7 +1698,11 @@ const MODELS = [
       {"tag": "26b", "quantization": "Q4_K_M", "weights_gb": 18.0, "group": "(default)"},
       {"tag": "26b-a4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 28.0, "group": "a4b-it"},
       {"tag": "26b-a4b-it-bf16", "quantization": "BF16", "weights_gb": 52.0, "group": "a4b-it"},
-      {"tag": "26b-mlx-bf16", "quantization": "BF16", "weights_gb": 52.0, "group": "mlx"}
+      {"tag": "26b-mlx-bf16", "quantization": "BF16", "weights_gb": 52.0, "group": "mlx"},
+      {"tag": "26b-a4b-it-qat", "quantization": "Q4_0", "weights_gb": 16.0, "group": "a4b-it-qat"},
+      {"tag": "26b-mlx", "quantization": null, "format": "mlx", "weights_gb": 18.0, "group": "mlx"},
+      {"tag": "26b-mxfp8", "quantization": null, "format": "mxfp8", "weights_gb": 28.0, "group": "mxfp8"},
+      {"tag": "26b-nvfp4", "quantization": null, "format": "nvfp4", "weights_gb": 18.0, "group": "nvfp4"}
     ]
   },
   {
@@ -1656,7 +1721,11 @@ const MODELS = [
       {"tag": "31b-coding-mtp-bf16", "quantization": "BF16", "weights_gb": 64.0, "group": "coding-mtp"},
       {"tag": "31b-it-q8_0", "quantization": "Q8_0", "weights_gb": 34.0, "group": "it"},
       {"tag": "31b-it-bf16", "quantization": "BF16", "weights_gb": 63.0, "group": "it"},
-      {"tag": "31b-mlx-bf16", "quantization": "BF16", "weights_gb": 63.0, "group": "mlx"}
+      {"tag": "31b-mlx-bf16", "quantization": "BF16", "weights_gb": 63.0, "group": "mlx"},
+      {"tag": "31b-it-qat", "quantization": "Q4_0", "weights_gb": 19.0, "group": "it-qat"},
+      {"tag": "31b-mlx", "quantization": null, "format": "mlx", "weights_gb": 19.0, "group": "mlx"},
+      {"tag": "31b-mxfp8", "quantization": null, "format": "mxfp8", "weights_gb": 33.0, "group": "mxfp8"},
+      {"tag": "31b-nvfp4", "quantization": null, "format": "nvfp4", "weights_gb": 19.0, "group": "nvfp4"}
     ]
   },
   {
@@ -1708,7 +1777,8 @@ const MODELS = [
       {"tag": "3b-instruct-128k-q6_K", "quantization": "Q6_K", "weights_gb": 2.9, "group": "instruct-128k"},
       {"tag": "3b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 2.9, "group": "instruct"},
       {"tag": "3b-instruct-128k-q8_0", "quantization": "Q8_0", "weights_gb": 3.7, "group": "instruct-128k"},
-      {"tag": "3b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 3.7, "group": "instruct"}
+      {"tag": "3b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 3.7, "group": "instruct"},
+      {"tag": "3b-base-fp16", "quantization": "F16", "weights_gb": 7.0, "group": "base-fp16"}
     ]
   },
   {
@@ -1748,7 +1818,8 @@ const MODELS = [
       {"tag": "8b-instruct-q5_K_S", "quantization": "Q5_K_S", "weights_gb": 5.6, "group": "instruct"},
       {"tag": "8b-instruct-q5_K_M", "quantization": "Q5_K_M", "weights_gb": 5.7, "group": "instruct"},
       {"tag": "8b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 6.6, "group": "instruct"},
-      {"tag": "8b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 8.6, "group": "instruct"}
+      {"tag": "8b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 8.6, "group": "instruct"},
+      {"tag": "8b-base-fp16", "quantization": "F16", "weights_gb": 16.0, "group": "base-fp16"}
     ]
   },
   {
@@ -1800,7 +1871,8 @@ const MODELS = [
       {"tag": "20b-instruct-8k-q6_K", "quantization": "Q6_K", "weights_gb": 17.0, "group": "instruct-8k"},
       {"tag": "20b-instruct-q6_K", "quantization": "Q6_K", "weights_gb": 17.0, "group": "instruct"},
       {"tag": "20b-instruct-8k-q8_0", "quantization": "Q8_0", "weights_gb": 21.0, "group": "instruct-8k"},
-      {"tag": "20b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 21.0, "group": "instruct"}
+      {"tag": "20b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 21.0, "group": "instruct"},
+      {"tag": "20b-base-fp16", "quantization": "F16", "weights_gb": 40.0, "group": "base-fp16"}
     ]
   },
   {
@@ -1854,7 +1926,8 @@ const MODELS = [
     "sliding_window": 512,
     "variants": [
       {"tag": "e2b", "quantization": "Q4_K_M", "weights_gb": 5.6, "group": "e2b"},
-      {"tag": "e2b-it-q8_0", "quantization": "Q8_0", "weights_gb": 6.6, "group": "e2b-it"}
+      {"tag": "e2b-it-q8_0", "quantization": "Q8_0", "weights_gb": 6.6, "group": "e2b-it"},
+      {"tag": "e2b-it-fp16", "quantization": "F16", "weights_gb": 8.9, "group": "e2b-it-fp16"}
     ]
   },
   {
@@ -1869,7 +1942,8 @@ const MODELS = [
     "sliding_window": 512,
     "variants": [
       {"tag": "e4b", "quantization": "Q4_K_M", "weights_gb": 7.5, "group": "e4b"},
-      {"tag": "e4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 9.5, "group": "e4b-it"}
+      {"tag": "e4b-it-q8_0", "quantization": "Q8_0", "weights_gb": 9.5, "group": "e4b-it"},
+      {"tag": "e4b-it-fp16", "quantization": "F16", "weights_gb": 14.0, "group": "e4b-it-fp16"}
     ]
   },
   {
@@ -1909,7 +1983,8 @@ const MODELS = [
     "key_length": 128,
     "variants": [
       {"tag": "11b", "quantization": "Q4_K_M", "weights_gb": 7.8, "group": "(default)"},
-      {"tag": "11b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 12.0, "group": "instruct"}
+      {"tag": "11b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 12.0, "group": "instruct"},
+      {"tag": "11b-instruct-fp16", "quantization": "F16", "weights_gb": 21.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -1923,7 +1998,8 @@ const MODELS = [
     "key_length": 128,
     "variants": [
       {"tag": "90b", "quantization": "Q4_K_M", "weights_gb": 55.0, "group": "(default)"},
-      {"tag": "90b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 95.0, "group": "instruct"}
+      {"tag": "90b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 95.0, "group": "instruct"},
+      {"tag": "90b-instruct-fp16", "quantization": "F16", "weights_gb": 177.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -1938,7 +2014,8 @@ const MODELS = [
     "sliding_window": 262144,
     "variants": [
       {"tag": "3.8b", "quantization": "Q4_K_M", "weights_gb": 2.5, "group": "(default)"},
-      {"tag": "3.8b-q8_0", "quantization": "Q8_0", "weights_gb": 4.1, "group": "q8_0"}
+      {"tag": "3.8b-q8_0", "quantization": "Q8_0", "weights_gb": 4.1, "group": "q8_0"},
+      {"tag": "3.8b-fp16", "quantization": "F16", "weights_gb": 7.7, "group": "fp16"}
     ]
   },
   {
@@ -1953,7 +2030,8 @@ const MODELS = [
     "value_length": 256,
     "variants": [
       {"tag": "1b", "quantization": "Q8_0", "weights_gb": 1.8, "group": "(default)"},
-      {"tag": "1b-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 1.1, "group": "instruct"}
+      {"tag": "1b-instruct-q4_K_M", "quantization": "Q4_K_M", "weights_gb": 1.1, "group": "instruct"},
+      {"tag": "1b-instruct-fp16", "quantization": "F16", "weights_gb": 3.3, "group": "instruct-fp16"}
     ]
   },
   {
@@ -1968,7 +2046,8 @@ const MODELS = [
     "value_length": 256,
     "variants": [
       {"tag": "3b", "quantization": "Q4_K_M", "weights_gb": 2.0, "group": "(default)"},
-      {"tag": "3b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 3.4, "group": "instruct"}
+      {"tag": "3b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 3.4, "group": "instruct"},
+      {"tag": "3b-instruct-fp16", "quantization": "F16", "weights_gb": 6.5, "group": "instruct-fp16"}
     ]
   },
   {
@@ -1983,7 +2062,8 @@ const MODELS = [
     "value_length": 256,
     "variants": [
       {"tag": "7b", "quantization": "Q4_K_M", "weights_gb": 4.6, "group": "(default)"},
-      {"tag": "7b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 7.9, "group": "instruct"}
+      {"tag": "7b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 7.9, "group": "instruct"},
+      {"tag": "7b-instruct-fp16", "quantization": "F16", "weights_gb": 15.0, "group": "instruct-fp16"}
     ]
   },
   {
@@ -1998,7 +2078,8 @@ const MODELS = [
     "value_length": 256,
     "variants": [
       {"tag": "10b", "quantization": "Q4_K_M", "weights_gb": 6.3, "group": "(default)"},
-      {"tag": "10b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 11.0, "group": "instruct"}
+      {"tag": "10b-instruct-q8_0", "quantization": "Q8_0", "weights_gb": 11.0, "group": "instruct"},
+      {"tag": "10b-instruct-fp16", "quantization": "F16", "weights_gb": 21.0, "group": "instruct-fp16"}
     ]
   }
 ];

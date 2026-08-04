@@ -212,10 +212,15 @@ One entry per canonical ollama tag (e.g. `llama3.1:8b`):
 ```
 
 `variants[0]` is the default (marked `← default` in the dropdown). Each variant has a `tag`
-(the full ollama sub-tag after the colon), a `quantization` key that must match a key in
-`QUANT_INFO`, `weights_gb`, and a `group` string used to separate variants into labelled
-`<optgroup>` sections in the dropdown (e.g. `"(default)"`, `"instruct"`, `"tools"`). When all
-variants share the same group, no optgroup is rendered.
+(the full ollama sub-tag after the colon), a `quantization` key, `weights_gb`, and a `group`
+string used to separate variants into labelled `<optgroup>` sections in the dropdown (e.g.
+`"(default)"`, `"instruct"`, `"tools"`). When all variants share the same group, no optgroup
+is rendered.
+
+`quantization` is either a key in `QUANT_INFO` (GGUF variants) **or `null`** for non-GGUF
+formats (`mlx`, `nvfp4`, `mxfp8`) which ollama publishes with no quant metadata. A null-quant
+variant additionally carries a cosmetic `"format"` string (e.g. `"mlx"`) used as its label. Such
+variants are rated by `variantRatings()` (see §5.5) rather than a direct `QUANT_INFO` lookup.
 
 The full runnable ollama tag is: `library:variant.tag`, e.g. `llama3.1:8b-q8_0`.
 
@@ -234,7 +239,11 @@ const QUANT_INFO = {
 }
 ```
 
-Covers all quantization formats used in ollama: IQ1_S through Q8_0, F16, FP16, BF16, F32.
+Covers the quantization formats ollama's registry actually ships: the standard Q/K block quants
+(`Q2_K` through `Q8_0`) plus `F16`, `FP16`, `BF16`, `F32`. Importance-matrix (IQ) types are **not**
+included — ollama publishes none (verified: 0 of ~1000 registry variants); they live in the
+HuggingFace/llama.cpp GGUF world and are never produced by `ollama pull`. Non-GGUF formats
+(`mlx`/`nvfp4`/`mxfp8`) carry no key here — they are rated by size interpolation (§5.5).
 
 ### 3.5 `KV_CACHE` — `data.kv-cache.js`
 
@@ -469,9 +478,23 @@ The GPU tab and Details tab also show raw `t/s` ranges via `fmtSpeed(lo, hi)`:
 
 Both speed sections are hidden when the model does not fit (OOM state).
 
----
+### 5.5 Variant ratings — `variantRatings(model, variant)`
 
-## 6. Scoring system
+The single chokepoint for a variant's speed/quality/efficiency ratings. Every consumer (scorecard,
+variant dropdown, model-list colour, coder ranking, detail panel) calls this instead of indexing
+`QUANT_INFO` directly.
+
+- **GGUF variant** (`quantization` matches a `QUANT_INFO` key): returns that entry verbatim.
+- **Non-GGUF / unlabeled variant** (`quantization: null`): ollama exposes no quant metadata, so the
+  rating is **estimated by interpolating from the model's own labelled variants**, ordered by
+  `weights_gb`. This is relative *within* the model, so it is immune to cross-model contamination
+  from high-precision embedding/output tensors (which makes a global bits-per-weight guess badly
+  wrong on small models). Below the smallest / above the largest anchor, it clamps to that anchor.
+  The returned object carries `approx: true` and a `summary` explaining the estimate.
+- Returns `null` when `variant` is null, or when a null-quant variant has no labelled anchors to
+  interpolate from (nothing to go on).
+
+`approx: true` ratings are surfaced in the UI with a leading `~` (see §7.3, §7.5).
 
 
 Four dimensions, each scored 1–5 stars:
@@ -539,7 +562,12 @@ Multiple groups produce labelled `<optgroup>` elements. The default group is nam
 Each variant option displays: `speedRating qualityRating  X.X GB  QUANTIZATION ← default`
 where speed uses `▶▷` chars (5 filled/empty) and quality uses `★☆` chars (5 filled/empty).
 Both pairs are chosen from the same Unicode block to guarantee equal width in monospace fonts.
-The quantization name (e.g. `Q4_K_M`) follows the size, and ` ← default` is appended to the first variant.
+The label after the size is the variant's `quantization` (e.g. `Q4_K_M`), or its `format`
+(e.g. `mlx`) when `quantization` is null. ` ← default` is appended to the first variant.
+
+When the rating is an estimate (`variantRatings` returned `approx: true` — non-GGUF formats, §5.5),
+the option is prefixed with `~` so the user can see the ratings are inferred from download size
+rather than measured. The narrow-viewport (`≤600px`) label form carries the same `~` prefix.
 
 ### 7.4 Memory bar
 
@@ -574,8 +602,10 @@ left side (`result-main`), right aside (`result-aside`), and a full-width bottom
 **Left side (`result-main`):**
 1. **Verdict** — `IT WILL LLM!` or `IT WON'T LLM!` — large monospace, animated pop-in on every render
 2. **Scorecard** — four `score-row` lines, each: icon · label (hoverable) · block bar `■■■■■■□□□□` · nudge button
-   - ▶ Thinking speed — speed rating from `QUANT_INFO` (1–10 scale, full 10-step bar)
-   - ★ Sharpness — quality rating from `QUANT_INFO` (1–10 scale)
+   - ▶ Thinking speed — speed rating from `variantRatings` (§5.5) (1–10 scale, full 10-step bar)
+   - ★ Sharpness — quality rating from `variantRatings` (§5.5) (1–10 scale)
+   - Speed/Sharpness tooltips lead with the quant/format label, prefixed `~` for estimated
+     (non-GGUF) ratings, e.g. `~mlx · Estimated from download size …`
    - ■ Memory clarity — KV precision: f16→10, q8_0→6, q4_0→4
    - ◎ Context fit — how well the model meets the user's chosen context target, 1–10 steps
    - Each row has a **nudge button** (`faster`/`better`/`higher`/`more`) that one-click adjusts the

@@ -23,7 +23,7 @@ function renderDetails(model, libInfo, variant, weightsGB, quantization, bytesPe
   document.getElementById('detailMaxCtx').textContent   = model.context_length
     ? model.context_length.toLocaleString() + ' tokens' : '—';
 
-  const quantInfo = variant ? QUANT_INFO[variant.quantization] : null;
+  const quantInfo = variantRatings(model, variant);
   Object.entries({
     detailLayers:       model.block_count,
     detailKvHeads:      model.head_count_kv,
