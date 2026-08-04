@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>willitllm.com</title>
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 <div class="page">
@@ -27,8 +27,9 @@
       <label>Context</label>
       <div class="select-wrap">
         <select id="targetCtx">
+          <option value="none" selected>as much as fits</option>
           <option value="8000">a chat · ~25 pages</option>
-          <option value="32000" selected>a document · ~100 pages</option>
+          <option value="32000">a document · ~100 pages</option>
           <option value="64000">The Hobbit · ~200 pages</option>
           <option value="100000">Harry Potter · ~300 pages</option>
           <option value="200000">several books · ~600 pages</option>
@@ -332,15 +333,15 @@
 <script src="data.quantizations.js?v=11"></script>
 <script src="data.kv-cache.js?v=10"></script>
 <script src="data.models.js?v=11"></script>
-<script src="app.fmt.js?v=1"></script>
+<script src="app.fmt.js?v=3"></script>
 <script src="app.calc.js?v=13"></script>
 <script src="app.shared.js?v=3"></script>
 <script src="app.util.js?v=3"></script>
 <script src="index.combobox.js?v=2"></script>
 <script src="index.variants.js?v=2"></script>
-<script src="index.ui.js?v=2"></script>
-<script src="index.render.js?v=6"></script>
+<script src="index.ui.js?v=4"></script>
+<script src="index.render.js?v=10"></script>
 <script src="index.details.js?v=2"></script>
-<script src="index.js?v=3"></script>
+<script src="index.js?v=5"></script>
 </body>
 </html>

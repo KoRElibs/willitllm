@@ -508,12 +508,32 @@ Four dimensions, each scored 1–5 stars:
 
 `score_avg = (speed + quality + context + precision) / 4`
 
-Headline class (drives border colour and verdict glow):
+Headline class (drives the result card's **left border**):
 - `score_avg ≥ 4` → `score-high` (green)
 - `score_avg ≥ 3` → `score-mid` (amber)
 - `score_avg ≥ 2` → `score-low` (orange)
 - else            → `score-poor` (red)
 - OOM             → `error` (red)
+
+**Colour discipline.** Status colour (green/amber/orange) is reserved for the *context-fit* signal;
+everything else is neutral or the cyan accent (interactivity). Specifically:
+- **Verdict** text is neutral (`--text`); only the card's left border carries the score-class tint.
+  Red text is kept solely for the OOM (`error`) verdict.
+- **Scorecard meters** — Thinking speed / Sharpness / Memory clarity render in a single neutral
+  fill (`--meter`); only **Context fit** takes a status colour, via `contextFitColor`.
+
+**`contextFitColor(maxCtx, targetCtx, archFitPct)`** — the single scale shared by the Context-fit
+meter, the aside `~pages` number, and the model list, so they can never disagree:
+- explicit numeric `targetCtx` → `maxCtx ≥ target` green, `≥ target×0.5` amber, else orange;
+- `targetCtx == null` with an `archFitPct` (the "full model context" mode) → `≥66%` green, `≥33%`
+  amber, else orange;
+- `targetCtx == null` and no `archFitPct` (the neutral "as much as fits" default) → neutral `--text`.
+
+**`effectiveTargetCtx(model)`** — the context a model is evaluated against for KV selection and
+scoring. The default "as much as fits" view uses `min(32000, model.context_length)` at default
+(f16) KV — a normal working context — so a model is judged on a sensible baseline rather than the
+"full model context" behaviour (`autoKvBpe` driven to q4_0, graded against the whole trained
+window), which unfairly penalises large-context models. Explicit sizes and `max` pass through.
 
 ---
 
@@ -525,8 +545,8 @@ Headline class (drives border colour and verdict glow):
 |----------|-------|---------|-----------|
 | top-left | Your GPU | `<select id="vramInput">` | Grouped by vendor: NVIDIA GeForce → NVIDIA Professional → AMD Radeon → Generic |
 | top-right | Model | Custom combobox (`#modelComboWrap`) | Searchable: face button (`#modelFace`) opens a panel (`#modelPanel`) with a text filter (`#modelSearch`) and a scrollable list (`#modelList`). Models grouped by organization with flag emoji. A hidden `<select id="modelSelect">` is kept in sync for form compatibility. Embedding models are hidden from the list entirely. |
-| bottom-left | Capability | `<div id="capFilter">` pill row | Pills: `any` · `agent` · `vision` · `thinking`. The `agent` pill has `data-cap="tools"` internally (matches the `tools` capability value in data.libraries.js) but displays as "agent" — see §3.2. Multi-select AND — active pills highlighted; list shows only models whose library has **all** selected caps. `any` (`data-cap=""`) clears the filter. On change, auto-selects first fitting model. `embedding` has no pill — those models are hidden from the list entirely (not chat models). `audio` has no pill — no current library carries it. Cap membership is stored in `item.dataset.caps` at list-build time and checked as `[..._activeCaps].every(c => itemCaps.has(c))`. |
-| bottom-right | Context | `<select id="targetCtx">` | Presets for common context sizes; drives model colour coding |
+| bottom-left | Capability | `<div id="capFilter">` pill row | Pills: `coding` · `vision` · `thinking`, plus a `clear` pill (`data-cap=""`). `coding` (synthetic — any `coding_role`) uses the same cyan accent as the others (no special styling). Multi-select AND — active pills highlighted; list shows only models whose library has **all** selected caps. The `clear` pill is **hidden while no filter is active** and, when a filter is on, is shown **last** (CSS `order:1`) as a reset; clicking it clears the filter and it hides again. On change, auto-selects first fitting model. `embedding`/`audio` have no pill (embedding models are hidden entirely). Cap membership is stored in `item.dataset.caps` and checked as `[..._activeCaps].every(c => itemCaps.has(c))`. |
+| bottom-right | Context | `<select id="targetCtx">` | First/default option **`as much as fits`** (`value="none"`) — no explicit target; the model is shown at a sensible `min(32k, model max)` f16 default and its fit reads **neutral** (see §6 `effectiveTargetCtx`/`contextFitColor`). Then the named sizes (8k…200k), then **`full model context`** (`value="max"`) which maximises context (q4_0) and grades against the model's whole trained window. Drives model colour coding. |
 
 Variant (`<select id="variantSelect">`) and KV Cache are auto-managed and shown in geek mode only (see §7.3).
 
@@ -536,15 +556,20 @@ A `<span id="selectionSummary">` above the memory bar shows the current selectio
 
 Each model option is coloured based on how well it serves the current target context.
 
-**No target selected (`targetCtx = null`, i.e. "max"):** percentage of the model's architectural context limit that fits in VRAM:
-- `maxCtx / context_length ≥ 66%` → green
-- ≥ 33% → amber
-- < 33% → orange
+The colour comes from the overall `scoreClass`, evaluated per model against its `effectiveTargetCtx`
+(§6) — so the model list always agrees with the selected model's fit.
 
-**Target context selected:** whether `maxCtx` (already bounded by VRAM and arch limit) meets the target:
+**Default "as much as fits":** each model is judged against `min(32k, its own max)` at f16, so a
+model that comfortably handles a normal working context is green — it is **not** penalised for using
+compressed KV or for failing to fill a huge trained window.
+
+**A named size selected:** whether `maxCtx` (bounded by VRAM and arch limit) meets the target:
 - `maxCtx ≥ targetCtx` → green
 - `maxCtx ≥ targetCtx × 0.5` → amber
 - otherwise → orange
+
+**"full model context" (`max`):** percentage of the model's architectural limit that fits in VRAM
+(`≥66%` green, `≥33%` amber, else orange).
 
 **OOM (weights don't fit):** red, prefixed with `✗  `
 
@@ -580,11 +605,14 @@ A horizontal bar divided into five segments:
 Segment widths are percentages of total VRAM. Each segment shows its GB value when wide enough
 (threshold varies: >12% for model, >8% for context, >6% for others), otherwise empty.
 
-Bar segment classes:
-- `seg-model` — blue, or `seg-overflow` (dark red) when OOM
-- `seg-context` — dark green, or `seg-overflow` when OOM
-- `segOverhead` — muted (fixed ~0.8 GB overhead reservation)
-- `segSafety` — muted (VRAM held back by the 10% safety factor)
+The bar shows **allocation** (where VRAM goes), not fit — so its segments carry **no status colour**:
+a single blue ramp for the two meaningful segments plus greys, each defined by one CSS var used for
+both the block fill **and** its legend dot (so the legend maps to the blocks). The in-block GB label
+is a quiet neutral, not a second colour.
+- `seg-model` — blue (`--seg-model`), or `seg-overflow` (dark red) when OOM
+- `seg-context` — lighter blue (`--seg-context`) — a neutral category tint, **not** green — or `seg-overflow` when OOM
+- `segOverhead` — grey (`--seg-overhead`, fixed ~0.8 GB overhead reservation)
+- `segSafety` — grey (`--seg-safety`, VRAM held back by the 10% safety factor)
 - `segFree` — muted (genuinely free; only >0 when arch-limited)
 
 The legend below the bar shows up to five items (hidden when negligible):
@@ -624,7 +652,7 @@ left side (`result-main`), right aside (`result-aside`), and a full-width bottom
 
 **Bottom row (`result-cmd`):**
 4. **Ollama command** — copy-paste ready: `ollama run library:tag\n>>> /set parameter num_ctx XXXXX`
-5. **OS tabs + setup block** — only shown when KV cache type is not f16; toggleable Linux/Mac and Windows sections showing `OLLAMA_KV_CACHE_TYPE=TYPE ollama serve` instructions
+5. **OS tabs + setup block** — only shown when KV cache type is not f16; toggleable Linux/Mac and Windows sections showing `OLLAMA_KV_CACHE_TYPE=TYPE ollama serve` instructions. Styled as a **connected tab strip**: inactive tabs sit recessed (`--bg2`), the active tab takes the setup panel's own background (`--bg3`) with top-only rounding and no bottom seam, so it reads as one continuous surface with the panel.
 
 Flash attention warning (`ⓘ` tooltip) when KV cache ≠ f16:
 - GPU flash = `'no'`: warn that this GPU doesn't support it

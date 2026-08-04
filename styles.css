@@ -14,6 +14,7 @@
   --orange:   #f07418;
   --red:      #f06464;
   --purple:   #a78bfa;
+  --meter:    #6f7d96;   /* neutral fill for non-status meters (speed/sharpness/clarity) */
   --mono:     'Cascadia Code', 'Fira Code', 'JetBrains Mono', ui-monospace, 'Consolas', monospace;
   --sans:     system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
@@ -277,10 +278,22 @@ header p {
   transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
   min-width: 0;
 }
-.seg-model    { background: #1e3a5f; color: var(--accent); border-right: 1px solid var(--bg); }
-.seg-context  { background: #1e3b2a; color: var(--green);  border-right: 1px solid var(--bg); }
-.seg-overhead { background: #4a3c14; color: var(--amber);  border-right: 1px solid var(--bg); }
-.seg-safety   { background: #4a2010; color: var(--orange); border-right: 1px solid var(--bg); }
+/* The memory bar shows ALLOCATION (where VRAM goes), not fit — so its segments are neutral
+   category tints (a single blue ramp + greys), never status colors. Fit lives only in the
+   scorecard Context meter, the ~pages number, and the model list (all via contextFitColor).
+   Each category has ONE colour (var below) used for both the block fill AND its legend dot,
+   so the legend truly maps to the blocks. The in-block GB label is a quiet neutral, not a
+   second colour, so the block reads as its own fill colour. */
+:root {
+  --seg-model:    #2f5a8c;
+  --seg-context:  #396a86;
+  --seg-overhead: #3c4557;
+  --seg-safety:   #31394a;
+}
+.seg-model    { background: var(--seg-model);    color: #e4edf8;     border-right: 1px solid var(--bg); }
+.seg-context  { background: var(--seg-context);  color: #e4edf8;     border-right: 1px solid var(--bg); }
+.seg-overhead { background: var(--seg-overhead); color: var(--muted); border-right: 1px solid var(--bg); }
+.seg-safety   { background: var(--seg-safety);   color: var(--muted); border-right: 1px solid var(--bg); }
 .seg-free     { background: var(--bg3); color: var(--muted); }
 .seg-overflow { background: #3b1e1e; color: var(--red); }
 
@@ -302,10 +315,11 @@ header p {
   border-radius: 2px;
   flex-shrink: 0;
 }
-.dot-model     { background: var(--accent); }
-.dot-context   { background: var(--green); }
-.dot-overhead  { background: var(--amber); }
-.dot-safety    { background: var(--orange); }
+/* Dots mirror the block fills exactly (same var), so the legend matches the bar. */
+.dot-model     { background: var(--seg-model); }
+.dot-context   { background: var(--seg-context); }
+.dot-overhead  { background: var(--seg-overhead); }
+.dot-safety    { background: var(--seg-safety); }
 .dot-free      { background: var(--border); }
 
 /* ── Result headline ── */
@@ -355,15 +369,15 @@ header p {
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 1.1;
+  /* Neutral by default — the card's left border (score-high/mid/low) carries the fit tint,
+     so the headline no longer needs to shout in green/amber/orange on every render. */
+  color: var(--text);
 }
 .verdict.verdict-anim {
   animation: verdict-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
-.result-headline.score-high .verdict { color: var(--green);  text-shadow: 0 0 32px rgba(86, 216, 138, 0.45); }
-.result-headline.score-mid  .verdict { color: var(--amber);  text-shadow: 0 0 32px rgba(245, 166, 35, 0.45); }
-.result-headline.score-low  .verdict { color: var(--orange); text-shadow: 0 0 32px rgba(240, 116, 24, 0.45); }
-.result-headline.score-poor .verdict { color: var(--red);    text-shadow: 0 0 32px rgba(240, 100, 100, 0.45); }
-.result-headline.error      .verdict { color: var(--red);    text-shadow: 0 0 32px rgba(240, 100, 100, 0.45); }
+/* Keep the loud red only for a genuine won't-fit (OOM) — the one moment a real alert earns it. */
+.result-headline.error .verdict { color: var(--red); text-shadow: 0 0 32px rgba(240, 100, 100, 0.45); }
 
 .scorecard {
   display: flex;

@@ -31,10 +31,15 @@ function updateSelectionSummary(model) {
 function modelScoreColor(m, vramGB, targetCtx, flashOk) {
   const weightsGB = m.variants?.length ? m.variants[0].weights_gb : 0;
   if (weightsGB >= vramGB - OVERHEAD_GB) return { color: '#f06464', fit: 4 };
-  const bpe        = autoKvBpe(m, vramGB, weightsGB, targetCtx, flashOk);
+  // Per-model effective target: in the default "as much as fits" view this is min(32k, the
+  // model's own max) at default KV, so a model is judged on a normal working context — not
+  // penalised for using compressed KV or for not filling a huge trained window (see
+  // effectiveTargetCtx). Supersedes the passed targetCtx, which can't be per-model.
+  const effTarget  = effectiveTargetCtx(m);
+  const bpe        = autoKvBpe(m, vramGB, weightsGB, effTarget, flashOk);
   const ctxResult  = calcMaxContext(m, vramGB, bpe, weightsGB);
   const quantInfo  = variantRatings(m, m.variants?.[0]);
-  const { scoreClass } = computeScores(quantInfo, bpe, ctxResult, false, m, targetCtx);
+  const { scoreClass } = computeScores(quantInfo, bpe, ctxResult, false, m, effTarget);
   return { 'score-high': { color: '#56d88a', fit: 0 },
            'score-mid':  { color: '#f5a623', fit: 1 },
            'score-low':  { color: '#f07418', fit: 2 },

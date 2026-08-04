@@ -29,7 +29,27 @@ const setupContent = { generic: '', linux: '', 'linux-service': '', macos: '', w
 
 function getTargetCtx() {
   const v = document.getElementById('targetCtx').value;
-  return v === 'max' ? null : parseInt(v);
+  // 'none' (neutral default) and 'max' both mean "no numeric target" — push context to the
+  // model's arch limit for KV/scoring. They differ only in how fit is COLOURED (see
+  // isNeutralTarget / contextFitColor): 'none' stays neutral, 'max' is judged vs capability.
+  return (v === 'max' || v === 'none') ? null : parseInt(v);
+}
+
+// True when the user has not chosen a target — the default "as much as fits" view. In this
+// mode the context-fit signal is neutral (no green/amber/orange): we just show how much
+// context the model can use, without judging it against a target the user never set.
+function isNeutralTarget() {
+  return document.getElementById('targetCtx').value === 'none';
+}
+
+// The context length to evaluate a model against for KV/scoring. The default "as much as
+// fits" view uses a SENSIBLE baseline — a normal 32k working context, capped at the model's
+// own max — at default (f16) quality. That is deliberately NOT the "full model context"
+// behaviour (autoKvBpe drives to q4_0 and grades against the whole trained window), which
+// unfairly drags big-context models down. Explicit sizes and 'max' pass straight through.
+function effectiveTargetCtx(model) {
+  if (isNeutralTarget()) return Math.min(32000, model?.context_length ?? 32000);
+  return getTargetCtx();
 }
 
 // ── URL state ─────────────────────────────────────────────────────────────────
@@ -125,14 +145,14 @@ function render() {
   const quantization    = variant ? (variant.quantization || variant.format || '—') : '—';
   const quantInfo       = variantRatings(model, variant);
   const libInfo         = getLibMeta(model);
-  const bytesPerElement = autoKvBpe(model, vramGB, weightsGB, targetCtx, flashOk);
+  const bytesPerElement = autoKvBpe(model, vramGB, weightsGB, effectiveTargetCtx(model), flashOk);
   const kvEntry         = getKvCache(bytesPerElement);
   const kvLabel         = kvEntry.label;
   const kvInfo          = kvEntry;
 
   const ctxResult = calcMaxContext(model, vramGB, bytesPerElement, weightsGB);
   const noFit     = weightsGB >= vramGB - OVERHEAD_GB;
-  const scores    = computeScores(quantInfo, bytesPerElement, ctxResult, noFit, model, getTargetCtx());
+  const scores    = computeScores(quantInfo, bytesPerElement, ctxResult, noFit, model, effectiveTargetCtx(model));
   const { contextFitPct, scoreClass } = scores;
 
   // Coding capability verdict — degrees of "it will code!"
@@ -222,6 +242,7 @@ function init() {
 
   // Swap target context option labels for narrow viewports (native selects truncate long text)
   const TARGET_LABELS = [
+    { value: 'none',   wide: 'as much as fits',           narrow: 'as much as fits' },
     { value: '8000',   wide: 'a chat · ~25 pages',        narrow: 'chat' },
     { value: '32000',  wide: 'a document · ~100 pages',   narrow: 'document' },
     { value: '64000',  wide: 'The Hobbit · ~200 pages',   narrow: 'The Hobbit' },

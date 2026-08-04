@@ -109,7 +109,15 @@ function renderScorecard(scores, quantInfo, variant, kvLabel, kvInfo, libInfo, c
   ].forEach(([id, n10, n5]) => {
     const el = document.getElementById(id);
     el.textContent = bar10(Math.round(n10));
-    el.style.color = colorForScore(n5);
+    // Only Context fit carries the status scale (green/amber/orange) — it's the "will it
+    // meet my target" signal. Speed/Sharpness/Memory-clarity are neutral tradeoffs, not
+    // good/bad verdicts, so they use a single calm fill instead of the traffic-light hues.
+    // Context uses contextFitColor (the same scale as the model list and the ~pages number),
+    // so it is green only when the target is actually met — never at a shortfall. With no
+    // target chosen (neutral default) it drops to the same calm fill as the other meters.
+    el.style.color = (id === 'scoreContext' && !isNeutralTarget())
+      ? contextFitColor(ctxResult.maxCtx, getTargetCtx(), contextFitPct)
+      : 'var(--meter)';
   });
 
   // Benchmark row — cited model-capability score (distinct from quant "Sharpness").
@@ -211,11 +219,11 @@ function renderAside(speedEsts, ctxResult, contextFitPct) {
   const targetFitPct = targetCtx ? Math.round(Math.min(1, ctxResult.maxCtx / targetCtx) * 100) : null;
   const showGap      = targetFitPct !== null && targetFitPct < 95;
 
-  // Color the context stat to reflect how well the target is met
-  ctxPagesEl.style.color = !showGap               ? 'var(--text)'
-                         : targetFitPct >= 90      ? 'var(--green)'
-                         : targetFitPct >= 50      ? 'var(--amber)'
-                         :                           'var(--orange)';
+  // Color the context stat with the SAME scale as the scorecard Context meter and the model
+  // list (contextFitColor), so the two halves of the context signal can never disagree.
+  // Neutral default ('none'): pass no archFitPct so contextFitColor returns the neutral --text
+  // (just show the number). 'max' passes archFitPct → judged vs capability; sizes judged vs target.
+  ctxPagesEl.style.color = contextFitColor(ctxResult.maxCtx, targetCtx, isNeutralTarget() ? null : contextFitPct);
 
   // Show achieved / target when there's a meaningful gap
   if (showGap) {

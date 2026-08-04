@@ -54,23 +54,35 @@ As an Explorer I want models colour-coded by context fit (green / amber / orange
 **US-10 — Target context selector** `done`
 As an Explorer I want to set a target context so model colour coding reflects whether a model meets my actual needs rather than what percentage of its architectural maximum fits.
 
-Pill row below the 2×2 control grid. Presets:
+Dropdown options:
 ```
+as much as fits                     ← default (neutral, no explicit target)
 8k   · a chat          ~25 pages
-32k  · a document     ~100 pages    ← default
+32k  · a document     ~100 pages
 64k  · The Hobbit     ~200 pages
 100k · Harry Potter   ~300 pages
 200k · several books  ~600 pages
-Max  · full model context
+full model context
 ```
-Colour: green = fits target, amber = within 50% of target, orange = below. `Max` restores % of architectural limit behaviour.
+Colour: green = fits target, amber = within 50% of target, orange = below. The default
+**`as much as fits`** sets no target — the model is shown at a sensible `min(32k, model max)` f16
+default and its fit reads **neutral** (no green/amber/orange verdict on a target the user never set),
+while the model list still colours models by that baseline. `full model context` maximises context
+(q4_0) and grades against the model's whole trained window. See SPEC §6 (`effectiveTargetCtx`,
+`contextFitColor`).
 
 **Context gap display in aside:** When the selected model cannot fully meet the target, the aside context stat shows `~X / ~Y pages` (achieved / target) colored by fit quality (green / amber / orange). The sub-label appends `· Z% of target` to make the shortfall explicit. This gives the user an immediate, specific comparison rather than an abstract score.
 
 **US-26 — Capability filter** `done`
 As an Explorer I want to filter the model list by capability (tools / vision / thinking) so I only see models relevant to my use case without scrolling through the full list.
 
-Pill row in bottom-left of the 2×2 control grid. Four pills: `any` (default) · `tools` · `vision` · `thinking`. Multi-select with AND logic — selecting multiple pills shows only models that have **all** selected capabilities. `any` clears the filter. Capabilities sourced exclusively from ollama.com/library `x-test-capability` badges — no manual guessing. Embedding models hidden from the list entirely (they are not chat/inference models). Pill state is reset when the page loads; not encoded in URL hash (it is a UI filter, not a selection).
+Pill row in bottom-left of the 2×2 control grid: `coding` · `vision` · `thinking`, plus a `clear`
+pill. Multi-select with AND logic — selecting multiple pills shows only models that have **all**
+selected capabilities. `coding` (synthetic — any `coding_role`) is styled identically to the others
+(cyan accent, no special green). The `clear` pill is **hidden until a filter is active**, then shown
+**last** as a reset (clicking it clears the filter and it hides again). Capabilities sourced from
+ollama.com/library `x-test-capability` badges. Embedding models hidden from the list entirely. Pill
+state resets on load; not encoded in URL hash (a UI filter, not a selection).
 
 When GPU, target context, or capability pills change, the model dropdown auto-selects the first fitting (non-✗) model. If the currently selected model no longer fits or is filtered out, it is replaced by the best available option automatically.
 
@@ -115,6 +127,15 @@ directly; null-quant variants are estimated by interpolating from the model's ow
 by size, marked `~` in the variant dropdown and scorecard tooltips to flag the estimate. The 13 IQ
 importance-matrix `QUANT_INFO` entries were removed — ollama ships none. Routed through every
 consumer (index scorecard/dropdown/model-list colour, coder ranking, detail panel).
+
+**US-31 — Restrained colour system** `done`
+As any user I want the interface to use strong colour sparingly so the one signal that matters —
+context fit — actually stands out. Status colour (green/amber/orange) is reserved for the context-fit
+thread (model list, Context-fit meter, aside `~pages`), all driven by one shared `contextFitColor`
+so they never disagree. The verdict is neutral (only the card border carries the tint; red kept for
+OOM), Speed/Sharpness/Memory-clarity meters use a single neutral fill, the memory bar is pure
+allocation (one blue ramp + greys, legend dots matching blocks), and the capability pills/OS tabs use
+the cyan accent. See SPEC §6 and §7.4.
 
 ---
 

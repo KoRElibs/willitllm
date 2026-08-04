@@ -60,3 +60,22 @@ function bar10(n10) { return '■'.repeat(n10) + '□'.repeat(10 - n10); }
 function colorForScore(n5) {
   return n5 >= 4 ? 'var(--green)' : n5 === 3 ? 'var(--amber)' : n5 === 2 ? 'var(--orange)' : 'var(--red)';
 }
+
+// Context-fit status color — the SINGLE scale shared by the scorecard Context meter, the aside
+// "pages" number, and the model list, so every context signal agrees (they are one concept).
+// Mirrors the model-list fit logic (SPEC §7.2):
+//   • Explicit target chosen → meets it → green, at least half → amber, else orange.
+//   • "Max" (no explicit target) → the target IS the model's full capability, so judge how much
+//     of the model's own context_length fits in VRAM (archFitPct): ≥66% green, ≥33% amber, else
+//     orange. An arch-limited model (delivering its full context) lands ~90% here → green.
+function contextFitColor(maxCtx, targetCtx, archFitPct) {
+  if (targetCtx) {
+    if (maxCtx >= targetCtx)         return 'var(--green)';
+    if (maxCtx >= targetCtx * 0.5)   return 'var(--amber)';
+    return 'var(--orange)';
+  }
+  if (archFitPct == null)            return 'var(--text)';
+  if (archFitPct >= 66)              return 'var(--green)';
+  if (archFitPct >= 33)              return 'var(--amber)';
+  return 'var(--orange)';
+}
