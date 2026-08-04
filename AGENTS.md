@@ -158,24 +158,19 @@ makes it invisible to other agents and impossible to audit.
 
 *This section applies only if you are running as Claude Code. Other agents: skip this section.*
 
-### `.claude/` directory — do not recreate or modify without instruction
+### `.claude/` directory — not checked in
 
-`.claude/` at the repo root is a Claude Code project configuration directory.
+The repo intentionally ships **no** checked-in `.claude/` config. There is no committed
+`.claude/CLAUDE.md` (this `AGENTS.md` is the single agent entry point — read it directly) and no
+committed `.claude/settings.json`.
 
-**Do not recreate it if missing. Do not modify it unless explicitly asked to configure permissions
-or hooks. Do not add new entries without user instruction.**
+**Do not create or commit `.claude/CLAUDE.md` or `.claude/settings.json`.** Project-level agent
+config lives in the tracked docs (`AGENTS.md`, `SPEC.md`, `meta/`), not in `.claude/`.
 
-| File | Purpose | Edit? |
-| --- | --- | --- |
-| `.claude/CLAUDE.md` | Auto-loaded by Claude Code at startup — redirects to this file | No |
-| `.claude/settings.json` | Project-level permissions (checked into repo — intentional) | Only if user asks |
-| `.claude/settings.local.json` | Machine-specific overrides (gitignored — never commit) | Freely |
-
-Current permissions in `.claude/settings.json`:
-
-- `WebSearch` — for looking up model specs, GPU data, external tool docs
-- `WebFetch(domain:willitllm.com)` — for verifying the live site
-- `WebFetch(domain:ollama.com)` — for the model scraper and capability verification
+Machine-specific overrides belong in `.claude/settings.local.json`, which is gitignored — edit it
+freely (permissions, local hooks) but never commit it. Common local permissions this project uses:
+`WebSearch`, `WebFetch(domain:willitllm.com)`, `WebFetch(domain:ollama.com)` — for the model scraper,
+capability verification, and live-site checks.
 
 ### Skills
 

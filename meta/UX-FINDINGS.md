@@ -1,5 +1,7 @@
 # will-it-llm — UX findings
 
+> **must verify if this is out of date**
+
 **Tested:** 2026-06-05, Firefox headless (Playwright), desktop 1280×900 and mobile 390×844 / 375×667  
 
 Bugs found during testing live in `BUGS.md` (BUG-05 through BUG-09). This file contains design and UX suggestions only.
