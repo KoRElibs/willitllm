@@ -122,9 +122,8 @@ header p {
 }
 .cap-pill:hover { color: var(--text); border-color: var(--text); }
 .cap-pill.active { color: var(--accent); border-color: var(--accent); }
-.cap-pill[data-cap="coding"]         { color: var(--green); border-color: rgba(86,216,138,0.35); }
-.cap-pill[data-cap="coding"]:hover  { color: var(--green); border-color: var(--green); }
-.cap-pill[data-cap="coding"].active { color: var(--bg);    border-color: var(--green); background: var(--green); }
+/* "clear" pill (data-cap="") is hidden until a filter is active, then rendered last as a reset. */
+.cap-pill[data-cap=""] { order: 1; }
 .cap-pill[data-tip] { cursor: pointer; }
 
 /* ── Variant field (always visible, dimmed until interacted with) ── */
@@ -641,22 +640,29 @@ header p {
 .ollama-cmd .cmd-muted { color: var(--muted); }
 .os-tabs {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   margin-top: 8px;
 }
+/* Real tab strip: inactive tabs sit slightly recessed (darker --bg2); the active tab takes the
+   panel's own background (--bg3) and drops its bottom edge so it reads as one continuous surface
+   with the setup panel below. Top-only rounding, no floating pill. */
 .os-tab {
-  background: transparent;
+  background: var(--bg2);
   border: 1px solid var(--border);
   color: var(--muted);
   font-family: var(--mono);
   font-size: 11px;
-  padding: 3px 10px;
-  border-radius: 4px;
+  padding: 5px 12px;
+  border-radius: 6px 6px 0 0;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, background 0.15s;
 }
-.os-tab:hover { color: var(--text); border-color: var(--accent); }
-.os-tab.active { color: var(--accent); border-color: var(--accent); }
+.os-tab:hover { color: var(--text); background: var(--bg3); }
+.os-tab.active {
+  background: var(--bg3);              /* same colour as the setup panel */
+  color: var(--accent);
+  border-bottom-color: var(--bg3);     /* dissolve the seam into the panel */
+}
 .ollama-setup { margin-top: 0; border-top: none; border-radius: 0 0 6px 6px; }
 /* ── Tooltip ── */
 .tooltip {

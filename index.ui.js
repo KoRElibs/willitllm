@@ -71,6 +71,9 @@ function applyCap(cap) {
   document.querySelectorAll('.cap-pill').forEach(pill => {
     pill.classList.toggle('active', pill.dataset.cap === '' ? _activeCaps.size === 0 : _activeCaps.has(pill.dataset.cap));
   });
+  // "clear" pill (data-cap="") only appears when there's a filter to clear — shown last (CSS order).
+  const clearPill = document.querySelector('.cap-pill[data-cap=""]');
+  if (clearPill) clearPill.hidden = _activeCaps.size === 0;
   filterModelList(document.getElementById('modelSearch')?.value || '', true);
 }
 
