@@ -102,34 +102,3 @@ function initInfoSheet() {
 
 const muted = s => `<span class="cmd-muted">${s}</span>`;
 
-function osKvContent(tab, kvLabel) {
-  if (tab === 'generic') return [
-    muted(`# KV cache type: ${kvLabel} (session only — resets on restart):`),
-    `OLLAMA_KV_CACHE_TYPE=${kvLabel} ollama serve`,
-  ].join('\n');
-  if (tab === 'linux') return [
-    muted(`# KV cache type: ${kvLabel} (permanent — adds to ~/.bashrc):`),
-    `echo 'export OLLAMA_KV_CACHE_TYPE=${kvLabel}' >> ~/.bashrc && source ~/.bashrc`,
-    muted('# then start Ollama:'),
-    'ollama serve',
-  ].join('\n');
-  if (tab === 'linux-service') return [
-    muted(`# KV cache type: ${kvLabel} (permanent — systemd override):`),
-    `sudo mkdir -p /etc/systemd/system/ollama.service.d && printf '[Service]\\nEnvironment="OLLAMA_KV_CACHE_TYPE=${kvLabel}"\\n' | sudo tee /etc/systemd/system/ollama.service.d/override.conf`,
-    muted('# reload and restart Ollama service:'),
-    'sudo systemctl daemon-reload && sudo systemctl restart ollama',
-  ].join('\n');
-  if (tab === 'macos') return [
-    muted(`# KV cache type: ${kvLabel} — quit Ollama from menu bar (⌘Q), then:`),
-    `echo 'export OLLAMA_KV_CACHE_TYPE=${kvLabel}' >> ~/.zshrc && source ~/.zshrc`,
-    'ollama serve',
-  ].join('\n');
-  if (tab === 'windows') return [
-    muted(`# KV cache type: ${kvLabel} (permanent — System Properties):`),
-    muted('# 1. System Properties → Environment Variables → New user variable:'),
-    muted(`#    Name:  OLLAMA_KV_CACHE_TYPE`),
-    muted(`#    Value: ${kvLabel}`),
-    muted('# 2. right-click Ollama in tray → Quit, then reopen Ollama'),
-  ].join('\n');
-  return '';
-}

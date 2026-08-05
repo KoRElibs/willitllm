@@ -1,12 +1,12 @@
 // ─── CODER.ROWS — HTML generation for coder rows and config panels
 //
-// Depends on:  app.shared.js (osKvContent),
+// Depends on:  coder.js (fitCheckerUrl),
 //              app.fmt.js (fmtSpeed),
 //              app.util.js (metricLabel, metricLabelShort),
 //              data.flags.js (flagFor),
 //              coder.rank.js (fmtCtxCoding),
 //              coder.js (getBaseUrl — at runtime)
-// Provides:    esc, sectionDivider, kvSetupHtml, modeHtml,
+// Provides:    esc, sectionDivider, kvAssumptionHtml, modeHtml,
 //              fimConfigHtml, makeConfigHtml, makeRow
 
 function esc(s) {
@@ -20,20 +20,30 @@ function sectionDivider(text, extraClass) {
   return d;
 }
 
-function kvSetupHtml(kvLabel) {
-  const initOs = localStorage.getItem('osTab') || 'generic';
-  const tabs = ['generic', 'linux', 'linux-service', 'macos', 'windows'];
-  const tabLabels = { generic: 'Generic', linux: 'Linux', 'linux-service': 'Linux service', macos: 'macOS', windows: 'Windows' };
-  const tabHtml = tabs.map(os =>
-    `<button class="os-tab${os === initOs ? ' active' : ''}" data-os="${os}">${tabLabels[os]}</button>`
-  ).join('\n        ');
+// This page assumes Ollama is already installed and already running with the server
+// settings for the chosen model. It deliberately does NOT repeat the setup commands —
+// they live in one place, the fit checker's "how to run it" panel, and are linked from
+// here. Duplicating them meant two copies to keep correct, and they drifted.
+// f16 is Ollama's default, and the context length is carried by `contextLength` in the editor
+// config below (an API option, which outranks any server setting) — so an f16 row needs no
+// server configuration at all and shouldn't imply otherwise. Only a quantized cache does: it is
+// read at server startup and needs flash attention alongside it, or Ollama silently keeps f16
+// and this row's context figure won't hold.
+function kvAssumptionHtml(kvLabel, maxCtx) {
+  if (kvLabel === 'f16') {
+    return `
+    <div class="config-section">
+      <div class="config-note">Assumes Ollama is installed and running. The context length is set
+        by <code>contextLength</code> in the config below — nothing to configure on the server.</div>
+    </div>`;
+  }
   return `
     <div class="config-section">
-      <div class="config-label">1. Start Ollama with KV cache type (${kvLabel}) <button class="copy-btn">copy</button></div>
-      <div class="os-tabs">
-        ${tabHtml}
-      </div>
-      <pre class="ollama-cmd ollama-setup" data-kv="${kvLabel}">${osKvContent(initOs, kvLabel)}</pre>
+      <div class="config-note">Needs Ollama started with <code>OLLAMA_FLASH_ATTENTION=1</code> and
+        <code>OLLAMA_KV_CACHE_TYPE=${esc(kvLabel)}</code> — both are read at server startup, and
+        without flash attention the cache type is silently ignored (you get f16, and this row's
+        context won't fit). Set them here:
+        <a class="doc-link" href="${fitCheckerUrl()}">how to run it, on the fit checker ↗</a>.</div>
     </div>`;
 }
 
@@ -51,8 +61,8 @@ function modeHtml(runTag, maxCtx, kvLabel, baseUrl, showCline) {
     apiBase: baseUrl, contextLength: maxCtx,
   }, null, 2);
 
-  const kvSection = kvSetupHtml(kvLabel);
-  const runLabel  = '2. Pull model';
+  const kvSection = kvAssumptionHtml(kvLabel, maxCtx);
+  const runLabel  = '1. Pull model';
 
   const clientTabs = showCline
     ? `<button class="client-tab active" data-client="cline">Cline</button>
@@ -107,9 +117,9 @@ function fimConfigHtml(entry) {
       },
     }, null, 2);
     return `
-      ${kvSetupHtml(kv)}
+      ${kvAssumptionHtml(kv, maxCtx)}
       <div class="config-section">
-        <div class="config-label">2. Pull model <button class="copy-btn">copy</button></div>
+        <div class="config-label">1. Pull model <button class="copy-btn">copy</button></div>
         <pre class="ollama-cmd">${esc(ollamaRun)}</pre>
       </div>
       <div class="config-section">
@@ -264,19 +274,6 @@ function makeRow(entry) {
     document.querySelectorAll('.coder-config').forEach(c => c.hidden = true);
     document.querySelectorAll('.coder-row').forEach(r => r.classList.remove('open'));
     if (!wasOpen) { config.hidden = false; row.classList.add('open'); }
-  });
-
-  row.querySelectorAll('.os-tab[data-os]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const os      = btn.dataset.os;
-      const section = btn.closest('.config-section');
-      const pre     = section.querySelector('.ollama-setup');
-      if (!pre) return;
-      const kvLabel = pre.dataset.kv;
-      localStorage.setItem('osTab', os);
-      section.querySelectorAll('.os-tab[data-os]').forEach(b => b.classList.toggle('active', b === btn));
-      pre.innerHTML = osKvContent(os, kvLabel);
-    });
   });
 
   row.querySelectorAll('.mode-tab').forEach(btn => {

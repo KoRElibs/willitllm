@@ -7,25 +7,33 @@
 //                           calcSpeedEstimates, computeScores),
 //              app.util.js (getLibMeta, getFlashOk),
 //              app.shared.js (buildGpuSelector, initTooltip, initInfoSheet,
-//                             osKvContent, muted),
+//                             muted),
 //              index.combobox.js (buildModelCombobox, markComboboxItems,
 //                                 syncComboboxFace, filterModelList),
 //              index.variants.js (populateVariants, getSelectedVariant,
 //                                 updateNudgeButtons, nudgeVariant),
-//              index.ui.js (markModelOptions, applyCap, setOsTab, syncOsTabs,
+//              index.ui.js (markModelOptions, applyCap, detectOs, setOs, syncOsSelect,
 //                           updateSelectionSummary),
 //              index.render.js (renderMembar, renderBudget, renderScorecard,
 //                               renderVerdict, renderOom, renderAside, renderCmd),
 //              index.details.js (renderDetails, populateGpuTab, renderFormula)
-// Provides:    activeOsTab, setupContent, getTargetCtx, getKvCache,
+// Provides:    activeOsTab, runOpen, setupContent, getTargetCtx, getKvCache,
 //              coderPageUrl, render (called by all ui files)
 
 function getKvCache(bytesPerElement) {
   return KV_CACHE.find(k => k.bytesPerElement === bytesPerElement) || KV_CACHE[0];
 }
 
-let activeOsTab = localStorage.getItem('osTab') || 'generic';
-const setupContent = { generic: '', linux: '', 'linux-service': '', macos: '', windows: '' };
+// A stored choice always wins; otherwise guess from the browser so most visitors get
+// their own OS's instructions without touching the dropdown. storedOs (index.render.js)
+// also migrates retired keys; detectOs lives in index.ui.js.
+let activeOsTab = storedOs(detectOs());
+const setupContent = Object.fromEntries(OS_KEYS.map(k => [k, '']));
+
+// Whether the "how to run it" panel is open. Persisted like geekMode, but defaults to
+// closed — the verdict and scorecard answer the question the page asks; setup is the
+// follow-up step.
+let runOpen = localStorage.getItem('runOpen') === 'true';
 
 function getTargetCtx() {
   const v = document.getElementById('targetCtx').value;
@@ -272,8 +280,22 @@ function init() {
     }
   });
 
-  document.querySelectorAll('#osTabs .os-tab').forEach(btn => {
-    btn.addEventListener('click', () => setOsTab(btn.dataset.os));
+  document.getElementById('osSelect').addEventListener('change', e => setOs(e.target.value));
+
+  // "how to run it" toggle — lives in the result card, opens the setup panel below it.
+  const runToggle  = document.getElementById('runToggle');
+  const runSection = document.getElementById('runSection');
+  const applyRun = on => {
+    runOpen = on;
+    runSection.hidden     = !on;
+    runToggle.textContent = on ? '▾ how to run it' : '▸ how to run it';
+    runToggle.setAttribute('aria-expanded', String(on));
+  };
+  runToggle.setAttribute('aria-controls', 'runSection');
+  applyRun(runOpen);
+  runToggle.addEventListener('click', () => {
+    applyRun(runSection.hidden);
+    localStorage.setItem('runOpen', runOpen);
   });
 
   document.getElementById('nudge-speed').addEventListener('click',   () => nudgeVariant('speed'));
@@ -290,12 +312,14 @@ function init() {
 
   initTooltip();
 
-  // Details toggle — persistent via localStorage, collapsed by default
+  // Breakdown toggle — persistent via localStorage, collapsed by default. Storage key stays
+  // `geekMode` so an existing visitor's preference survives the label change.
   const geekToggle  = document.getElementById('geekToggle');
   const geekSection = document.getElementById('geekSection');
   const applyGeek = on => {
     geekSection.hidden     = !on;
-    geekToggle.textContent = on ? '▾ details' : '▸ details';
+    geekToggle.textContent = on ? '▾ the numbers' : '▸ the numbers';
+    geekToggle.setAttribute('aria-expanded', String(on));
   };
   applyGeek(localStorage.getItem('geekMode') === 'true');
   geekToggle.addEventListener('click', () => {

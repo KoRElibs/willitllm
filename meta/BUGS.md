@@ -4,12 +4,18 @@ Keep this file updated on every change — see `SPEC.md §12`.
 
 Open
 
+- [BUG-21 — Coder rows cannot be expanded on touch devices](#bug-21)
+- [BUG-23 — Coder model name truncates to zero width on mobile](#bug-23)
+- [BUG-24 — iOS Safari zooms on focus for both text inputs (font-size < 16px)](#bug-24)
 - [BUG-20 — Stale model result when cap pill filter matches no models](#bug-20)
 - [BUG-18 — Generation-speed range too tight for small Q8_0 at low context](#bug-18)
 - [BUG-17 — Super-linear decode collapse on very large dense models at extreme context](#bug-17)
 
 Fixed
 
+- [BUG-26 — Setup commands emitted a dead env var and omitted the one that makes KV cache work](#bug-26)
+- [BUG-25 — Linux/macOS setup appended to shell rc files: non-idempotent, and wrong on Linux](#bug-25)
+- [BUG-22 — Result headline forced the page to 534px on every phone width](#bug-22)
 - [BUG-19 — Decode slowdown term wrongly penalized f16 + flash-attention setups](#bug-19)
 - [BUG-16 — Generation-speed formula ignored attention compute; over-predicted at long context](#bug-16)
 - [BUG-15 — render() used stale model variable after auto-selection](#bug-15)
@@ -32,6 +38,67 @@ Fixed
 ---
 
 ## Open
+
+### BUG-21
+
+On touch devices a coder row cannot be opened. `.coder-row-header` is composed almost entirely of
+`[data-tip]` spans (badge, ★ recommended tag, flag, speed, context, benchmark, score bar), and the
+touch branch of `initTooltip` (`app.shared.js:81`) calls `e.stopPropagation()` in the capture phase
+so the tap shows a tooltip instead of reaching the row's toggle handler.
+
+Measured at 393px by sampling every x across each header at mid-height: 86% of the top-ranked
+(★ recommended) row's width swallows the tap, 66–69% on the other rows. The remaining ~50px on the
+top row is not contiguous — 22px of left padding plus four 8px flex gaps. Aggravated by
+[BUG-23](#bug-23), which collapses `.coder-name` (the largest non-tip child) to 0px, and by the
+6px-wide caret being pushed off-screen.
+
+Impact: the ready-to-paste Cline/Continue configs — the entire purpose of `coder.html` — are
+unreachable on a phone.
+
+Candidate fix: give the row a contiguous non-`[data-tip]` tap area on mobile (wrapping the header
+so `.coder-name` gets its own full-width line does this as a side effect — see BUG-23), and/or make
+the touch handler skip `stopPropagation()` when the tip element sits inside a toggleable row.
+
+Reproduce: `python3 meta/scripts/mobile_audit.py`; see `meta/UX-MOBILE.md` finding 1.
+
+---
+
+### BUG-23
+
+`.coder-name` — the string the user has to type after `ollama pull` — truncates to nothing on
+mobile. `.coder-row-header` is `flex-wrap: nowrap` and the name is the only child that shrinks;
+badge, ★ recommended tag, flag, speed range and benchmark chip all keep their full width.
+
+Measured at 393px: `devstral-small-2:24b` renders at **0px** (needs 157px) on the ★ recommended row,
+`devstral:24b` at 49px (needs 94), `granite-code:8b` and `granite-code:20b` at 57px (need 117/125).
+The list reads "de…", "gra…", "phi…", and the top-ranked recommendation shows no name at all.
+
+The same `nowrap` also pushes `.coder-bench` and `.coder-caret` past the right edge, giving
+`coder.html` a 406px document at a 393px viewport.
+
+Candidate fix: allow the header to wrap below 600px and give `.coder-name` its own full-width line
+(`flex: 1 1 100%; order: -1`). Verified in-browser: document width 406 → 393px, name fully visible.
+This also creates the contiguous tap area [BUG-21](#bug-21) needs.
+
+---
+
+### BUG-24
+
+iOS Safari auto-zooms the page when an input with `font-size < 16px` receives focus, and does not
+zoom back out on blur. Both text inputs on the site are 12px:
+
+- `.combobox-search` (`styles.css:206`) — the model search box on `index.html`
+- `.coder-controls input[type="text"]` (`styles.css:740`) — the Ollama URL field on `coder.html`
+
+These are the two primary text-entry points, so an iPhone user is left zoomed in and horizontally
+panned after using either. Native `<select>` controls are unaffected.
+
+Candidate fix: `font-size: 16px` on both inputs inside the mobile media query. Do **not** fix it by
+adding `maximum-scale=1` to the viewport meta — that disables pinch-zoom for everyone.
+
+Not reproducible in Firefox/Playwright (WebKit-specific); identified from the computed styles.
+
+---
 
 ### BUG-20
 
@@ -71,6 +138,120 @@ term and more data. Sliding-window models (Gemma) are unaffected.
 ---
 
 ## Fixed
+
+### BUG-26
+
+The "how to run it" setup block emitted commands that could not do what the site promised. Verified
+against docs.ollama.com on 2026-08-05:
+
+1. **`OLLAMA_NUM_CTX` does not exist.** The run line was
+   `OLLAMA_NUM_CTX=<maxCtx> ollama run <tag>`. That variable name was dropped in Ollama 0.6 and is
+   silently ignored by current releases; the current name is `OLLAMA_CONTEXT_LENGTH`. Every user
+   who followed our instructions got Ollama's own default context, not the one we calculated.
+2. **Context length is server-side.** Even under the correct name it only takes effect on
+   `ollama serve` — `ollama run` is a client talking to an already-running server, so an env var
+   prefixed to it is discarded. The setting had to move onto the serve command / service config.
+3. **`OLLAMA_KV_CACHE_TYPE` needs `OLLAMA_FLASH_ATTENTION=1`.** Ollama only quantizes the KV cache
+   when flash attention is on, and it is off by default. We emitted the cache type alone, so every
+   `q8_0`/`q4_0` recommendation silently ran at f16 — meaning the *whole point* of the
+   recommendation (fitting a longer context in the same VRAM) did not happen, and the context
+   figure shown next to it was unreachable. This was the most damaging of the three: it broke the
+   calculation the site exists to perform.
+
+Fixed in `osKvContent()` / `renderCmd()` (`index.render.js`): all three variables are now emitted
+together on whatever starts the server for that platform, `OLLAMA_FLASH_ATTENTION=1` is included
+whenever the recommended cache type is not f16 (and omitted when it is, since f16 does not need it),
+and the block ends with `ollama run <tag>` carrying no environment prefix. The systemd option ends
+at the service restart instead — it reconfigures a background service that keeps running, so
+starting a model afterwards is ordinary use rather than part of the setup.
+
+A fourth problem surfaced once the above was in: the block demanded `sudo systemctl stop ollama`,
+a foreground `ollama serve`, and `OLLAMA_KV_CACHE_TYPE=f16` **even when f16 was the recommendation**
+— i.e. setting the value Ollama already defaults to, at the cost of taking down the user's service.
+Since f16 is the common case (`autoKvBpe` reaches for it first), most visitors were shown that.
+Fixed by gating the whole server section on `needsServerSetup(kvLabel)`: f16 now emits just
+`ollama pull` / `ollama run` / `>>> /set parameter num_ctx <n>`, which needs no server change and is
+identical on every platform, so the OS selector row is hidden too. `coder.html`'s assumption note
+got the same treatment — an f16 row states there is nothing to configure, since `contextLength` in
+the editor config is an API option and outranks any server setting.
+
+`meta/knowledge/external-tools.md` § Ollama now records all these facts so this cannot recur.
+
+---
+
+### BUG-25
+
+The `linux` and `macos` branches of `osKvContent()` told the user to append an export to a shell
+rc file:
+
+```sh
+echo 'export OLLAMA_KV_CACHE_TYPE=q8_0' >> ~/.bashrc && source ~/.bashrc   # linux
+echo 'export OLLAMA_KV_CACHE_TYPE=q8_0' >> ~/.zshrc  && source ~/.zshrc    # macos
+```
+
+Two problems:
+
+1. **Non-idempotent.** Nothing guards the append. A user who changes model or context — and so
+   gets a different `kvLabel` — and runs the snippet again silently accumulates a second,
+   conflicting `export` line. Whichever is last wins, nothing ever cleans them up, and the site
+   gave no way to undo it.
+2. **Ineffective on Linux.** The Linux installer registers a systemd service running as the
+   `ollama` user; it never reads an interactive shell's rc file. Worse, that service holds port
+   11434, so the `ollama serve` the snippet then told the user to run would fail with
+   `address already in use`. The instructions could not work as written on a default install.
+   `meta/knowledge/external-tools.md` already recorded the systemd drop-in as *the* Linux
+   mechanism — the branch contradicted our own notes and Ollama's docs.
+
+Fixed by dropping rc-file mutation entirely, and by collapsing the OS list to **one entry per
+platform** — four options instead of five:
+
+- `linux` → the systemd drop-in (previously the separate `linux-service` entry), now the only
+  Linux path. A first attempt kept a temporary `Linux · quick start` beside it (stop the service,
+  run a rival `ollama serve` in the foreground); that was removed as strictly worse than the
+  drop-in — more steps, it occupied a terminal, and closing that terminal left ollama dead with
+  the service still stopped. The drop-in is two commands, idempotent (`tee` overwrites), survives
+  reboot, and is what Ollama documents. Non-systemd Linux setups use `generic`.
+- `macos` → quit the menubar app (⌘Q) then `OLLAMA_KV_CACHE_TYPE=<kv> ollama serve`; reopening the
+  app restores the default. The docs do describe the `~/.zshrc` route, but you have to quit the app
+  and run `ollama serve` in that terminal either way, so the persistent export bought nothing.
+- `generic` and `windows` unchanged.
+
+Retiring the `linux-service` key needed a migration: `storedOs()` in `app.shared.js` normalises it
+to `linux` on read (and any other unrecognised value to a passed default), since the `osTab`
+preference is shared with `coder.html` and persists across visits. Without it a returning user would
+have hit a missing branch and an empty setup block.
+
+SPEC §7.5b now forbids rc-file appends in `osKvContent()` and records why there is no
+temporary/permanent pair. Verified on both pages: all four options render in order, the retired
+`linux-service` and a garbage value both resolve to a populated block, no JS errors.
+
+---
+
+### BUG-22
+
+The result headline forced the document to **534px wide at every phone viewport** (measured
+identically at 344, 375 and 393px), so the whole site scrolls horizontally into dead space once a
+model is selected.
+
+Root cause: `.result-main` / `.result-cmd` / `.result-aside` were grid items without `min-width: 0`.
+A grid item's automatic minimum size is its min-content size, so the track was sized by
+`<pre class="ollama-cmd">` (`white-space: pre`, min-content 497px) rather than by the viewport.
+
+This also silently defeated the [BUG-07](#bug-07) fix: `overflow-x: auto` on `.ollama-cmd` never
+engaged because the element was never constrained.
+
+Off-screen as a result: the card's right border, the `it will code!` link, the `ROUGH ESTIMATE`
+caveat, the end of the reading-speed line, the **macOS** and **Windows** OS tabs (2 of 5, with no
+scroll affordance), and the tail of every command line.
+
+Fixed by removing the `result-cmd` grid area entirely — the OS tab strip and setup block moved
+out of the card into the new collapsible `#runSection` below it (SPEC §7.5b) — and adding
+`min-width: 0` to `.result-main` so no future wide child can re-create the problem. Verified at 344,
+375, 393 and 1280px: `document.scrollWidth === clientWidth` in both the closed and open states, and
+the setup block now scrolls internally as intended (343px visible / 540px scrollable at 393px),
+which also restores the [BUG-07](#bug-07) fix.
+
+---
 
 ### BUG-19
 

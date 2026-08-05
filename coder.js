@@ -4,7 +4,7 @@
 //
 // Depends on:  MODELS (data files),
 //              app.calc.js (OVERHEAD_GB),
-//              app.shared.js (buildGpuSelector, initTooltip, initInfoSheet, osKvContent),
+//              app.shared.js (buildGpuSelector, initTooltip, initInfoSheet),
 //              app.util.js (getLibMeta, getFlashOk),
 //              coder.rank.js (buildEntries),
 //              coder.rows.js (sectionDivider, makeRow)

@@ -59,6 +59,7 @@ meta/
   UX-FINDINGS.md             — design and UX research findings
   knowledge/
     external-tools.md        — Cline, Continue, Ollama, editor ecosystem reference
+    ollama-context-and-kv-cache.md — how context size and K/V cache quantization are set, and their limits
     nvidia-geforce-compare.md — NVIDIA compare page verbatim source data (read-only)
     nvidia-tflops-derived.md  — derived FP16 TFLOPS values and conversion formulas
   benchmarks/                — empirical benchmark result files
@@ -625,7 +626,12 @@ The legend below the bar shows up to five items (hidden when negligible):
 ### 7.5 Result headline
 
 A card with a left border whose colour reflects the score class. Uses a CSS grid with two columns:
-left side (`result-main`), right aside (`result-aside`), and a full-width bottom row (`result-cmd`).
+left side (`result-main`), right aside (`result-aside`), and a full-width bottom row holding the
+`▸ how to run it` toggle (`run-toggle`, grid area `run`).
+
+`result-main` carries `min-width: 0`. A grid item's automatic minimum size is its min-content size,
+so without it any wide unbreakable child sizes the track and pushes the document past the viewport
+instead of being contained (see BUG-22).
 
 **Left side (`result-main`):**
 1. **Verdict** — `IT WILL LLM!` or `IT WON'T LLM!` — large monospace, animated pop-in on every render
@@ -650,9 +656,92 @@ left side (`result-main`), right aside (`result-aside`), and a full-width bottom
   - `ⓘ` shown when `contextFitPct > 50%` (% of arch limit) — tooltip: "Like human memory — most models recall
     the start and end of a long text better than the middle."
 
-**Bottom row (`result-cmd`):**
-4. **Ollama command** — copy-paste ready: `ollama run library:tag\n>>> /set parameter num_ctx XXXXX`
-5. **OS tabs + setup block** — only shown when KV cache type is not f16; toggleable Linux/Mac and Windows sections showing `OLLAMA_KV_CACHE_TYPE=TYPE ollama serve` instructions. Styled as a **connected tab strip**: inactive tabs sit recessed (`--bg2`), the active tab takes the setup panel's own background (`--bg3`) with top-only rounding and no bottom seam, so it reads as one continuous surface with the panel.
+**Bottom row (`run-toggle`):**
+
+- A single `▸ how to run it` / `▾ how to run it` button, full width of the card on mobile
+  (44px tall), auto-width on desktop (40px). Hidden entirely when the model does not fit —
+  there is nothing to run.
+
+### 7.5b "How to run it" panel
+
+`#runSection` — a separate block **below** the result card (between `provenance-alert` and
+`bar-section`), collapsed by default and toggled by `run-toggle`. It is deliberately *not* inside
+`#geekSection`: the setup commands are the least technical content on the page and the one thing a
+casual visitor needs in order to act on the verdict, so burying them behind the "details" nerd view
+would be backwards.
+
+Contents:
+
+1. **OS selector** — `Show setup for` label + a `<select id="osSelect">` built from `OS_KEYS`
+   (`index.render.js`): `Linux · quick start`, `Linux · systemd service`, `macOS`, `Windows`.
+   This replaced a five-button tab strip, which could not fit a phone viewport (26px tall, 2 of 5
+   tabs off-screen).
+2. **Setup block** (`#ollamaSetup`) — the platform's server setup, then `ollama pull <tag>`, then
+   `ollama run <tag>`. `white-space: pre; overflow-x: auto` — long lines scroll inside the block,
+   never widen the page.
+
+**The panel only asks for server configuration when the recommendation actually requires it.**
+
+- **f16 KV cache (Ollama's default) — no server setup.** The block is `ollama pull`, `ollama run`,
+  then `>>> /set parameter num_ctx <maxCtx>` from inside the REPL. Identical on every platform, so
+  the OS selector row is **hidden** (`.run-os-row.hidden = true`). Emitting
+  `OLLAMA_KV_CACHE_TYPE=f16` would set the value it already has, and asking the user to stop a
+  system service and run a foreground server to do it is pure ceremony — never do this.
+- **Quantized KV cache (q8_0 / q4_0) — server setup required**, because the cache type is read at
+  server startup. The OS selector is shown and the platform block precedes pull/run.
+
+`ollama run` is a client talking to an already-running server, so an environment variable prefixed
+to it is discarded. Variables go on whatever starts the server; the final `ollama run` carries none.
+
+| Variable | Note |
+| --- | --- |
+| `OLLAMA_KV_CACHE_TYPE` | `q8_0` \| `q4_0`. Never emitted for `f16` |
+| `OLLAMA_FLASH_ATTENTION=1` | **required for a quantized cache type to take effect at all** — without it Ollama silently keeps f16 and the context figure we show is unreachable (BUG-26) |
+| `OLLAMA_CONTEXT_LENGTH` | the context window. **Not** `OLLAMA_NUM_CTX` — dropped in Ollama 0.6, silently ignored (BUG-26). Only used in the quantized path, where the server is being restarted anyway; the f16 path uses `/set parameter num_ctx` instead |
+
+Precedence: API option (`/set parameter`, or `contextLength` in an editor config) > env var >
+Modelfile > built-in default.
+
+What each option emits in the quantized path:
+
+| Option | Server setup | Scope | Ends with |
+| --- | --- | --- | --- |
+| `linux-quick` | `sudo systemctl stop ollama`, then the vars inline on `ollama serve` | this session | `ollama run` |
+| `linux-service` | systemd drop-in at `/etc/systemd/system/ollama.service.d/override.conf`, then `daemon-reload && restart` | permanent | `ollama pull` |
+| `macos` | quit the menubar app (⌘Q), then the vars inline on `ollama serve` | this session | `ollama run` |
+| `windows` | System Properties → Environment Variables, then restart from the tray | permanent | `ollama run` |
+
+The systemd option is the one that stops at `pull`: it reconfigures a background service that keeps
+running, so starting a model afterwards is ordinary use, not part of the setup. The other three
+occupy the terminal you just typed into, so the recipe continues in a new one and finishes with the
+model actually running.
+
+**No rc-file appends.** `osKvContent()` must never emit `>> ~/.bashrc` or `>> ~/.zshrc`. Such a
+snippet is non-idempotent — a user returning with a different KV type silently accumulates a second,
+conflicting `export` that nothing cleans up — and on Linux it is also ineffective, since the
+installer registers a systemd service running as the `ollama` user, which never reads an interactive
+shell's rc file.
+
+**Index-only.** `coder.html` does not render setup commands. It states the assumption that Ollama is
+already running with the right server settings and links back here (`kvAssumptionHtml`,
+`coder.rows.js`). Keeping one copy is deliberate: two copies drifted.
+
+See `meta/knowledge/ollama-context-and-kv-cache.md` — authoritative for these settings
+and their limitations.
+
+**OS default and persistence.** `activeOsTab` = `storedOs(detectOs())`. `storedOs`
+(`index.render.js`) reads the `osTab` key and migrates anything this build no longer knows via
+`OS_LEGACY` — `generic` → `linux-quick`, `linux` → `linux-service` — with any other unrecognised
+value falling back to the passed default.
+Without that, a returning visitor with an old value stored would land on a missing branch and see an
+empty setup block. `detectOs()` (`index.ui.js`) reads `navigator.userAgentData.platform` then falls
+back to `navigator.platform` / `navigator.userAgent`.
+Anything unrecognised falls through to `generic`, which works everywhere. Detection result is
+**not** written to storage — only an explicit change is. The `osTab` key is shared with
+`coder.html`'s OS tabs, so the preference carries across both pages.
+
+**Open/closed persistence.** `runOpen` is stored under `runOpen`, defaulting to closed. Re-renders
+preserve it; `renderOom` force-hides both toggle and panel regardless of the stored value.
 
 Flash attention warning (`ⓘ` tooltip) when KV cache ≠ f16:
 - GPU flash = `'no'`: warn that this GPU doesn't support it

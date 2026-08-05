@@ -59,12 +59,18 @@ Rust-based editor, 7.3% share (2025). Built-in AI is cloud-only. No confirmed Co
 | Windows setup | [docs.ollama.com/windows](https://docs.ollama.com/windows) |
 | Model library | [ollama.com/library](https://ollama.com/library) |
 
-**Key facts:**
+> **Context window size and K/V cache quantization have their own reference:**
+> [`ollama-context-and-kv-cache.md`](ollama-context-and-kv-cache.md). It is authoritative for
+> `OLLAMA_CONTEXT_LENGTH`, `OLLAMA_KV_CACHE_TYPE`, `OLLAMA_FLASH_ATTENTION`, their limitations
+> (the cache type is a **global** option), and the platform mechanisms for setting them.
+> Do not duplicate those facts here — two copies drifted once already.
+
+**Other key facts:**
+
 - `OLLAMA_HOST=0.0.0.0` required for remote access (binds only to loopback by default)
-- `OLLAMA_KV_CACHE_TYPE` sets KV precision: `q8_0` | `q4_0` (default is `f16`)
-- Linux: set env vars via systemd drop-in at `/etc/systemd/system/ollama.service.d/override.conf`
-- macOS: export in `~/.zshrc`, quit menu bar app, run `ollama serve` from terminal
-- Windows: `setx` or Settings → Environment Variables, then restart from tray
+- Env vars are read by the **server** at startup — `ollama run` is a client and ignores them
+
+See SPEC §7.5b and `ollama-context-and-kv-cache.md`.
 
 ---
 

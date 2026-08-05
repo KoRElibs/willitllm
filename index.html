@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>willitllm.com</title>
-<link rel="stylesheet" href="styles.css?v=7">
+<link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
 <div class="page">
@@ -89,16 +89,6 @@
         </div>
         <span class="result-label" id="resultLabelOom" hidden></span>
       </div>
-      <div class="result-cmd">
-        <div class="os-tabs" id="osTabs" hidden>
-          <button class="os-tab" data-os="generic">Generic</button>
-          <button class="os-tab" data-os="linux">Linux</button>
-          <button class="os-tab" data-os="linux-service">Linux service</button>
-          <button class="os-tab" data-os="macos">macOS</button>
-          <button class="os-tab" data-os="windows">Windows</button>
-        </div>
-        <pre class="ollama-cmd ollama-setup" id="ollamaSetup" hidden></pre>
-      </div>
       <div class="result-aside" id="resultAside" hidden>
         <div class="aside-stat" id="asideGenStat">
           <div class="aside-val" id="asideGenSpeed">—</div>
@@ -115,9 +105,32 @@
           <div class="aside-label" id="asideCtxLabel">—</div>
         </div>
       </div>
+      <!-- Its own grid area (not inside .result-main) so it sits at the foot of the card in
+           both layouts — on mobile the columns stack, and a button inside .result-main would
+           wedge itself between the scorecard and the speed stats. -->
+      <button class="disclosure disclosure--primary run-toggle" id="runToggle" hidden aria-controls="runSection">▸ how to run it</button>
     </div>
 
     <div class="provenance-alert" id="provenanceAlert" hidden></div>
+
+    <!-- Setup instructions — collapsed by default, toggled by #runToggle in the card above.
+         Deliberately NOT inside #geekSection: this is the least technical content on the
+         page, and burying it behind the "details" nerd view would hide the one thing a
+         casual visitor actually needs to act on the verdict. -->
+    <div id="runSection" class="run-section" hidden>
+      <div class="run-os-row">
+        <label for="osSelect">Show setup for</label>
+        <div class="select-wrap">
+          <select id="osSelect">
+            <option value="linux-quick">Linux · quick start</option>
+            <option value="linux-service">Linux · systemd service</option>
+            <option value="macos">macOS</option>
+            <option value="windows">Windows</option>
+          </select>
+        </div>
+      </div>
+      <pre class="ollama-cmd ollama-setup" id="ollamaSetup"></pre>
+    </div>
 
     <div class="bar-section">
       <div class="bar-label-row">
@@ -140,7 +153,7 @@
       </div>
     </div>
 
-    <button class="geek-toggle" id="geekToggle">▸ details</button>
+    <button class="disclosure geek-toggle" id="geekToggle" aria-controls="geekSection">▸ the numbers</button>
 
     <div id="geekSection" hidden>
 
@@ -335,13 +348,13 @@
 <script src="data.models.js?v=11"></script>
 <script src="app.fmt.js?v=3"></script>
 <script src="app.calc.js?v=13"></script>
-<script src="app.shared.js?v=3"></script>
+<script src="app.shared.js?v=6"></script>
 <script src="app.util.js?v=3"></script>
 <script src="index.combobox.js?v=2"></script>
 <script src="index.variants.js?v=2"></script>
-<script src="index.ui.js?v=4"></script>
-<script src="index.render.js?v=10"></script>
+<script src="index.ui.js?v=7"></script>
+<script src="index.render.js?v=14"></script>
 <script src="index.details.js?v=2"></script>
-<script src="index.js?v=5"></script>
+<script src="index.js?v=9"></script>
 </body>
 </html>

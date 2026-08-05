@@ -58,6 +58,21 @@ across sessions — the directory is gitignored but persists locally.
 
 Playwright and Firefox are already installed — no setup needed.
 
+### Mobile UX audit — `meta/scripts/mobile_audit.py`
+
+When to use: after any layout/CSS change, and whenever reviewing how the site behaves on phones.
+
+Runs both pages at 375×667, 393×852 and 344×882 with touch emulation, captures full-page and
+viewport screenshots to `meta/cache/screenshots/`, and reports horizontal overflow (with the
+offending elements), sub-44px tap targets, and sub-12px text as JSON on stdout.
+
+```bash
+python3 meta/scripts/mobile_audit.py > /tmp/mobile.json
+```
+
+Latest results: `meta/UX-MOBILE.md`. The device-profile and in-page check patterns are documented
+in `meta/skills/browser-verifier.md` under *Mobile verification*.
+
 ### Model scraper — `meta/scripts/update_models.py`
 
 When to use: when adding or refreshing model data in `data.models.js` or `data.libraries.js`.
@@ -86,6 +101,7 @@ Consult these before changing anything that touches their domain:
 
 | Document | Consult when |
 | --- | --- |
+| `meta/knowledge/ollama-context-and-kv-cache.md` | **Required reading before touching any setup command.** How context window size and K/V cache quantization are actually set in Ollama, and their limitations — the cache type is a *global* server option with silent failure modes. Getting this wrong produces commands that look right and do nothing (see BUG-26). |
 | `meta/knowledge/external-tools.md` | Changing any UI copy or config that references Cline, Continue, Ollama, or editors. URLs rot — verify before touching. |
 | `meta/knowledge/nvidia-tflops-derived.md` | Updating GPU specs in `data.gpus.js`. Values are derived — do not overwrite from memory. |
 | `meta/knowledge/nvidia-geforce-compare.md` | Read-only verbatim source data. Never modify as a side effect of other work. |

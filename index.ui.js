@@ -6,7 +6,7 @@
 //              index.variants.js (getSelectedVariant),
 //              index.js (activeOsTab, setupContent, render — at runtime)
 // Provides:    _activeCaps, updateSelectionSummary, modelScoreColor,
-//              markModelOptions, applyCap, setOsTab, syncOsTabs
+//              markModelOptions, applyCap, detectOs, setOs, syncOsSelect
 
 function updateSelectionSummary(model) {
   const el = document.getElementById('selectionSummary');
@@ -77,19 +77,30 @@ function applyCap(cap) {
   filterModelList(document.getElementById('modelSearch')?.value || '', true);
 }
 
-// ── OS tab toggle ─────────────────────────────────────────────────────────────
+// ── OS selection ──────────────────────────────────────────────────────────────
 
-function syncOsTabs() {
-  document.querySelectorAll('#osTabs .os-tab').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.os === activeOsTab);
-  });
+// Best-effort guess so most visitors land on the right instructions without touching
+// the dropdown. userAgentData.platform is the modern signal; navigator.platform is the
+// fallback (deprecated but still the only thing Firefox/Safari expose). Anything
+// unrecognised falls through to the Linux quick start — the least destructive option,
+// since it changes nothing permanently and its commands read the same everywhere.
+function detectOs() {
+  const p = (navigator.userAgentData?.platform || navigator.platform || '').toLowerCase();
+  const ua = navigator.userAgent.toLowerCase();
+  if (p.includes('win') || ua.includes('windows'))    return 'windows';
+  if (p.includes('mac') || ua.includes('mac os'))     return 'macos';
+  return 'linux-quick';
 }
 
-function setOsTab(os) {
+function syncOsSelect() {
+  const sel = document.getElementById('osSelect');
+  if (sel) sel.value = activeOsTab;
+}
+
+function setOs(os) {
   activeOsTab = os;
+  // Same localStorage key as coder.html's OS tabs — one OS preference across both pages.
   localStorage.setItem('osTab', os);
-  const setupEl = document.getElementById('ollamaSetup');
-  setupEl.innerHTML = setupContent[os];
-  setupEl.hidden = false;
-  syncOsTabs();
+  document.getElementById('ollamaSetup').innerHTML = setupContent[os];
+  syncOsSelect();
 }

@@ -6,6 +6,12 @@
 
 Bugs found during testing live in `BUGS.md` (BUG-05 through BUG-09). This file contains design and UX suggestions only.
 
+> **Mobile:** superseded by `UX-MOBILE.md` (tested 2026-08-05, three phone viewports with touch
+> emulation, reproducible via `meta/scripts/mobile_audit.py`). M2 and L2 below predate the current
+> layout — check there first. Note that "Model list sorted green-first on GPU selection" in the
+> *What works well* section is no longer accurate: the list is sorted by parameter size and
+> deliberately never re-sorted (`index.js:214`).
+
 ---
 
 ## High priority

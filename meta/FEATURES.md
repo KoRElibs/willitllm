@@ -27,10 +27,22 @@ As a Checker I want to know immediately whether a model fits in my GPU's VRAM so
 As a Checker I want to see the maximum context window I can safely run so I can judge whether the model is useful for my task.
 
 **US-03 — Ollama command** `done`
-As a Checker I want a copy-paste ollama command with the correct `num_ctx` already set so I don't have to calculate or look up the parameter myself.
+As a Checker I want copy-paste ollama commands with the correct context length already set so I don't have to calculate or look up the parameter myself.
+
+The context length is set via `OLLAMA_CONTEXT_LENGTH` on the **server**, not `num_ctx` on the client —
+see US-04 and BUG-26.
 
 **US-04 — KV cache setup instructions** `done`
 As a Checker I want OS-specific instructions for enabling non-default KV cache precision so I can apply the setting without guessing the env var syntax.
+
+Implemented: a `▸ how to run it` toggle at the foot of the result card opens `#runSection` below it —
+a `Show setup for` dropdown (Linux · quick start / Linux · systemd service / macOS / Windows) plus
+the setup block. Every Ollama setting is emitted on whatever starts the *server* for that platform
+(`ollama serve`, the systemd drop-in, System Properties) — `ollama run` is a client and ignores
+env vars prefixed to it. `OLLAMA_FLASH_ATTENTION=1` ships alongside any non-f16 cache type, without
+which Ollama silently ignores it (BUG-26). No option appends to a shell rc file (BUG-25).
+Index-only: `coder.html` states the assumption and links back here rather than keeping a second copy.
+See SPEC §7.5b.
 
 **US-05 — Shareable URL** `done`
 As a Checker I want the current selection encoded in the URL so I can share a link that opens the exact same configuration.
@@ -134,8 +146,8 @@ context fit — actually stands out. Status colour (green/amber/orange) is reser
 thread (model list, Context-fit meter, aside `~pages`), all driven by one shared `contextFitColor`
 so they never disagree. The verdict is neutral (only the card border carries the tint; red kept for
 OOM), Speed/Sharpness/Memory-clarity meters use a single neutral fill, the memory bar is pure
-allocation (one blue ramp + greys, legend dots matching blocks), and the capability pills/OS tabs use
-the cyan accent. See SPEC §6 and §7.4.
+allocation (one blue ramp + greys, legend dots matching blocks), and the capability pills, the
+`how to run it` toggle, and the coder page's OS tabs use the cyan accent. See SPEC §6 and §7.4.
 
 ---
 

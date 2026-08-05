@@ -7,11 +7,11 @@
 //              app.fmt.js (fmtGB, fmtCtx, fmtCtxPages, fmtCtxWords,
 //                          fmtTokensHuman, fmtSpeechPace, fmtSpeedHuman,
 //                          fmtSpeed, bar10, colorForScore),
-//              app.shared.js (osKvContent, muted),
+//              app.shared.js (muted),
 //              app.util.js (metricLabel),
 //              index.variants.js (getSelectedVariantIdx, variantOllamaTag),
-//              index.ui.js (syncOsTabs),
-//              index.js (activeOsTab, setupContent, getTargetCtx — at runtime)
+//              index.ui.js (syncOsSelect),
+//              index.js (activeOsTab, runOpen, setupContent, getTargetCtx — at runtime)
 // Provides:    renderMembar, renderBudget, renderScorecard, renderVerdict,
 //              renderOom, renderAside, renderCmd
 
@@ -174,9 +174,10 @@ function renderOom(vramGB, weightsGB) {
   labelOom.textContent = `Model weights (${fmtGB(weightsGB)}) exceed available VRAM (${fmtGB(vramGB - OVERHEAD_GB)} usable). This model will not load.`;
   labelOom.hidden = false;
   document.getElementById('codeVerdict').hidden = true;
-  document.getElementById('osTabs').hidden      = true;
-  document.getElementById('ollamaSetup').hidden = true;
   document.getElementById('resultAside').hidden = true;
+  // Nothing to run — hide both the toggle and the panel, whatever the stored open state.
+  document.getElementById('runToggle').hidden  = true;
+  document.getElementById('runSection').hidden = true;
 }
 
 function renderAside(speedEsts, ctxResult, contextFitPct) {
@@ -243,35 +244,136 @@ function renderAside(speedEsts, ctxResult, contextFitPct) {
   document.getElementById('resultAside').hidden = false;
 }
 
+// The OS keys the setup panel understands, in dropdown order. Index-only — coder.html
+// no longer renders setup commands, it links here instead.
+const OS_KEYS = ['linux-quick', 'linux-service', 'macos', 'windows'];
+
+// Older builds stored other keys under `osTab`; map them forward so a returning visitor
+// never lands on a key that no longer exists (which would render an empty panel).
+const OS_LEGACY = { generic: 'linux-quick', linux: 'linux-service' };
+
+function storedOs(fallback) {
+  const v = localStorage.getItem('osTab');
+  if (OS_LEGACY[v]) return OS_LEGACY[v];
+  return OS_KEYS.includes(v) ? v : fallback;
+}
+
+// Does this recommendation actually require touching the server?
+//
+// Only a QUANTIZED KV cache does. `OLLAMA_KV_CACHE_TYPE` is read by the server at startup,
+// and it needs `OLLAMA_FLASH_ATTENTION=1` alongside it or Ollama silently keeps f16.
+//
+// f16 is Ollama's default, so when that is what we recommend there is nothing to configure:
+// emitting `OLLAMA_KV_CACHE_TYPE=f16` would set the value it already has, and making the user
+// stop a system service and run a foreground server to do it is pure ceremony. Context length
+// alone never justifies it either — `/set parameter num_ctx` sets it per run from inside the
+// REPL, at the highest precedence (API option > env var > Modelfile > default).
+function needsServerSetup(kvLabel) {
+  return kvLabel !== 'f16';
+}
+
+// Server-side vars, only ever called when needsServerSetup() is true.
+// OLLAMA_CONTEXT_LENGTH is the current name — NOT `OLLAMA_NUM_CTX`, which was dropped in
+// Ollama 0.6 and is silently ignored today (BUG-26). Since we are restarting the server
+// anyway here, setting it there is set-and-forget and saves a `/set parameter` every run.
+function serverEnv(kvLabel, maxCtx) {
+  return [
+    'OLLAMA_FLASH_ATTENTION=1',
+    `OLLAMA_KV_CACHE_TYPE=${kvLabel}`,
+    `OLLAMA_CONTEXT_LENGTH=${maxCtx}`,
+  ];
+}
+
+function osKvContent(tab, kvLabel, maxCtx) {
+  const env = serverEnv(kvLabel, maxCtx);
+
+  // Temporary: run the server in this terminal with the settings applied. The service has
+  // to be stopped first — it holds port 11434, so `ollama serve` would fail while it runs.
+  if (tab === 'linux-quick') return [
+    muted(`# ${kvLabel} KV cache is a server setting — restart Ollama with it, this session only:`),
+    muted("# ('sudo systemctl start ollama' hands it back to the service afterwards)"),
+    'sudo systemctl stop ollama',
+    `${env.join(' ')} ollama serve`,
+  ].join('\n');
+
+  // Permanent: a drop-in for the packaged service. `systemctl edit ollama.service` is the
+  // documented route but opens an editor, so it can't be copy-pasted — this writes the same
+  // override.conf directly. Idempotent: tee overwrites, so a later change replaces cleanly.
+  if (tab === 'linux-service') return [
+    muted('# configure the Ollama service — permanent, survives reboot:'),
+    `sudo mkdir -p /etc/systemd/system/ollama.service.d && printf '[Service]\\n${env.map(v => `Environment="${v}"\\n`).join('')}' | sudo tee /etc/systemd/system/ollama.service.d/override.conf`,
+    muted('# reload and restart Ollama service:'),
+    'sudo systemctl daemon-reload && sudo systemctl restart ollama',
+  ].join('\n');
+
+  // The menubar app owns the server, so it has to be quit before a terminal one can bind
+  // the port. Reopening the app restores the defaults — nothing to undo.
+  if (tab === 'macos') return [
+    muted(`# ${kvLabel} KV cache is a server setting — restart Ollama with it, this session only:`),
+    muted('# quit Ollama from the menu bar (⌘Q) — reopening it restores the defaults:'),
+    `${env.join(' ')} ollama serve`,
+  ].join('\n');
+
+  // Padded to the longest name so the values line up as a readable column.
+  if (tab === 'windows') {
+    const pad = Math.max(...env.map(v => v.split('=')[0].length));
+    return [
+      muted('# System Properties → Environment Variables → New user variable, for each:'),
+      ...env.map(v => {
+        const [name, val] = v.split('=');
+        return muted(`#    ${name.padEnd(pad)}  =  ${val}`);
+      }),
+      muted('# then right-click Ollama in the tray → Quit, and reopen Ollama'),
+    ].join('\n');
+  }
+
+  return '';
+}
+
 function renderCmd(model, libInfo, ctxResult, kvLabel) {
   document.getElementById('resultLabelOom').hidden = true;
 
-  const idx      = getSelectedVariantIdx(model);
-  const runTag   = variantOllamaTag(model, idx);
-  const isCoding = !!libInfo.coding_role;
-  const pull     = `ollama pull ${runTag}`;
+  const idx    = getSelectedVariantIdx(model);
+  const runTag = variantOllamaTag(model, idx);
+  const needsServer = needsServerSetup(kvLabel);
 
-  const runLinux = isCoding
-    ? muted('# then set contextLength in your editor config (see vibe coder →)')
-    : `OLLAMA_NUM_CTX=${ctxResult.maxCtx} ollama run ${runTag}`;
-  const runWin = isCoding
-    ? muted('# then set contextLength in your editor config (see vibe coder →)')
-    : `$env:OLLAMA_NUM_CTX=${ctxResult.maxCtx}; ollama run ${runTag}`;
-
-  const transition = { generic: '# in a new terminal:', linux: '# in a new terminal:',
-    'linux-service': '# in a new terminal:', macos: '# in a new terminal:', windows: '# in PowerShell:' };
-
-  ['generic', 'linux', 'linux-service', 'macos', 'windows'].forEach(tab => {
-    setupContent[tab] = [
-      osKvContent(tab, kvLabel),
-      muted(transition[tab]),
-      pull,
-      tab === 'windows' ? runWin : runLinux,
+  // f16 needs no server change, so the recipe is just pull, run, set the context from inside
+  // the REPL — identical on every platform. The OS selector is hidden in this case: offering
+  // a choice that changes nothing is noise, and it made the panel look like it was demanding
+  // sudo and a foreground server for a default setting.
+  if (!needsServer) {
+    const universal = [
+      `ollama pull ${runTag}`,
+      `ollama run ${runTag}`,
+      muted(`>>> /set parameter num_ctx ${ctxResult.maxCtx}`),
     ].join('\n');
-  });
+    OS_KEYS.forEach(tab => { setupContent[tab] = universal; });
+  } else {
+    // Windows is the only one whose follow-up commands are PowerShell rather than a shell.
+    const transition = tab => tab === 'windows' ? '# in PowerShell:' : '# in a new terminal:';
+
+    OS_KEYS.forEach(tab => {
+      // The systemd block reconfigures a background service that keeps running, so it ends at
+      // the restart — starting a model afterwards is ordinary use, not part of the setup. The
+      // other three occupy the terminal you just typed into, so the recipe continues in a new
+      // one and finishes with the model actually running. Context comes from the env var set
+      // above, so no `/set parameter` is needed here.
+      const lines = [
+        osKvContent(tab, kvLabel, ctxResult.maxCtx),
+        muted(transition(tab)),
+        `ollama pull ${runTag}`,
+      ];
+      if (tab !== 'linux-service') lines.push(`ollama run ${runTag}`);
+      setupContent[tab] = lines.join('\n');
+    });
+  }
+
+  document.querySelector('.run-os-row').hidden = !needsServer;
 
   document.getElementById('ollamaSetup').innerHTML = setupContent[activeOsTab];
-  document.getElementById('ollamaSetup').hidden = false;
-  document.getElementById('osTabs').hidden = false;
-  syncOsTabs();
+  syncOsSelect();
+  // The toggle becomes available; whether the panel is open is the user's stored choice,
+  // applied once at init and preserved across re-renders.
+  document.getElementById('runToggle').hidden = false;
+  document.getElementById('runSection').hidden = !runOpen;
 }
