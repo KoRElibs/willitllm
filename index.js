@@ -12,8 +12,7 @@
 //                                 syncComboboxFace, filterModelList),
 //              index.variants.js (populateVariants, getSelectedVariant,
 //                                 updateNudgeButtons, nudgeVariant),
-//              index.ui.js (markModelOptions, applyCap, detectOs, setOs, syncOsSelect,
-//                           updateSelectionSummary),
+//              index.ui.js (markModelOptions, applyCap, detectOs, setOs, syncOsSelect),
 //              index.render.js (renderMembar, renderBudget, renderScorecard,
 //                               renderVerdict, renderOom, renderAside, renderCmd),
 //              index.details.js (renderDetails, populateGpuTab, renderFormula)
@@ -136,7 +135,6 @@ function render() {
   // Re-read after markModelOptions — auto-selection may have changed sel.value
   const modelIdx = parseInt(document.getElementById('modelSelect').value);
   const model    = MODELS[modelIdx];
-  updateSelectionSummary(model);
 
   const noModel = document.getElementById('noModel');
   const results = document.getElementById('results');

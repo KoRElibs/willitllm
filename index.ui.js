@@ -1,30 +1,11 @@
-// ─── INDEX.UI — model scoring colors, cap filter, OS tabs, selection summary
+// ─── INDEX.UI — model scoring colors, cap filter, OS tabs
 //
 // Depends on:  MODELS, QUANT_INFO (data files),
 //              app.calc.js (OVERHEAD_GB, autoKvBpe, calcMaxContext, computeScores),
 //              index.combobox.js (markComboboxItems),
-//              index.variants.js (getSelectedVariant),
 //              index.js (activeOsTab, setupContent, render — at runtime)
-// Provides:    _activeCaps, updateSelectionSummary, modelScoreColor,
+// Provides:    _activeCaps, modelScoreColor,
 //              markModelOptions, applyCap, detectOs, setOs, syncOsSelect
-
-function updateSelectionSummary(model) {
-  const el = document.getElementById('selectionSummary');
-  if (!el) return;
-
-  const modelSel = document.getElementById('modelSelect');
-  const modelOpt = modelSel.selectedOptions[0];
-  if (!modelOpt || modelOpt.value === '') { el.textContent = 'VRAM allocation'; return; }
-
-  const library = model ? model.ollama_tag.split(':')[0] : modelOpt.textContent.trim().split(/[:\s]/)[0];
-  const variant = model ? getSelectedVariant(model) : null;
-  const fullTag = variant ? `${library}:${variant.tag}` : library;
-
-  const gpuOpt = document.getElementById('vramInput').selectedOptions[0];
-  const gpuName = gpuOpt ? gpuOpt.textContent.trim() : '';
-
-  el.textContent = gpuName ? `${gpuName}: ${fullTag}` : fullTag;
-}
 
 // Unified colour + sort priority using the same formula as the result headline.
 // fit: 0=green 1=amber 2=orange 3=red(poor) 4=OOM(excluded from auto-select)

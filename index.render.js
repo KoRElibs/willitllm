@@ -26,39 +26,39 @@ function renderMembar(vramGB, weightsGB, ctxResult, noFit) {
 
   document.getElementById('barTotal').textContent = Math.round(vramGB) + ' GB';
 
+  // The GB numbers live in the legend only. They used to be printed inside the wide blocks
+  // too, which said the same thing twice and only for whichever blocks happened to be wide
+  // enough — so the bar now carries pure proportion and the legend carries the values.
   const segModel = document.getElementById('segModel');
   segModel.className   = 'membar-seg ' + (noFit ? 'seg-overflow' : 'seg-model');
   segModel.style.width = modelPct.toFixed(1) + '%';
-  segModel.textContent = modelPct > 12 ? fmtGB(weightsGB) : '';
 
   const segContext = document.getElementById('segContext');
   segContext.className   = 'membar-seg ' + (noFit ? 'seg-overflow' : 'seg-context');
   segContext.style.width = contextPct.toFixed(1) + '%';
-  segContext.textContent = contextPct > 8 ? fmtGB(ctxResult.kvCacheGB) : '';
 
-  const segOverhead = document.getElementById('segOverhead');
-  segOverhead.style.width  = overheadPct.toFixed(1) + '%';
-  segOverhead.textContent  = overheadPct > 6 ? '~' + fmtGB(OVERHEAD_GB) : '';
-
-  const segSafety = document.getElementById('segSafety');
-  segSafety.style.width  = safetyPct.toFixed(1) + '%';
-  segSafety.textContent  = safetyPct > 6 ? fmtGB(ctxResult.safetyGB) : '';
+  document.getElementById('segOverhead').style.width = overheadPct.toFixed(1) + '%';
+  document.getElementById('segSafety').style.width   = safetyPct.toFixed(1) + '%';
 
   const segFree = document.getElementById('segFree');
   if (freePct > 0.5) {
     // flex: 1 fills any remaining space after the other fixed-width segments
     segFree.style.flex  = '1';
     segFree.style.width = '';
-    segFree.textContent = freePct > 6 ? fmtGB(ctxResult.genuinelyFreeGB) : '';
   } else {
     segFree.style.flex  = '';
     segFree.style.width = '0%';
-    segFree.textContent = '';
   }
 
-  document.getElementById('legendModel').textContent    = `Model weights · ${fmtGB(weightsGB)}`;
-  document.getElementById('legendContext').textContent  = noFit ? '' : `${fmtCtx(ctxResult.maxCtx)} context · KV cache ${fmtGB(ctxResult.kvCacheGB)}`;
-  document.getElementById('legendOverhead').textContent = noFit ? '' : `Overhead ~${fmtGB(OVERHEAD_GB)}`;
+  document.getElementById('legendModel').textContent = `Model weights · ${fmtGB(weightsGB)}`;
+  // When nothing fits, these two have no block in the bar — hide the whole item, not just
+  // its text, or the legend shows dots pointing at nothing.
+  document.getElementById('legendContextItem').hidden  = noFit;
+  document.getElementById('legendOverheadItem').hidden = noFit;
+  if (!noFit) {
+    document.getElementById('legendContext').textContent  = `${fmtCtx(ctxResult.maxCtx)} context · KV cache ${fmtGB(ctxResult.kvCacheGB)}`;
+    document.getElementById('legendOverhead').textContent = `Overhead ~${fmtGB(OVERHEAD_GB)}`;
+  }
   const legendSafetyItem = document.getElementById('legendSafetyItem');
   legendSafetyItem.hidden = noFit || ctxResult.safetyGB < 0.05;
   if (!noFit) document.getElementById('legendSafety').textContent = `Safety ${fmtGB(ctxResult.safetyGB)}`;

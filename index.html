@@ -4,16 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>willitllm.com</title>
-<link rel="stylesheet" href="styles.css?v=9">
+<link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
 <div class="page">
 
-  <nav class="page-nav page-nav-right"><a id="vibeNavLink" href="coder.html">vibe coder →</a></nav>
-
   <header>
     <h1><span class="h1-will">will</span><span class="h1-it">it</span><span class="h1-llm">llm</span><span class="h1-tld">.com</span></h1>
-    <p>Pick your GPU and a model — see if it fits your VRAM, how fast it runs, and how much context you get.</p>
+    <p>See whether a model fits your VRAM, how fast it runs, and how much context you get.</p>
   </header>
 
   <div class="controls">
@@ -134,7 +132,7 @@
 
     <div class="bar-section">
       <div class="bar-label-row">
-        <span id="selectionSummary">VRAM allocation</span>
+        <span>VRAM allocation</span>
         <span class="total" id="barTotal"></span>
       </div>
       <div class="membar">
@@ -146,8 +144,8 @@
       </div>
       <div class="bar-legend">
         <div class="legend-item"><div class="legend-dot dot-model"></div><span id="legendModel"></span></div>
-        <div class="legend-item"><div class="legend-dot dot-context"></div><span id="legendContext"></span></div>
-        <div class="legend-item"><div class="legend-dot dot-overhead"></div><span id="legendOverhead"></span></div>
+        <div class="legend-item" id="legendContextItem"><div class="legend-dot dot-context"></div><span id="legendContext"></span></div>
+        <div class="legend-item" id="legendOverheadItem"><div class="legend-dot dot-overhead"></div><span id="legendOverhead"></span></div>
         <div class="legend-item" id="legendSafetyItem"><div class="legend-dot dot-safety"></div><span id="legendSafety"></span></div>
         <div class="legend-item" id="legendFreeItem"><div class="legend-dot dot-free"></div><span id="legendFree"></span></div>
       </div>
@@ -319,7 +317,7 @@
   <div class="page-footer">
     <span data-tip="Organisation names and country of origin were inferred by AI and not manually verified.">AI-assisted data ⓘ</span> · source: <a href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com</a> · treat as a guide
     · <button class="footer-info-btn" id="infoSheetOpen" aria-label="About this tool">about</button>
-    · <a href="coder.html">vibe coder</a>
+    · <a id="vibeNavLink" href="coder.html">vibe coder</a>
   </div>
 
 </div> <!-- /page -->
@@ -351,10 +349,10 @@
 <script src="app.shared.js?v=6"></script>
 <script src="app.util.js?v=3"></script>
 <script src="index.combobox.js?v=2"></script>
-<script src="index.variants.js?v=2"></script>
-<script src="index.ui.js?v=7"></script>
-<script src="index.render.js?v=14"></script>
+<script src="index.variants.js?v=3"></script>
+<script src="index.ui.js?v=8"></script>
+<script src="index.render.js?v=15"></script>
 <script src="index.details.js?v=2"></script>
-<script src="index.js?v=9"></script>
+<script src="index.js?v=10"></script>
 </body>
 </html>

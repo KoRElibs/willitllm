@@ -31,19 +31,34 @@ body {
 .page { max-width: 720px; margin: 0 auto; }
 
 /* ── Header ── */
-header { margin-bottom: 36px; }
+header { margin-bottom: 28px; }
 .h1-will { color: var(--text); }
-.h1-it   { color: var(--accent); }
+/* Not decoration — "willitllm" is a run-together compound with no spaces, and this is the
+   word boundary that makes it parse as "will it llm". It was --accent cyan, which separated
+   from --text by 9 L* — carried almost entirely by hue, the weak channel, exactly the flaw
+   the memory bar's old model/context edge had. --meter gives it 31 L* on the strong channel,
+   so the split reads better while spending no chroma. It also stops the wordmark wearing
+   --accent, which means "act on this" in ~30 other places (focus rings, active tabs, links,
+   .disclosure--primary). The cyan isn't lost — it moved from the glyph into the h1's glow,
+   which is where brand voice belongs and where nothing mistakes it for a control. */
+.h1-it   { color: var(--meter); }
 .h1-llm  { color: var(--text); }
 .h1-tld  { color: var(--muted); font-size: 0.6em; vertical-align: middle; }
+/* The wordmark used to be 32px/700/mono/0.06em — character for character identical to
+   .verdict — so a static logo tied the answer on a tool whose whole value is the answer.
+   The size drop settles that; 32px stays reserved for .verdict.
+   The glow stays. It was briefly removed on a "chroma belongs to the verdict" argument
+   borrowed from the memory bar, but that argument was about a DATA display encoding nothing
+   while competing with the answer. A logo isn't data, and the CRT bloom is the site's voice.
+   Blur tracks the type size (32→24px) so the halo keeps its old proportion instead of
+   reading heavier on smaller letters. */
 header h1 {
   font-family: var(--mono);
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 700;
-  color: var(--accent);
   letter-spacing: 0.06em;
-  margin-bottom: 10px;
-  text-shadow: 0 0 32px rgba(79, 195, 247, 0.35);
+  margin-bottom: 8px;
+  text-shadow: 0 0 24px rgba(79, 195, 247, 0.35);
 }
 header p {
   color: var(--text);
@@ -164,7 +179,9 @@ header p {
 .disclosure--primary:hover { color: var(--accent); border-color: var(--accent); }
 
 .geek-toggle { margin-bottom: 16px; }
-#results > .bar-section { margin-top: 16px; }
+/* The bar is evidence, not verdict — the extra air keeps it from reading as part of the
+   result card directly above it. */
+#results > .bar-section { margin-top: 28px; }
 
 
 /* ── Model combobox ── */
@@ -261,16 +278,25 @@ header p {
   color: var(--muted);
   text-transform: uppercase;
 }
+/* The total is the bar's denominator, not a finding — it restates the GPU the user just
+   picked. It was --text at 13px, the brightest type in this whole block, spent on the one
+   number here that tells them nothing new. It stays scannable, one notch above the caption
+   beside it, and well below anything that carries a verdict. */
 .bar-label-row .total {
-  color: var(--text);
-  font-size: 13px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
+/* A rule, not a panel. The old 40px height existed only to hold in-block GB labels; once
+   those moved to the legend, nothing justified the mass — and mass, not hue, was what made
+   this out-shout the verdict. Attention ≈ area × contrast, so cutting the area ~65% is what
+   buys the quiet, and it lets the ramp keep its full separation (thin elements need MORE
+   contrast to read, not less). No frame: a 1px border is a fifth of a 10px bar, and the
+   trough already defines the extent. */
 .membar {
-  height: 40px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  height: 10px;
+  background: var(--seg-free);
+  border-radius: 5px;
   overflow: hidden;
   display: flex;
   position: relative;
@@ -278,39 +304,47 @@ header p {
 .membar-seg {
   flex-shrink: 0;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
   overflow: hidden;
   transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
   min-width: 0;
 }
-/* The memory bar shows ALLOCATION (where VRAM goes), not fit — so its segments are neutral
-   category tints (a single blue ramp + greys), never status colors. Fit lives only in the
-   scorecard Context meter, the ~pages number, and the model list (all via contextFitColor).
-   Each category has ONE colour (var below) used for both the block fill AND its legend dot,
-   so the legend truly maps to the blocks. The in-block GB label is a quiet neutral, not a
-   second colour, so the block reads as its own fill colour. */
+/* The memory bar shows ALLOCATION (where VRAM goes), not fit — so it is achromatic. Its
+   categories are nominal (there is no good/bad in "overhead is 0.8 GB"), and chroma is
+   reserved for things that carry a verdict: the result card, the scorecard Context meter,
+   the ~pages number, the model list (all via contextFitColor) — and seg-overflow below.
+   Red in this bar therefore means exactly one thing: it doesn't fit.
+
+   The four used categories are ONE luminance ramp, ~7 L* per step, descending as the
+   memory becomes less "yours": model → context → overhead → safety. Every step is unique;
+   they are never reused, because the legend row puts dots side by side even when their
+   blocks aren't, and segment order isn't stable (free vanishes, overflow appears).
+   The ramp is cool-tinted along the --meter hue so it sits with the rest of the neutrals.
+
+   The ceiling matters more than the steps: on a page this dark, luminance pulls harder
+   than hue, so a bright ramp is *louder* than the saturated blues it replaced. The top
+   step is pinned at L* 38 — the lightness of the old --seg-model — which keeps the bar
+   exactly as visible as before while removing every bit of its chroma.
+
+   Free is the trough itself, near-black: in an achromatic bar used↔free is the only
+   boundary that carries meaning, so it gets the largest step (L* 17 → 7), bigger than any
+   step inside the ramp. Each category has ONE colour, used for both fill and legend dot. */
 :root {
-  --seg-model:    #2f5a8c;
-  --seg-context:  #396a86;
-  --seg-overhead: #3c4557;
-  --seg-safety:   #31394a;
+  --seg-model:    #505a6b;  /* L* 38 */
+  --seg-context:  #414958;  /* L* 31 */
+  --seg-overhead: #333945;  /* L* 24 */
+  --seg-safety:   #262a33;  /* L* 17 */
+  --seg-free:     #13161a;  /* L*  7 */
 }
-.seg-model    { background: var(--seg-model);    color: #e4edf8;     border-right: 1px solid var(--bg); }
-.seg-context  { background: var(--seg-context);  color: #e4edf8;     border-right: 1px solid var(--bg); }
-.seg-overhead { background: var(--seg-overhead); color: var(--muted); border-right: 1px solid var(--bg); }
-.seg-safety   { background: var(--seg-safety);   color: var(--muted); border-right: 1px solid var(--bg); }
-.seg-free     { background: var(--bg3); color: var(--muted); }
-.seg-overflow { background: #3b1e1e; color: var(--red); }
+.seg-model    { background: var(--seg-model);    border-right: 1px solid var(--bg); }
+.seg-context  { background: var(--seg-context);  border-right: 1px solid var(--bg); }
+.seg-overhead { background: var(--seg-overhead); border-right: 1px solid var(--bg); }
+.seg-safety   { background: var(--seg-safety);   border-right: 1px solid var(--bg); }
+.seg-free     { background: var(--seg-free); }
+.seg-overflow { background: #3b1e1e; }
 
 .bar-legend {
   display: flex;
-  gap: 20px;
+  gap: 14px;
   margin-top: 10px;
   flex-wrap: wrap;
 }
@@ -322,16 +356,18 @@ header p {
   color: var(--muted);
 }
 .legend-dot {
-  width: 10px; height: 10px;
+  width: 8px; height: 8px;
   border-radius: 2px;
   flex-shrink: 0;
 }
-/* Dots mirror the block fills exactly (same var), so the legend matches the bar. */
+/* Dots mirror the block fills exactly (same var), so the legend matches the bar. The free
+   dot needs a hairline or it vanishes against the page — which is also the right reading:
+   an empty well, not a fill. */
 .dot-model     { background: var(--seg-model); }
 .dot-context   { background: var(--seg-context); }
 .dot-overhead  { background: var(--seg-overhead); }
 .dot-safety    { background: var(--seg-safety); }
-.dot-free      { background: var(--border); }
+.dot-free      { background: var(--seg-free); box-shadow: inset 0 0 0 1px var(--border); }
 
 /* ── Result headline ── */
 .result-headline {
@@ -1107,7 +1143,11 @@ kbd {
   .run-os-row .select-wrap { max-width: none; }
   .result-aside { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 12px; flex-direction: row; flex-wrap: wrap; gap: 16px; }
 
-  header h1 { font-size: 24px; margin-bottom: 6px; }
+  /* Every px above the fold here is a px the verdict doesn't get — it was landing at 73%
+     of the first screen on a 667px phone. */
+  body { padding: 24px 20px; }
+  header { margin-bottom: 20px; }
+  header h1 { font-size: 20px; margin-bottom: 6px; }
   header p  { font-size: 13px; }
 
   .controls { grid-template-columns: 1fr 1fr; gap: 10px; }

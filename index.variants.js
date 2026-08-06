@@ -24,7 +24,6 @@ function populateVariants(model) {
     const opt = document.createElement('option');
     opt.textContent = 'no variants';
     sel.appendChild(opt);
-    updateSelectionSummary(model);
     return;
   }
 
@@ -63,7 +62,6 @@ function populateVariants(model) {
   });
 
   sel.value = '0';  // always start on the default variant
-  updateSelectionSummary(model);
 }
 
 function getSelectedVariantIdx(model) {

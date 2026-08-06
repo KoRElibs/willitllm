@@ -551,7 +551,11 @@ window), which unfairly penalises large-context models. Explicit sizes and `max`
 
 Variant (`<select id="variantSelect">`) and KV Cache are auto-managed and shown in geek mode only (see §7.3).
 
-A `<span id="selectionSummary">` above the memory bar shows the current selection summary (e.g. `VRAM allocation`).
+The caption above the memory bar is the static string `VRAM allocation`. It used to echo the current
+selection (`RTX 3090: gemma3:27b`) — but with the total on the right, that row restated three facts
+the user had just entered in the controls above. Only the total survives, because it is the
+denominator the segment widths are read against; the caption now says what the 100% represents,
+which the legend cannot.
 
 ### 7.2 Model dropdown colouring
 
@@ -603,20 +607,44 @@ A horizontal bar divided into five segments:
 [ model weights ][ KV cache ][ overhead ][ safety ][ free ]
 ```
 
-Segment widths are percentages of total VRAM. Each segment shows its GB value when wide enough
-(threshold varies: >12% for model, >8% for context, >6% for others), otherwise empty.
+Segment widths are percentages of total VRAM. Segments carry no text — the GB values live in the
+legend only, so the bar is pure proportion and each number is stated once.
 
-The bar shows **allocation** (where VRAM goes), not fit — so its segments carry **no status colour**:
-a single blue ramp for the two meaningful segments plus greys, each defined by one CSS var used for
-both the block fill **and** its legend dot (so the legend maps to the blocks). The in-block GB label
-is a quiet neutral, not a second colour.
-- `seg-model` — blue (`--seg-model`), or `seg-overflow` (dark red) when OOM
-- `seg-context` — lighter blue (`--seg-context`) — a neutral category tint, **not** green — or `seg-overflow` when OOM
-- `segOverhead` — grey (`--seg-overhead`, fixed ~0.8 GB overhead reservation)
-- `segSafety` — grey (`--seg-safety`, VRAM held back by the 10% safety factor)
-- `segFree` — muted (genuinely free; only >0 when arch-limited)
+**It is a rule, not a panel: 10px tall, no frame, 5px radius.** The original 40px height existed
+only to hold in-block GB labels; once those moved to the legend nothing justified the mass, and mass
+was what made this out-shout the verdict — attention ≈ area × contrast, and colour cannot rescue a
+720×40px solid. Cutting the area is also what lets the ramp keep its full step separation, since
+thin elements need *more* contrast to read, not less. Do not restore the height without restoring
+a reason for it.
 
-The legend below the bar shows up to five items (hidden when negligible):
+The `24 GB` total in the label row is `--muted` at 12px, not `--text`. It is the bar's denominator —
+it restates the GPU the user picked two controls above — so it must not be the brightest type in
+the block, which it was.
+
+The bar shows **allocation** (where VRAM goes), not fit — so it is **achromatic**. Its categories are
+nominal (there is no good/bad in "overhead is 0.8 GB"), and chroma is reserved for the things that
+carry a verdict. The four used categories form **one luminance ramp**, ~7 L\* per step, descending as
+the memory becomes less "yours". Steps are never reused across categories: the legend row places dots
+side by side even when their blocks aren't adjacent, and segment order isn't stable (free vanishes,
+overflow appears). Each step is one CSS var used for both the block fill **and** its legend dot.
+
+The ramp's **ceiling** is the load-bearing decision: on a page this dark, luminance pulls harder than
+hue, so a bright ramp is louder than the saturated blues it replaced. The top step is pinned at L\* 38
+— the lightness of the old blue `--seg-model` — which keeps the bar as visible as before with none of
+its chroma.
+- `seg-model` — `--seg-model` L\* 38, or `seg-overflow` (dark red) when OOM
+- `seg-context` — `--seg-context` L\* 31, or `seg-overflow` when OOM
+- `segOverhead` — `--seg-overhead` L\* 24 (fixed ~0.8 GB overhead reservation)
+- `segSafety` — `--seg-safety` L\* 17 (VRAM held back by the 10% safety factor)
+- `segFree` — `--seg-free` L\* 7, the trough itself (genuinely free; only >0 when arch-limited).
+  used↔free is the only boundary in the bar that carries meaning, so it gets the largest step.
+
+`seg-overflow` red is therefore the bar's **only** chromatic state, and it means exactly one thing:
+it doesn't fit.
+
+The legend below the bar shows up to five items (hidden when negligible). When OOM, only
+`Model weights` remains — the context and overhead items are hidden entirely rather than emptied,
+or the legend shows dots pointing at nothing:
 - `Model weights · X.X GB`
 - `Xk context · KV cache X.X GB`
 - `Overhead ~X.X GB`
@@ -817,16 +845,44 @@ on-screen.
 - Labels and keys: 11px monospace, uppercase, muted
 - Body text: 14px sans
 - Verdict: 32px monospace bold, letter-spacing 0.06em
+- Wordmark: 24px monospace bold, cyan glow (blur 24px)
+
+**The verdict outranks the wordmark, and the type must say so.** Both were once 32px/700/mono/0.06em
+— identical — so a static logo tied the answer on a tool whose entire value is the answer. **Size**
+is what resolves this: 32px is reserved for `.verdict`.
+
+The glow is *not* part of that fix. It was briefly removed on a "chroma belongs to the verdict"
+argument carried over from the memory bar — but that argument is about a **data display** that
+encoded nothing while competing with the answer. A logo isn't data, and the CRT bloom is the site's
+voice. It stays, with the blur scaled to the type (32→24px) so the halo keeps its old proportion
+rather than reading heavier on smaller letters. Don't strip it again for "consistency".
+
+`.h1-it` stays as a distinct colour — `willitllm` is a run-together compound with no spaces, and the
+break is what makes it parse as "will it llm" — but it is `--meter`, **not** `--accent`. Cyan gave it
+only **9 L\*** of separation from `--text`, so the boundary rode on hue, the weak channel (the same
+flaw as the memory bar's original model/context edge). `--meter` gives **31 L\*** on the strong
+channel: better split, no chroma spent. It also stops the wordmark wearing `--accent`, which means
+"act on this" in ~30 other rules (focus rings, active pills and tabs, links, `.disclosure--primary`).
+
+The site's cyan is not lost — it lives in the h1's glow. Hue in the halo, neutral in the glyphs: the
+brand keeps its voice and no letter impersonates a control.
 
 ### 8.3 Page structure
 
 Max-width 720px, centred. Padding 40px top/bottom on desktop. No sidebar. Single-column flow:
 header → controls → result headline → details → formula → footer.
 
+`index.html` has **no top nav**. `vibe coder` was the page's first element, top-right, above the
+wordmark — the prime slot on the page, spent on a link *away* from the tool, and duplicated in the
+footer. The footer copy carries the `#vibeNavLink` id, so it still receives the GPU-synced
+`coder.html#g=…` href from `render()`. `coder.html` keeps its `← fit checker` top nav: on a secondary
+page a back link is wayfinding, not an exit.
+
 ### 8.4 Mobile (≤600px)
 
-- Body padding reduced to 20px/12px
-- Header font size reduced
+- Body padding reduced to 24px/20px — the verdict card was starting at 73% of a 667px first screen;
+  with the nav gone and the header trimmed it now clears the fold with the scorecard visible
+- Header font size reduced (20px) and `header` margin trimmed
 - Controls remain 2-column grid
 - Detail table source column hidden
 - Formula box font size reduced
